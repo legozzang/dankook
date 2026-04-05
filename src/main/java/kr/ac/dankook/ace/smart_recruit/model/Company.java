@@ -1,0 +1,27 @@
+package kr.ac.dankook.ace.smart_recruit.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "companies")
+public class Company {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToOne(fetch = FetchType.LAZY) // 지연 방식(안전성)
+    @JoinColumn(name = "member_id", nullable = false) // Member의 PK를 참조하여 member_id에 넣음, 데이터의 주인, 연관관계의 주인
+    private Member member;
+
+    @Column(name = "company_name", length = 50)
+    private String companyName;
+
+    @Column(name = "business_number", length = 20, unique = true)
+    private String businessNumber;
+
+    @Embedded // Address 객체의 필드들이 companies 테이블의 컬럼으로 들어감
+    private Address address;
+}
