@@ -3,7 +3,7 @@ from abc import abstractmethod
 from typing import Optional
 import time
 
-from app.collector.base_collector import BaseCollector, CrawlJob
+from app.collector.base.collector import BaseCollector, CrawlJob, SourceType
 
 
 class BaseCrawler(BaseCollector):
