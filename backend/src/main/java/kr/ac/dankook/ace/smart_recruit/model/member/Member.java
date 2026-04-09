@@ -1,7 +1,8 @@
-package kr.ac.dankook.ace.smart_recruit.model;
+package kr.ac.dankook.ace.smart_recruit.model.member;
 
 import java.time.LocalDateTime;
 import jakarta.persistence.*;
+import kr.ac.dankook.ace.smart_recruit.model.employer.Employer;
 import lombok.*;
 @Getter //getter 생성
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 무분별한 생성을 차단
@@ -22,7 +23,7 @@ public class Member{
     // SELECT * FROM companies WHERE member_id = 1; (실제 SQL 실행)
     // 그래서 실제론 companyId가 뭔지 몰라야하지만 연관관계 매핑을 통해 Id만 가지고 companyId를 알 수 있음 (JPA덕분)
     @OneToOne(mappedBy = "member")
-    private Company company; // 다리: "나랑 연결된 업체는 여기야"
+    private Employer employer; // 다리: "나랑 연결된 업체는 여기야"
 
     @Column(nullable = false, unique =true, length = 100) // attribute에 대한 설정
     private String email;

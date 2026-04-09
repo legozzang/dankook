@@ -1,13 +1,14 @@
-package kr.ac.dankook.ace.smart_recruit.model;
+package kr.ac.dankook.ace.smart_recruit.model.employer;
 
 import jakarta.persistence.*;
+import kr.ac.dankook.ace.smart_recruit.model.member.Member;
 import lombok.*;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "companies")
-public class Company {
+public class Employer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
