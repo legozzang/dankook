@@ -1,8 +1,9 @@
-package kr.ac.dankook.ace.smart_recruit.model;
+package kr.ac.dankook.ace.smart_recruit.model.jobposting;
 
 import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
+import kr.ac.dankook.ace.smart_recruit.model.employer.Employer;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,7 +27,7 @@ public class JobPosting {
     // company_id (FK)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "company_id", nullable = false)
-    private Company company;
+    private Employer employer;
 
     @Column(nullable = false, length = 255)
     private String title;
@@ -64,7 +65,7 @@ public class JobPosting {
 
     // 생성자
     public JobPosting(
-            Company company,
+            Employer employer,
             String title,
             String content,
             String region,
@@ -74,7 +75,7 @@ public class JobPosting {
             JobSourceType sourceType,
             String externalUrl
     ) {
-        this.company = company;
+        this.employer = employer;
         this.title = title;
         this.content = content;
         this.region = region;
