@@ -1,0 +1,8 @@
+# 크롤링 원본 데이터
+data/
+
+# Python
+__pycache__/
+*.pyc
+.env
+
