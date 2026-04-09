@@ -22,6 +22,9 @@ public class Company {
     @Column(name = "business_number", length = 20, unique = true)
     private String businessNumber;
 
+    @Column(name = "ai_created")
+    private Boolean aiCreated;
+
     @Embedded // Address 객체의 필드들이 companies 테이블의 컬럼으로 들어감
     private Address address;
 }
