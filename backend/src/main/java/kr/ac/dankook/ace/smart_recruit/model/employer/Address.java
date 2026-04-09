@@ -1,4 +1,4 @@
-package kr.ac.dankook.ace.smart_recruit.model;
+package kr.ac.dankook.ace.smart_recruit.model.employer;
 
 import jakarta.persistence.*;
 import lombok.*;
