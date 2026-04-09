@@ -1,13 +1,13 @@
 package kr.ac.dankook.ace.smart_recruit.model.jobposting;
 
 import java.time.LocalDateTime;
+import java.util.*;
 
 import jakarta.persistence.*;
 import kr.ac.dankook.ace.smart_recruit.model.employer.Employer;
 import kr.ac.dankook.ace.smart_recruit.model.jobpostingaisummary.JobPostingAiSummary;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import kr.ac.dankook.ace.smart_recruit.model.scrap.Scrap;
+import lombok.*;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 롬복이 만들어주는 protected 생성자는 JPA가 객체를 생성하기에 충분
@@ -33,6 +33,13 @@ public class JobPosting {
     // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
     @OneToOne(mappedBy = "jobPosting")
     private JobPostingAiSummary jobPostingAiSummary;
+
+    // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
+    // CascadeType은 영속성 전이로 부모 엔티티를 저장하거나 삭제할 때 그 부모와 연결된 자식 엔티티들도 같이 처리할지 결정하는 옵션
+    // 부모 엔티티와 자식 엔티티 사이의 견결이 끊어진 자식을 자동으로 삭제하는 옵션
+    // jobPosting이 사라지면 공고를 가지고 있던 Scrap도 사라진다
+    @OneToMany(mappedBy = "jobPosting", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Scrap> scraps = new ArrayList<>();
 
     @Column(nullable = false, length = 255)
     private String title;
