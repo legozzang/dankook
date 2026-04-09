@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
 import kr.ac.dankook.ace.smart_recruit.model.employer.Employer;
+import kr.ac.dankook.ace.smart_recruit.model.jobpostingaisummary.JobPostingAiSummary;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,6 +29,10 @@ public class JobPosting {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "company_id", nullable = false)
     private Employer employer;
+
+    // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
+    @OneToOne(mappedBy = "jobPosting")
+    private JobPostingAiSummary jobPostingAiSummary;
 
     @Column(nullable = false, length = 255)
     private String title;
