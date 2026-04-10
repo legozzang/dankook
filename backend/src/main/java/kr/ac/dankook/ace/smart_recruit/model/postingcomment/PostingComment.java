@@ -23,7 +23,7 @@ public class PostingComment {
     @JoinColumn(name = "posting_id", nullable = false)
     private JobPosting jobPosting;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "content",nullable = false, columnDefinition = "TEXT")
     private String content;
 
     // 댓글 생성시 양방향 연관관계도 함께 설정하는 정적 메서드

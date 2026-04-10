@@ -15,7 +15,7 @@ public class JobPostingAiSummary{
     
     @MapsId //위에 id와 엮임을 표시
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id")
+    @JoinColumn(name = "posting_id")
     private JobPosting jobPosting;
     
     // String으로 받아서 필요시 라이브러리로 List 변환
@@ -30,12 +30,11 @@ public class JobPostingAiSummary{
     private String coreBenefits;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "ai_status",nullable = false, length = 20)
     private AiStatus aiStatus = AiStatus.PENDING;
 
     // 사용자 정의 생성자
     public JobPostingAiSummary(JobPosting jobPosting){
         this.jobPosting = jobPosting;
-        this.id = jobPosting.getId();
     }
 }

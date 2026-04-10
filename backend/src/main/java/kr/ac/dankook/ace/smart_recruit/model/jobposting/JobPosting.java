@@ -46,25 +46,26 @@ public class JobPosting {
     @OneToMany(mappedBy = "jobPosting", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Scrap> scraps = new ArrayList<>();
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "title",nullable = false, length = 255)
     private String title;
 
     @Lob
-    @Column(nullable = false)
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(length = 100)
+    @Column(name = "region", length = 100)
     private String region;
 
+    // 직무
     @Column(name = "job_type", length = 100)
     private String jobType;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "status",nullable = false, length = 20)
     private JobStatus status;
 
     // (예: 2003-08-10)
-    @Column(length = 10)
+    @Column(name = "deadline", length = 10)
     private String deadline;
 
     @Enumerated(EnumType.STRING)
