@@ -34,9 +34,17 @@ public class Community {
     @Column(name = "created_at", updatable = false)
     private java.time.LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private java.time.LocalDateTime updatedAt;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = java.time.LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = java.time.LocalDateTime.now();
     }
 
     // 사용자 정의 생성자
