@@ -5,6 +5,7 @@ import java.util.*;
 
 import jakarta.persistence.*;
 import kr.ac.dankook.ace.smart_recruit.model.community.Community;
+import kr.ac.dankook.ace.smart_recruit.model.communitycomment.CommunityComment;
 import kr.ac.dankook.ace.smart_recruit.model.employer.Employer;
 import kr.ac.dankook.ace.smart_recruit.model.postingcomment.PostingComment;
 import kr.ac.dankook.ace.smart_recruit.model.scrap.Scrap;
@@ -40,6 +41,10 @@ public class Member{
     // Member가 사라지면 공고를 가지고 있던 Scrap도 사라진다
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Scrap> scraps = new ArrayList<>();
+
+    // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CommunityComment> communityComments = new ArrayList<>();
 
     // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
