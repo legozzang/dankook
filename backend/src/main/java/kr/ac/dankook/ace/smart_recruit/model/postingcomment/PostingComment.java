@@ -7,7 +7,7 @@ import kr.ac.dankook.ace.smart_recruit.model.member.Member;
 import lombok.*;
 
 @Getter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "posting_comment")
 public class PostingComment {
