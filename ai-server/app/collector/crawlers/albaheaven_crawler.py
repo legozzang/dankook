@@ -2,6 +2,7 @@
 import csv
 import re
 import os
+import time
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -13,11 +14,17 @@ from app.collector.base.crawler import BaseCrawler, CrawlJob, SourceType
 class AlbaHeavenCrawler(BaseCrawler):
     """
     알바천국 채용공고 크롤러.
-    목록 페이지에서 최신 adid를 수집하고,
-    Orchestrator가 넘긴 start_id부터 순차 크롤링한다.
+    목록 페이지를 한 페이지씩 순회하며 공고를 수집한다.
 
-    크롤링한 HTML은 data/raw/albaheaven/ 에 저장하고,
-    다운로드 로그는 data/raw/albaheaven/download_log.csv 에 기록한다.
+    resume 전략:
+      - last_crawled_adid를 기준으로 이진탐색해 마지막으로 멈춘 위치를 찾는다.
+      - 해당 adid가 삭제됐을 수 있으므로 "last_crawled_adid보다 큰 가장 작은 adid"를
+        실제 재시작 지점으로 사용한다.
+      - Phase 1: 새 공고 수집 (resume 페이지 이전의 모든 페이지)
+      - Phase 2: resume 위치부터 이어서 크롤링
+
+    크롤링한 HTML은 raw_dir 하위에 저장하고,
+    다운로드 로그는 raw_dir/download_log.csv에 기록한다.
     """
 
     BASE_URL   = "https://www.alba.co.kr"
@@ -60,17 +67,18 @@ class AlbaHeavenCrawler(BaseCrawler):
 
     LOG_HEADER = ["adid", "file_path", "posted_at", "downloaded_at"]
 
-    def __init__(self, crawl_max_retries: int = 3, raw_dir: str = None):
+    def __init__(self, crawl_max_retries: int = 3, crawl_delay: float = 1.0, raw_dir: str = None):
         super().__init__(crawl_max_retries)
+        self.crawl_delay = crawl_delay  # 요청 사이 대기 시간 (초), 차단 방지용
         self.raw_dir  = raw_dir if raw_dir is not None else self._DEFAULT_RAW_DIR
         self.log_path = os.path.join(self.raw_dir, "download_log.csv")
         self._init_storage()
 
+    # ── 저장소 초기화 ─────────────────────────────────────────────────────────
+
     def _init_storage(self):
         """저장 디렉토리와 CSV 로그 파일을 초기화한다."""
         os.makedirs(self.raw_dir, exist_ok=True)
-
-        # CSV가 없을 때만 헤더 작성
         if not os.path.exists(self.log_path):
             with open(self.log_path, "w", newline="", encoding="utf-8") as f:
                 csv.writer(f).writerow(self.LOG_HEADER)
@@ -98,58 +106,231 @@ class AlbaHeavenCrawler(BaseCrawler):
         except Exception as e:
             print(f"[WARN] HTML 저장 실패 - adid={adid} / 원인: {e}")
 
+    # ── 목록 페이지 파싱 ──────────────────────────────────────────────────────
+
+    def _get_page_adids(self, page: int) -> list:
+        """
+        목록 페이지에서 adid 목록을 추출하여 반환한다.
+        요청 실패 시 빈 리스트를 반환한다.
+        """
+        params = {**self.LIST_PARAMS, "page": page}
+        try:
+            response = requests.get(
+                self.BASE_LIST_URL, params=params,
+                headers=self.HEADERS, timeout=10,
+            )
+            response.raise_for_status()
+        except Exception as e:
+            print(f"[WARN] 목록 페이지 요청 실패 - page={page} / 원인: {e}")
+            return []
+
+        soup  = BeautifulSoup(response.text, "html.parser")
+        adids = []
+        for tag in soup.select("[data-imid]"):
+            try:
+                adids.append(int(tag["data-imid"]))
+            except (ValueError, KeyError):
+                pass
+
+        return adids
+
+    def _get_total_pages(self) -> int:
+        """
+        목록의 총 페이지 수를 반환한다.
+        페이지네이션 링크에서 최대 page 파라미터를 읽고,
+        파싱에 실패하면 지수 탐색으로 추정한다.
+        """
+        params = {**self.LIST_PARAMS, "page": 1}
+        try:
+            response = requests.get(
+                self.BASE_LIST_URL, params=params,
+                headers=self.HEADERS, timeout=10,
+            )
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            last_page = 1
+            for a_tag in soup.select("a[href*='page=']"):
+                m = re.search(r"[?&]page=(\d+)", a_tag.get("href", ""))
+                if m:
+                    last_page = max(last_page, int(m.group(1)))
+
+            if last_page > 1:
+                return last_page
+
+        except Exception as e:
+            print(f"[WARN] 총 페이지 파싱 실패 - 지수 탐색으로 전환 / 원인: {e}")
+
+        # 파싱 실패 시 지수 탐색으로 상한 추정
+        upper = 1
+        while self._get_page_adids(upper):
+            upper *= 2
+
+        # 이진탐색으로 실제 마지막 페이지 확정
+        lo, hi = upper // 2, upper
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if self._get_page_adids(mid):
+                lo = mid
+            else:
+                hi = mid - 1
+
+        return lo
+
+    # ── 이진탐색 resume ───────────────────────────────────────────────────────
+
+    def _find_resume(self, last_adid: int, total_pages: int) -> tuple:
+        """
+        이진탐색으로 last_adid가 위치한 페이지를 찾고, 실제 재시작 adid를 반환한다.
+
+        목록은 adid 내림차순 (페이지 1 = 최신, 마지막 페이지 = 가장 오래된 공고).
+        따라서 페이지 번호가 클수록 adid가 작다.
+
+        이진탐색 조건:
+          - last_adid > page_max  →  target이 더 앞 페이지(번호 ↓)에 있음
+          - last_adid < page_min  →  target이 더 뒤 페이지(번호 ↑)에 있음
+          - 그 외                 →  이 페이지에 last_adid가 있거나 인접
+
+        resume_adid 선택 기준:
+          last_adid 공고가 삭제됐을 수 있으므로,
+          해당 페이지에서 "last_adid보다 큰 가장 작은 adid"를 재시작 지점으로 삼는다.
+          (목록 내림차순 기준으로 last_adid 바로 위 = 아직 크롤링 안 한 가장 가까운 공고)
+
+        반환: (resume_page, resume_adid)
+          - resume_adid = last_adid보다 큰 가장 작은 adid
+          - resume_adid가 없으면 None (resume_page+1부터 새로 시작)
+        """
+        lo, hi = 1, total_pages
+        target_page  = total_pages
+        target_adids = []
+
+        while lo <= hi:
+            mid   = (lo + hi) // 2
+            adids = self._get_page_adids(mid)
+
+            if not adids:
+                hi = mid - 1
+                continue
+
+            page_max = max(adids)
+            page_min = min(adids)
+
+            if last_adid > page_max:
+                # 이 페이지의 최대 adid보다 크다 → 더 앞(번호 작은) 페이지에 있음
+                hi = mid - 1
+            elif last_adid < page_min:
+                # 이 페이지의 최소 adid보다 작다 → 더 뒤(번호 큰) 페이지에 있음
+                lo = mid + 1
+            else:
+                # page_min <= last_adid <= page_max → 이 페이지에 인접해 있음
+                target_page  = mid
+                target_adids = adids
+                break
+        else:
+            # break 없이 루프 종료 (정확한 페이지를 못 찾은 경우)
+            target_page  = lo
+            target_adids = self._get_page_adids(lo)
+
+        # resume_adid: target_page에서 last_adid보다 큰 가장 작은 adid
+        candidates = [a for a in target_adids if a > last_adid]
+        if candidates:
+            return target_page, min(candidates)
+
+        # target_page의 모든 adid가 last_adid 이하 → 다음 페이지 첫 adid부터
+        if target_page + 1 <= total_pages:
+            next_adids      = self._get_page_adids(target_page + 1)
+            next_candidates = [a for a in next_adids if a > last_adid]
+            if next_candidates:
+                return target_page + 1, min(next_candidates)
+
+        return target_page + 1, None
+
+    # ── 단건 크롤링 ───────────────────────────────────────────────────────────
+
+    def _crawl_adid(self, adid: int) -> Optional[CrawlJob]:
+        """단일 adid의 상세 페이지를 크롤링하여 CrawlJob을 반환한다."""
+        time.sleep(self.crawl_delay)
+        url  = f"{self.DETAIL_URL}{adid}"
+        html = self.fetch_with_retry(url)
+
+        if html is None:
+            return None
+
+        posted_at = self._parse_posted_at(html)
+        self._save_html(adid, html, posted_at)
+
+        job = self.parse(html)
+        if job is None:
+            print(f"[SKIP] 유효하지 않은 공고 - adid={adid}")
+            return None
+
+        job.content      = self._fetch_iframe_content(html)
+        job.external_url = url
+        return job
+
+    # ── 수집 진입점 ───────────────────────────────────────────────────────────
+
     def get_latest_id(self) -> int:
-        """
-        목록 페이지 첫 번째 공고의 adid를 최신 id로 반환한다.
-        정렬 기준: FREEORDER (최신순)
-        """
-        response = requests.get(
-            self.BASE_LIST_URL,
-            params=self.LIST_PARAMS,
-            headers=self.HEADERS,
-            timeout=10,
-        )
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        first_link = soup.select_one("a.info[href*='adid=']")
-        if first_link is None:
+        """목록 페이지 첫 번째 공고의 adid를 최신 id로 반환한다."""
+        adids = self._get_page_adids(1)
+        if not adids:
             raise Exception("[ERROR] 목록 페이지에서 최신 adid를 찾을 수 없음")
-
-        match = re.search(r"adid=(\d+)", first_link["href"])
-        if match is None:
-            raise Exception("[ERROR] adid 파싱 실패")
-
-        return int(match.group(1))
+        return max(adids)
 
     def collect(self, **kwargs):
         """
-        start_id ~ end_id 범위의 adid를 순회하며 CrawlJob을 yield한다.
-        삭제된 공고 등 유효하지 않은 페이지는 스킵한다.
+        목록 페이지를 한 페이지씩 순회하며 CrawlJob을 yield한다.
+
+        kwargs:
+            last_crawled_adid (int, optional): 이전 세션의 마지막 수집 adid.
+                지정 시 이진탐색으로 재시작 위치를 찾아 이어서 크롤링한다.
+                미지정 시 페이지 1부터 전체 크롤링한다.
+
+        수집 흐름 (resume 시):
+            Phase 1 - 새 공고: resume 페이지 이전의 모든 페이지를 순회
+            Phase 2 - 이어서:  resume 위치(resume_adid)부터 마지막 페이지까지 순회
         """
-        start_id = kwargs["start_id"]
-        end_id   = self.get_latest_id()
+        last_adid   = kwargs.get("last_crawled_adid")
+        total_pages = self._get_total_pages()
 
-        for adid in range(start_id, end_id + 1):
-            url  = f"{self.DETAIL_URL}{adid}"
-            html = self.fetch_with_retry(url)
+        if last_adid is None:
+            resume_page, resume_adid = 1, None
+            print(f"[알바천국] 처음부터 크롤링 시작 (총 {total_pages} 페이지)")
+        else:
+            resume_page, resume_adid = self._find_resume(last_adid, total_pages)
+            print(
+                f"[알바천국] 재시작 - "
+                f"resume_page={resume_page}, resume_adid={resume_adid}, "
+                f"총 {total_pages} 페이지"
+            )
 
-            if html is None:
-                continue
+        # ── Phase 1: 새 공고 (resume 페이지 이전 페이지) ───────────────────
+        for page in range(1, resume_page):
+            adids = self._get_page_adids(page)
+            for adid in adids:
+                job = self._crawl_adid(adid)
+                if job:
+                    yield job
 
-            # 파싱 전에 HTML 저장 (파싱 실패한 경우도 남기기 위해)
-            posted_at = self._parse_posted_at(html)
-            self._save_html(adid, html, posted_at)
+        # ── Phase 2: resume 위치부터 이어서 크롤링 ─────────────────────────
+        found_resume = (resume_adid is None)
+        for page in range(resume_page, total_pages + 1):
+            adids = self._get_page_adids(page)
+            if not adids:
+                break
 
-            job = self.parse(html)
+            for adid in adids:
+                if not found_resume:
+                    if adid == resume_adid:
+                        found_resume = True
+                    else:
+                        continue
 
-            if job is None:
-                print(f"[SKIP] 유효하지 않은 공고 - adid={adid}")
-                continue
+                job = self._crawl_adid(adid)
+                if job:
+                    yield job
 
-            job.content      = self._fetch_iframe_content(html)
-            job.external_url = url
-            yield job
+    # ── 내부 헬퍼 ─────────────────────────────────────────────────────────────
 
     def _fetch(self, url: str) -> str:
         """HTTP GET 요청으로 HTML을 가져온다."""
