@@ -3,6 +3,7 @@ import csv
 import re
 import os
 import time
+import random
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -67,9 +68,10 @@ class AlbaHeavenCrawler(BaseCrawler):
 
     LOG_HEADER = ["adid", "file_path", "posted_at", "downloaded_at"]
 
-    def __init__(self, crawl_max_retries: int = 3, crawl_delay: float = 1.0, raw_dir: str = None):
+    def __init__(self, crawl_max_retries: int = 3, crawl_delay: float = 1.5, crawl_jitter: float = 1.0, raw_dir: str = None):
         super().__init__(crawl_max_retries)
-        self.crawl_delay = crawl_delay  # 요청 사이 대기 시간 (초), 차단 방지용
+        self.crawl_delay  = crawl_delay   # 기본 대기 시간 (초)
+        self.crawl_jitter = crawl_jitter  # 랜덤 추가 대기 상한 (초), 실제 추가량 = random(0, jitter)
         self.raw_dir  = raw_dir if raw_dir is not None else self._DEFAULT_RAW_DIR
         self.log_path = os.path.join(self.raw_dir, "download_log.csv")
         self._init_storage()
@@ -249,7 +251,7 @@ class AlbaHeavenCrawler(BaseCrawler):
 
     def _crawl_adid(self, adid: int) -> Optional[CrawlJob]:
         """단일 adid의 상세 페이지를 크롤링하여 CrawlJob을 반환한다."""
-        time.sleep(self.crawl_delay)
+        time.sleep(self.crawl_delay + random.uniform(0, self.crawl_jitter))
         url  = f"{self.DETAIL_URL}{adid}"
         html = self.fetch_with_retry(url)
 
