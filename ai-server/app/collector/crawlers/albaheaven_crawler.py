@@ -46,30 +46,33 @@ class AlbaHeavenCrawler(BaseCrawler):
         "per":   "건별",
     }
 
-    # HTML 저장 루트 및 CSV 로그 경로
-    BASE_DIR = os.path.dirname(  # ai-server/
+    # 기본 저장 경로 (raw_dir 미지정 시 사용)
+    _DEFAULT_RAW_DIR = os.path.join(
         os.path.dirname(          # ai-server/app/
-            os.path.dirname(      # ai-server/app/crawler/
-                os.path.abspath(__file__)
+            os.path.dirname(      # ai-server/app/collector/
+                os.path.dirname(  # ai-server/app/collector/crawlers/
+                    os.path.abspath(__file__)
+                )
             )
-        )
+        ),
+        "data", "raw", "albaheaven",
     )
 
-    RAW_DIR  = os.path.join(BASE_DIR, "data", "raw", "albaheaven")
-    LOG_PATH = os.path.join(RAW_DIR, "download_log.csv")
     LOG_HEADER = ["adid", "file_path", "posted_at", "downloaded_at"]
 
-    def __init__(self, crawl_max_retries: int = 3):
+    def __init__(self, crawl_max_retries: int = 3, raw_dir: str = None):
         super().__init__(crawl_max_retries)
+        self.raw_dir  = raw_dir if raw_dir is not None else self._DEFAULT_RAW_DIR
+        self.log_path = os.path.join(self.raw_dir, "download_log.csv")
         self._init_storage()
 
     def _init_storage(self):
         """저장 디렉토리와 CSV 로그 파일을 초기화한다."""
-        os.makedirs(self.RAW_DIR, exist_ok=True)
+        os.makedirs(self.raw_dir, exist_ok=True)
 
         # CSV가 없을 때만 헤더 작성
-        if not os.path.exists(self.LOG_PATH):
-            with open(self.LOG_PATH, "w", newline="", encoding="utf-8") as f:
+        if not os.path.exists(self.log_path):
+            with open(self.log_path, "w", newline="", encoding="utf-8") as f:
                 csv.writer(f).writerow(self.LOG_HEADER)
 
     def _save_html(self, adid: int, html: str, posted_at: str):
@@ -78,13 +81,13 @@ class AlbaHeavenCrawler(BaseCrawler):
         저장 실패 시 경고 로그만 출력하고 계속 진행한다.
         """
         file_name = f"ALBAHEAVEN_{adid}.html"
-        file_path = os.path.join(self.RAW_DIR, file_name)
+        file_path = os.path.join(self.raw_dir, file_name)
 
         try:
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(html)
 
-            with open(self.LOG_PATH, "a", newline="", encoding="utf-8") as f:
+            with open(self.log_path, "a", newline="", encoding="utf-8") as f:
                 csv.writer(f).writerow([
                     adid,
                     file_path,
