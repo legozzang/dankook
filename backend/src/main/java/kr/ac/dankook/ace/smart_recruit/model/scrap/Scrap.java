@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(
-    name = "scrap",
+    name = "scraps",
     uniqueConstraints = {
         @UniqueConstraint( // 이 테이블에는 유니크해야하는 조합이 있다 
             name = "uk_scrap_member_posting", 

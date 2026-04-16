@@ -9,7 +9,7 @@ import lombok.*;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "posting_comment")
+@Table(name = "posting_comments")
 public class PostingComment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

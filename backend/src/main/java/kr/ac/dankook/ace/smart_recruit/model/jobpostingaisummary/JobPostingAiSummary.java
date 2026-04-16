@@ -7,7 +7,7 @@ import lombok.*;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 매개변수가 없는 기본 생성자를 자동으로 만들어주는 롬복 어노테이션
 @Entity
-@Table(name = "job_posting_ai_summary")
+@Table(name = "job_posting_ai_summaries")
 public class JobPostingAiSummary{
     // PK 생성 전략을 따로 설정하지 않음 FK로 JobPosting 테이블에서 가져올 예정(PK & FK)
     @Id

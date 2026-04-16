@@ -11,7 +11,7 @@ import lombok.*;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "community")
+@Table(name = "communities")
 public class Community {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
