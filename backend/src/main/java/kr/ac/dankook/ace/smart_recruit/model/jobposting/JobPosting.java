@@ -1,8 +1,9 @@
-package kr.ac.dankook.ace.smart_recruit.model;
+package kr.ac.dankook.ace.smart_recruit.model.jobposting;
 
 import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
+import kr.ac.dankook.ace.smart_recruit.model.Company;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
