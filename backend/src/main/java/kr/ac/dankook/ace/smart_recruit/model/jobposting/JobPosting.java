@@ -14,7 +14,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 롬복이 만들어주는 protected 생성자는 JPA가 객체를 생성하기에 충분
 @Entity
 @Table(
-    name = "job_posting",
+    name = "job_postings",
     indexes = {
         @Index(name = "idx_job_posting_region", columnList = "region"),
         @Index(name = "idx_job_posting_job_type", columnList = "job_type")
