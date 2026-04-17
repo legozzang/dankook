@@ -1,7 +1,11 @@
-package kr.ac.dankook.ace.smart_recruit.model;
+package kr.ac.dankook.ace.smart_recruit.model.member;
 
 import java.time.LocalDateTime;
+import java.util.*;
+
 import jakarta.persistence.*;
+import kr.ac.dankook.ace.smart_recruit.model.employer.Employer;
+import kr.ac.dankook.ace.smart_recruit.model.scrap.Scrap;
 import lombok.*;
 @Getter //getter 생성
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 무분별한 생성을 차단
@@ -22,7 +26,14 @@ public class Member{
     // SELECT * FROM companies WHERE member_id = 1; (실제 SQL 실행)
     // 그래서 실제론 companyId가 뭔지 몰라야하지만 연관관계 매핑을 통해 Id만 가지고 companyId를 알 수 있음 (JPA덕분)
     @OneToOne(mappedBy = "member")
-    private Company company; // 다리: "나랑 연결된 업체는 여기야"
+    private Employer employer; // 다리: "나랑 연결된 업체는 여기야"
+
+    // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
+    // CascadeType은 영속성 전이로 부모 엔티티를 저장하거나 삭제할 때 그 부모와 연결된 자식 엔티티들도 같이 처리할지 결정하는 옵션
+    // 부모 엔티티와 자식 엔티티 사이의 견결이 끊어진 자식을 자동으로 삭제하는 옵션
+    // Member가 사라지면 공고를 가지고 있던 Scrap도 사라진다
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Scrap> scraps = new ArrayList<>();
 
     @Column(nullable = false, unique =true, length = 100) // attribute에 대한 설정
     private String email;
