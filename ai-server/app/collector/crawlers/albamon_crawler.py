@@ -171,7 +171,7 @@ class AlbamonCrawler(BaseCrawler):
             e.get("description", "") for e in view.get("educationLevels", [])
         )
         preferred = view.get("preferences", "")
-        deadline  = (view.get("deadlineDate", "") or view.get("closingDateTime", ""))[:10]
+        deadline  = view.get("deadlineDate", "") or view.get("closingDateTime", "")
         headcount = view.get("numberOfApplicants", "")
 
         return CrawlJob(
