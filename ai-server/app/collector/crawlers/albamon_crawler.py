@@ -4,7 +4,8 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from typing import Optional
-from app.collector.base.crawler import BaseCrawler, CrawlJob, SourceType
+from app.collector.base.crawler import BaseCrawler
+from app.collector.base.collector import CrawlJob, SourceType
 
 
 class AlbamonCrawler(BaseCrawler):
@@ -154,15 +155,15 @@ class AlbamonCrawler(BaseCrawler):
 
         # ── 근무 조건 ───────────────────────────────────────────
         work_period = view.get("workPeriod", {}).get("description", "")
-        work_time   = view.get("workTimeDetail", "")
+        work_time   = view.get("workTimeDetail") or ""
         if view.get("workTimeOption"):
             work_time += f" ({view['workTimeOption']})"
         work_days   = view.get("workDays", {}).get("description", "")
         employ_type = ", ".join(
-            e.get("description", "") for e in view.get("employmentType", [])
+            e.get("description", "") for e in (view.get("employmentType") or [])
         )
         welfare = ", ".join(
-            w.get("description", "") for w in view.get("welfareBenefits", [])
+            w.get("description", "") for w in (view.get("welfareBenefits") or [])
         )
 
         # ── 모집 조건 ───────────────────────────────────────────
