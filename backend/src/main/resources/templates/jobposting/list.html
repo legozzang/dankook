@@ -15,8 +15,12 @@
 </head>
 <body>
     <h1> 채용 공고</h1>
-
-    <a herf="#">공고 등록</a>
+    <!-- a herf="#" 임시 링크 -->
+    <a herf="#">공고 등록</a> 
+    <!-- 
+    향후 <a th:href="@{/jobpostings/new}">공고 등록</a> 
+    이렇게 변경 필요
+    -->
     
     <nav>
         <a herf="#">전체</a>
@@ -24,5 +28,21 @@
         <a herf="#">마감</a>
     </nav>
     
+    <table border="1">
+        <thead>
+            <tr>
+                <th>번호</th>
+                <th>제목</th>
+                <th>회사명</th>
+                <th>지역</th>
+                <th>직무</th>
+                <th>상태</th>
+                <th>마감일</th>
+            </tr>
+            <tr>
+                <td colspan="7">아직 등록된 채용 공고가 없습니다. </td>
+            </tr>
+        </thead>
+    </table>
 </body>
 </html>
