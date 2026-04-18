@@ -4,7 +4,8 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from typing import Optional
-from app.collector.base.crawler import BaseCrawler, CrawlJob, SourceType
+from app.collector.base.crawler import BaseCrawler
+from app.collector.base.collector import CrawlJob, SourceType
 
 
 class AlbaHeavenCrawler(BaseCrawler):
