@@ -181,36 +181,24 @@ class AlbaHeavenCrawler(BaseCrawler):
 
     # ── 이진탐색 resume ───────────────────────────────────────────────────────
 
-    def _find_resume(self, last_adid: int, total_pages: int) -> tuple:
+    def _find_start_page(self, last_adid: int, hi: int) -> int:
         """
-        이진탐색으로 last_adid가 위치한 페이지를 찾고, 실제 재시작 adid를 반환한다.
+        이진탐색으로 last_adid가 위치한 페이지 번호를 반환한다.
 
-        목록은 adid 내림차순 (페이지 1 = 최신, 마지막 페이지 = 가장 오래된 공고).
-        따라서 페이지 번호가 클수록 adid가 작다.
+        목록은 adid 내림차순 (page 1 = 최신, 마지막 page = 가장 오래된 공고).
+        hi = (newest_adid - last_adid) // 50 + buffer 로 추정한 상한값.
 
-        이진탐색 조건:
-          - last_adid > page_max  →  target이 더 앞 페이지(번호 ↓)에 있음
-          - last_adid < page_min  →  target이 더 뒤 페이지(번호 ↑)에 있음
-          - 그 외                 →  이 페이지에 last_adid가 있거나 인접
-
-        resume_adid 선택 기준:
-          last_adid 공고가 삭제됐을 수 있으므로,
-          해당 페이지에서 "last_adid보다 큰 가장 작은 adid"를 재시작 지점으로 삼는다.
-          (목록 내림차순 기준으로 last_adid 바로 위 = 아직 크롤링 안 한 가장 가까운 공고)
-
-        반환: (resume_page, resume_adid)
-          - resume_adid = last_adid보다 큰 가장 작은 adid
-          - resume_adid가 없으면 None (resume_page+1부터 새로 시작)
+        빈 페이지(hi가 실제 마지막 페이지보다 큰 경우)는 hi를 줄여 처리한다.
         """
-        lo, hi = 1, total_pages
-        target_page  = total_pages
-        target_adids = []
+        lo = 1
+        target_page = hi
 
         while lo <= hi:
             mid   = (lo + hi) // 2
             adids = self._get_page_adids(mid)
 
             if not adids:
+                # 페이지 없음 → hi가 너무 큼
                 hi = mid - 1
                 continue
 
@@ -218,34 +206,19 @@ class AlbaHeavenCrawler(BaseCrawler):
             page_min = min(adids)
 
             if last_adid > page_max:
-                # 이 페이지의 최대 adid보다 크다 → 더 앞(번호 작은) 페이지에 있음
+                # last_adid가 더 앞(번호 작은) 페이지에 있음
                 hi = mid - 1
             elif last_adid < page_min:
-                # 이 페이지의 최소 adid보다 작다 → 더 뒤(번호 큰) 페이지에 있음
+                # last_adid가 더 뒤(번호 큰) 페이지에 있음
                 lo = mid + 1
             else:
-                # page_min <= last_adid <= page_max → 이 페이지에 인접해 있음
-                target_page  = mid
-                target_adids = adids
+                # 이 페이지에 last_adid가 있거나 인접
+                target_page = mid
                 break
         else:
-            # break 없이 루프 종료 (정확한 페이지를 못 찾은 경우)
-            target_page  = lo
-            target_adids = self._get_page_adids(lo)
+            target_page = min(lo, hi) if hi >= lo else hi
 
-        # resume_adid: target_page에서 last_adid보다 큰 가장 작은 adid
-        candidates = [a for a in target_adids if a > last_adid]
-        if candidates:
-            return target_page, min(candidates)
-
-        # target_page의 모든 adid가 last_adid 이하 → 다음 페이지 첫 adid부터
-        if target_page + 1 <= total_pages:
-            next_adids      = self._get_page_adids(target_page + 1)
-            next_candidates = [a for a in next_adids if a > last_adid]
-            if next_candidates:
-                return target_page + 1, min(next_candidates)
-
-        return target_page + 1, None
+        return max(target_page, 1)
 
     # ── 단건 크롤링 ───────────────────────────────────────────────────────────
 
@@ -281,55 +254,57 @@ class AlbaHeavenCrawler(BaseCrawler):
 
     def collect(self, **kwargs):
         """
-        목록 페이지를 한 페이지씩 순회하며 CrawlJob을 yield한다.
+        오래된 공고부터 최신 공고 방향으로 (adid 오름차순) CrawlJob을 yield한다.
 
         kwargs:
-            last_crawled_adid (int, optional): 이전 세션의 마지막 수집 adid.
-                지정 시 이진탐색으로 재시작 위치를 찾아 이어서 크롤링한다.
-                미지정 시 페이지 1부터 전체 크롤링한다.
+            last_crawled_adid (int | None): 이전 세션의 마지막 수집 adid.
+                None이면 첫 실행 → _get_total_pages()로 마지막 페이지부터 시작.
+                지정 시 이진탐색으로 해당 페이지를 찾아 이어서 크롤링.
+            run_target_adid (int): 이번 run의 목표 adid (이 값 초과 시 종료).
+            newest_adid (int): 이진탐색 hi 계산용 현재 최신 adid.
 
-        수집 흐름 (resume 시):
-            Phase 1 - 새 공고: resume 페이지 이전의 모든 페이지를 순회
-            Phase 2 - 이어서:  resume 위치(resume_adid)부터 마지막 페이지까지 순회
+        수집 흐름:
+            start_page (마지막 페이지 방향) → page 1 방향으로 역순 순회
+            각 페이지 내 adid는 오름차순 정렬하여 수집
+            adid <= last_crawled_adid 는 건너뜀 (이미 수집한 것)
+            adid > run_target_adid 도달 시 종료
         """
-        last_adid   = kwargs.get("last_crawled_adid")
-        total_pages = self._get_total_pages()
+        last_adid      = kwargs.get("last_crawled_adid")   # None = 첫 실행
+        run_target_adid = kwargs.get("run_target_adid")
+        newest_adid    = kwargs.get("newest_adid")
 
         if last_adid is None:
-            resume_page, resume_adid = 1, None
-            print(f"[알바천국] 처음부터 크롤링 시작 (총 {total_pages} 페이지)")
+            # 첫 실행: 마지막 페이지부터 시작
+            start_page = self._get_total_pages()
+            print(f"[알바천국] 첫 실행 - 마지막 페이지({start_page})부터 크롤링 시작")
         else:
-            resume_page, resume_adid = self._find_resume(last_adid, total_pages)
+            # resume: (newest - last) / 50 을 hi 상한으로 이진탐색
+            hi = max((newest_adid - last_adid) // 50 + 10, 20)
+            start_page = self._find_start_page(last_adid, hi)
             print(
-                f"[알바천국] 재시작 - "
-                f"resume_page={resume_page}, resume_adid={resume_adid}, "
-                f"총 {total_pages} 페이지"
+                f"[알바천국] 재시작 - start_page={start_page}, "
+                f"last_adid={last_adid}, target={run_target_adid}"
             )
 
-        # ── Phase 1: 새 공고 (resume 페이지 이전 페이지) ───────────────────
-        for page in range(1, resume_page):
-            adids = self._get_page_adids(page)
-            for adid in adids:
-                job = self._crawl_adid(adid)
-                if job:
-                    yield job
-
-        # ── Phase 2: resume 위치부터 이어서 크롤링 ─────────────────────────
-        found_resume = (resume_adid is None)
-        for page in range(resume_page, total_pages + 1):
+        # 마지막 페이지 → page 1 방향으로 순회 (adid 오름차순)
+        # last_seen을 동적으로 갱신 → 오름차순 특성상 중복 자동 방지
+        last_seen = last_adid  # None이면 처음부터 수집
+        for page in range(start_page, 0, -1):
             adids = self._get_page_adids(page)
             if not adids:
-                break
+                continue
 
-            for adid in adids:
-                if not found_resume:
-                    if adid == resume_adid:
-                        found_resume = True
-                    else:
-                        continue
+            for adid in sorted(adids):
+                if last_seen is not None and adid <= last_seen:
+                    continue  # 이미 수집했거나 중복
+
+                if run_target_adid is not None and adid > run_target_adid:
+                    print(f"[알바천국] run_target({run_target_adid}) 도달 → 종료")
+                    return
 
                 job = self._crawl_adid(adid)
                 if job:
+                    last_seen = adid
                     yield job
 
     # ── 내부 헬퍼 ─────────────────────────────────────────────────────────────
