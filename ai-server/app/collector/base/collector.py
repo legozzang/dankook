@@ -1,4 +1,5 @@
 # base_collector.py
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
@@ -48,6 +49,10 @@ class CrawlJob:
     headcount:    str  = ""         # 모집인원
 
     status: JobStatus = field(default=JobStatus.OPEN)  # 수집 시점엔 항상 모집중
+
+    def __post_init__(self):
+        m = re.search(r"\d{4}-\d{2}-\d{2}", self.deadline)
+        self.deadline = m.group() if m else ""
 
 
 class BaseCollector(ABC):
