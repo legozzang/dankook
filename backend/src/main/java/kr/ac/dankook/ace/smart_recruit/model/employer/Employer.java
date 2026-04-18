@@ -10,7 +10,7 @@ import lombok.*;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "companies")
+@Table(name = "employers")
 public class Employer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,7 +31,7 @@ public class Employer {
     private String businessNumber;
 
     @Column(name = "ai_created")
-    private Boolean aiCreated;
+    private Boolean aiCreated = false;
 
     @Embedded // Address 객체의 필드들이 companies 테이블의 컬럼으로 들어감
     private Address address;
