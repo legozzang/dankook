@@ -18,6 +18,9 @@ import os
 import requests
 from dataclasses import asdict
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from app.collector.base.collector import CrawlJob
 from app.collector.crawlers.albaheaven_crawler import AlbaHeavenCrawler
