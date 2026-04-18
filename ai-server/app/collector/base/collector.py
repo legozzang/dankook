@@ -2,7 +2,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from queue import Queue
 from typing import Optional
 
 
@@ -11,7 +10,6 @@ class SourceType(Enum):
     INTERNAL    = "INTERNAL"     # 내부 공고
     ALBAMON     = "ALBAMON"      # 알바몬
     ALBAHEAVEN  = "ALBAHEAVEN"   # 알바천국
-    WORK24      = "WORK24"       # 고용24
 
 
 class JobStatus(Enum):
@@ -59,13 +57,7 @@ class BaseCollector(ABC):
     수집 결과는 항상 CrawlJob으로 반환한다.
     """
 
-    def __init__(self):
-        self.queue = Queue()  # 수집 결과를 담는 내부 큐
-
     @abstractmethod
     def collect(self, **kwargs):
-        """
-        수집을 시작하는 메서드. CrawlJob을 yield하는 제너레이터.
-        구현체에서 수집 방식에 맞게 구현한다.
-        """
+        """CrawlJob을 yield하는 제너레이터. 구현체에서 수집 방식에 맞게 구현한다."""
         pass
