@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(
-    name = "scrap",
+    name = "scraps",
     uniqueConstraints = {
         @UniqueConstraint( // 이 테이블에는 유니크해야하는 조합이 있다 
             name = "uk_scrap_member_posting", 
@@ -21,7 +21,6 @@ public class Scrap {
     // PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "scrap_id")
     private Long id;
 
     // FK
@@ -34,9 +33,18 @@ public class Scrap {
     @JoinColumn(name = "posting_id", nullable = false)
     private JobPosting jobPosting;
 
+    @Column(name = "created_at", updatable = false)
+    private java.time.LocalDateTime createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = java.time.LocalDateTime.now();
+    }
+
     // 사용자 정의 생성자
     public Scrap(Member member, JobPosting jobPosting) {
         this.member = member;
         this.jobPosting = jobPosting;
     }
+
 }
