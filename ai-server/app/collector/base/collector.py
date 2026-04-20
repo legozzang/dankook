@@ -51,8 +51,8 @@ class CrawlJob:
     status: JobStatus = field(default=JobStatus.OPEN)  # 수집 시점엔 항상 모집중
 
     def __post_init__(self):
-        m = re.search(r"\d{4}-\d{2}-\d{2}", self.deadline)
-        self.deadline = m.group() if m else ""
+        m = re.search(r"(\d{4})[.\-](\d{2})[.\-](\d{2})", self.deadline)
+        self.deadline = f"{m.group(1)}-{m.group(2)}-{m.group(3)}" if m else ""
 
 
 class BaseCollector(ABC):
