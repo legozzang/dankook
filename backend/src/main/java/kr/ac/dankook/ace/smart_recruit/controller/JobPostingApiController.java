@@ -7,7 +7,7 @@ import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobPosting;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobSourceType;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus;
 import kr.ac.dankook.ace.smart_recruit.repository.EmployerRepository;
-import kr.ac.dankook.ace.smart_recruit.repository.JobPostingRepository;
+import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

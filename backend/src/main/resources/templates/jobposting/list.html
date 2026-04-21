@@ -7,42 +7,161 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width", initial-scale="1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>채용 공고 | Smart Recruit</title>
     <style>
-        /* 아직 미구현 */
+        body {
+            margin: 0;
+            background: #f5f6f8;
+            color: #222831;
+            font-family: Arial, "Noto Sans KR", sans-serif;
+        }
+
+        .page {
+            max-width: 1040px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 30px;
+            letter-spacing: 0;
+        }
+
+        .write-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 0 16px;
+            border-radius: 6px;
+            background: #1769aa;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .tab {
+            padding: 9px 13px;
+            border: 1px solid #d7dde4;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #344054;
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .tab.active {
+            border-color: #1769aa;
+            background: #e8f1fa;
+            color: #1769aa;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #ffffff;
+            border: 1px solid #dde3ea;
+        }
+
+        th,
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e7ebf0;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #eef2f6;
+            color: #4b5563;
+            font-size: 13px;
+        }
+
+        .empty {
+            padding: 52px 16px;
+            color: #667085;
+            text-align: center;
+        }
+
+        @media (max-width: 720px) {
+            .page {
+                padding: 28px 14px;
+            }
+
+            .header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .hide-mobile {
+                display: none;
+            }
+
+            th,
+            td {
+                padding: 12px 10px;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1> 채용 공고</h1>
-    <!-- a herf="#" 임시 링크 -->
-    <a herf="#">공고 등록</a> 
-    <!-- 
-    향후 <a th:href="@{/jobpostings/new}">공고 등록</a> 
-    이렇게 변경 필요
-    -->
-    
-    <nav>
-        <a herf="#">전체</a>
-        <a herf="#">모집중</a>
-        <a herf="#">마감</a>
+<main class="page">
+    <div class="header">
+        <h1>채용 공고</h1>
+        <a class="write-button" href="#">공고 등록</a>
+    </div>
+
+    <nav class="tabs" aria-label="채용 공고 상태">
+        <a class="tab active" href="#">전체</a>
+        <a class="tab" href="#">모집중</a>
+        <a class="tab" href="#">마감</a>
     </nav>
-    
-    <table border="1">
+
+    <table>
         <thead>
-            <tr>
-                <th>번호</th>
-                <th>제목</th>
-                <th>회사명</th>
-                <th>지역</th>
-                <th>직무</th>
-                <th>상태</th>
-                <th>마감일</th>
-            </tr>
-            <tr>
-                <td colspan="7">아직 등록된 채용 공고가 없습니다. </td>
-            </tr>
+        <tr>
+            <th>번호</th>
+            <th>제목</th>
+            <th class="hide-mobile">회사명</th>
+            <th>지역</th>
+            <th class="hide-mobile">직무</th>
+            <th>상태</th>
+            <th class="hide-mobile">마감일</th>
+        </tr>
         </thead>
+        <tbody>
+        <tr th:if="${#lists.isEmpty(jobPostings)}">
+            <td class="empty" colspan="7">아직 등록된 채용 공고가 없습니다.</td>
+        </tr>
+        <tr th:each="jobPosting : ${jobPostings}">
+            <td th:text="${jobPosting.id}">1</td>
+            <td th:text="${jobPosting.title}">채용 공고 제목</td>
+            <td class="hide-mobile" th:text="${jobPosting.employer.companyName}">회사명</td>
+            <td th:text="${jobPosting.region}">지역</td>
+            <td class="hide-mobile" th:text="${jobPosting.jobType}">직무</td>
+            <td th:text="${jobPosting.status}">OPEN</td>
+            <td class="hide-mobile" th:text="${jobPosting.deadline}">마감일</td>
+        </tr>
+        </tbody>
     </table>
+</main>
 </body>
 </html>
