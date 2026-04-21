@@ -1,0 +1,9 @@
+# 크롤링 원본 데이터
+data/
+local_crawler/data/
+
+# Python
+__pycache__/
+*.pyc
+.env
+
