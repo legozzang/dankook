@@ -19,9 +19,6 @@ target/
 *.iml
 *.ipr
 
-## Spring Boot ##
-application.properties
-
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
