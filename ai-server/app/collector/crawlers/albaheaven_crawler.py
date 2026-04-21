@@ -1,30 +1,27 @@
 # albaHeaven_crawler.py
-import csv
 import re
-import os
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
 from urllib.parse import urljoin
 from typing import Optional
-from app.collector.base.crawler import BaseCrawler, CrawlJob, SourceType
+from app.collector.base.crawler import BaseCrawler
+from app.collector.base.collector import CrawlJob, SourceType
 
 
 class AlbaHeavenCrawler(BaseCrawler):
     """
     알바천국 채용공고 크롤러.
-    목록 페이지에서 최신 adid를 수집하고,
-    Orchestrator가 넘긴 start_id부터 순차 크롤링한다.
-
-    크롤링한 HTML은 data/raw/albaheaven/ 에 저장하고,
-    다운로드 로그는 data/raw/albaheaven/download_log.csv 에 기록한다.
+    목록 페이지 HTML에서 adid를 수집하고,
+    상세 페이지 HTML + iframe 요청으로 본문을 수집한다.
     """
 
-    BASE_URL   = "https://www.alba.co.kr"
-    DETAIL_URL = "https://www.alba.co.kr/job/Detail?adid="
+    NAME = "알바천국"
 
+    BASE_URL      = "https://www.alba.co.kr"
     BASE_LIST_URL = "https://www.alba.co.kr/job/main"
-    LIST_PARAMS   = {
+    DETAIL_URL    = "https://www.alba.co.kr/job/Detail?adid="
+
+    LIST_PARAMS = {
         "page":          1,
         "pagesize":      50,
         "hidsort":       "FREEORDER",
@@ -46,119 +43,62 @@ class AlbaHeavenCrawler(BaseCrawler):
         "per":   "건별",
     }
 
-    # HTML 저장 루트 및 CSV 로그 경로
-    BASE_DIR = os.path.dirname(  # ai-server/
-        os.path.dirname(          # ai-server/app/
-            os.path.dirname(      # ai-server/app/crawler/
-                os.path.abspath(__file__)
-            )
-        )
-    )
+    def __init__(self, crawl_max_retries: int = 3, crawl_delay: float = 1.5, crawl_jitter: float = 1.0):
+        super().__init__(crawl_max_retries, crawl_delay, crawl_jitter)
 
-    RAW_DIR  = os.path.join(BASE_DIR, "data", "raw", "albaheaven")
-    LOG_PATH = os.path.join(RAW_DIR, "download_log.csv")
-    LOG_HEADER = ["adid", "file_path", "posted_at", "downloaded_at"]
+    # ── 목록 페이지 파싱 ──────────────────────────────────────────────────────
 
-    def __init__(self, crawl_max_retries: int = 3):
-        super().__init__(crawl_max_retries)
-        self._init_storage()
-
-    def _init_storage(self):
-        """저장 디렉토리와 CSV 로그 파일을 초기화한다."""
-        os.makedirs(self.RAW_DIR, exist_ok=True)
-
-        # CSV가 없을 때만 헤더 작성
-        if not os.path.exists(self.LOG_PATH):
-            with open(self.LOG_PATH, "w", newline="", encoding="utf-8") as f:
-                csv.writer(f).writerow(self.LOG_HEADER)
-
-    def _save_html(self, adid: int, html: str, posted_at: str):
+    def _get_page_ids(self, page: int) -> list:
         """
-        HTML을 파일로 저장하고 CSV 로그에 기록한다.
-        저장 실패 시 경고 로그만 출력하고 계속 진행한다.
+        목록 페이지에서 adid 목록을 추출하여 반환한다.
+        요청 실패 시 빈 리스트를 반환한다.
         """
-        file_name = f"ALBAHEAVEN_{adid}.html"
-        file_path = os.path.join(self.RAW_DIR, file_name)
-
+        params = {**self.LIST_PARAMS, "page": page}
         try:
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(html)
-
-            with open(self.LOG_PATH, "a", newline="", encoding="utf-8") as f:
-                csv.writer(f).writerow([
-                    adid,
-                    file_path,
-                    posted_at,
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                ])
-
+            response = requests.get(
+                self.BASE_LIST_URL, params=params,
+                headers=self.HEADERS, timeout=10,
+            )
+            response.raise_for_status()
         except Exception as e:
-            print(f"[WARN] HTML 저장 실패 - adid={adid} / 원인: {e}")
+            print(f"[WARN] 목록 페이지 요청 실패 - page={page} / 원인: {e}")
+            return []
+
+        soup  = BeautifulSoup(response.text, "html.parser")
+        adids = []
+        for tag in soup.select("[data-imid]"):
+            try:
+                adids.append(int(tag["data-imid"]))
+            except (ValueError, KeyError):
+                pass
+
+        return adids
+
+    # ── 수집 진입점 ───────────────────────────────────────────────────────────
 
     def get_latest_id(self) -> int:
-        """
-        목록 페이지 첫 번째 공고의 adid를 최신 id로 반환한다.
-        정렬 기준: FREEORDER (최신순)
-        """
-        response = requests.get(
-            self.BASE_LIST_URL,
-            params=self.LIST_PARAMS,
-            headers=self.HEADERS,
-            timeout=10,
-        )
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        """목록 페이지 첫 번째 공고의 adid를 최신 id로 반환한다."""
+        ids = self._get_page_ids(1)
+        if not ids:
+            raise RuntimeError("[ERROR] 알바천국 목록 페이지에서 최신 adid를 찾을 수 없음")
+        return max(ids)
 
-        first_link = soup.select_one("a.info[href*='adid=']")
-        if first_link is None:
-            raise Exception("[ERROR] 목록 페이지에서 최신 adid를 찾을 수 없음")
+    # ── 내부 헬퍼 ─────────────────────────────────────────────────────────────
 
-        match = re.search(r"adid=(\d+)", first_link["href"])
-        if match is None:
-            raise Exception("[ERROR] adid 파싱 실패")
+    def _build_item_url(self, item_id: int) -> str:
+        """adid로 상세 페이지 URL을 생성한다."""
+        return f"{self.DETAIL_URL}{item_id}"
 
-        return int(match.group(1))
-
-    def collect(self, **kwargs):
-        """
-        start_id ~ end_id 범위의 adid를 순회하며 CrawlJob을 yield한다.
-        삭제된 공고 등 유효하지 않은 페이지는 스킵한다.
-        """
-        start_id = kwargs["start_id"]
-        end_id   = self.get_latest_id()
-
-        for adid in range(start_id, end_id + 1):
-            url  = f"{self.DETAIL_URL}{adid}"
-            html = self.fetch_with_retry(url)
-
-            if html is None:
-                continue
-
-            # 파싱 전에 HTML 저장 (파싱 실패한 경우도 남기기 위해)
-            posted_at = self._parse_posted_at(html)
-            self._save_html(adid, html, posted_at)
-
-            job = self.parse(html)
-
-            if job is None:
-                print(f"[SKIP] 유효하지 않은 공고 - adid={adid}")
-                continue
-
-            job.content      = self._fetch_iframe_content(html)
-            job.external_url = url
-            yield job
+    def _parse_id_from_url(self, url: str):
+        """URL의 adid 쿼리 파라미터에서 id를 추출한다."""
+        m = re.search(r"adid=(\d+)", url)
+        return int(m.group(1)) if m else None
 
     def _fetch(self, url: str) -> str:
         """HTTP GET 요청으로 HTML을 가져온다."""
         response = requests.get(url, headers=self.HEADERS, timeout=10)
         response.raise_for_status()
         return response.text
-
-    def _parse_posted_at(self, html: str) -> str:
-        """HTML에서 공고 작성 시각을 추출한다. 없으면 빈 문자열을 반환한다."""
-        soup = BeautifulSoup(html, "html.parser")
-        tag  = soup.select_one("div.detail-date")
-        return tag.text.strip() if tag else ""
 
     def parse(self, html: str) -> Optional[CrawlJob]:
         """
@@ -242,7 +182,7 @@ class AlbaHeavenCrawler(BaseCrawler):
             headcount=headcount,
         )
 
-    def _fetch_iframe_content(self, html: str) -> str:
+    def _fetch_content(self, html: str) -> str:
         """
         공고 본문은 iframe으로 별도 로드된다.
         전달받은 html에서 iframe src를 추출한 뒤,
@@ -260,5 +200,4 @@ class AlbaHeavenCrawler(BaseCrawler):
         if iframe_html is None:
             return ""
 
-        iframe_soup = BeautifulSoup(iframe_html, "html.parser")
-        return iframe_soup.get_text(strip=True)
+        return BeautifulSoup(iframe_html, "html.parser").get_text(strip=True)
