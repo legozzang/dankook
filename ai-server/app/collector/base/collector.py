@@ -3,14 +3,17 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 
 class SourceType(Enum):
     """채용공고 출처 구분"""
-    INTERNAL    = "INTERNAL"     # 내부 공고
-    ALBAMON     = "ALBAMON"      # 알바몬
-    ALBAHEAVEN  = "ALBAHEAVEN"   # 알바천국
+    INTERNAL   = ("INTERNAL",   "내부")
+    ALBAMON    = ("ALBAMON",    "알바몬")
+    ALBAHEAVEN = ("ALBAHEAVEN", "알바천국")
+
+    def __init__(self, value, label):
+        self._value_ = value
+        self.label   = label
 
 
 class JobStatus(Enum):
@@ -58,7 +61,7 @@ class CrawlJob:
 class BaseCollector(ABC):
     """
     모든 수집기의 최상위 추상 클래스.
-    크롤러(BaseCrawler)와 API 클라이언트(Work24Client 등)가 이를 상속받는다.
+    크롤러(BaseCrawler)와 API 클라이언트(Work24Client, 구현 예정)가 이를 상속받는다.
     수집 결과는 항상 CrawlJob으로 반환한다.
     """
 
