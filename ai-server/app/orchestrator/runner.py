@@ -31,7 +31,7 @@ from app.collector.crawlers.albamon_crawler import AlbamonCrawler
 # 백엔드 API 주소: .env의 BACKEND_URL이 없으면 로컬 기본값 사용
 BACKEND_URL    = os.getenv("BACKEND_URL", "http://localhost:8080/api/job-postings")
 
-BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR       = "."
 DATA_DIR       = os.path.join(BASE_DIR, "data")                      # orchestrator/data/
 STATE_CSV_PATH = os.path.join(DATA_DIR, "crawler_state.csv")         # 크롤러별 상태 파일
 
@@ -54,15 +54,15 @@ CRAWLERS = [
 def _load_state(source: str, target_id: int):
     """crawler_state.csv에서 해당 source의 last_id를 읽는다. 없으면 None 반환."""
     if not os.path.exists(STATE_CSV_PATH):
-        return target_id
+        return max(target_id - 100, 0)
     with open(STATE_CSV_PATH, "r", newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             if row["source"] == source:
                 try:
                     return int(row["last_id"])
                 except (ValueError, KeyError):
-                    return target_id
-    return target_id
+                    return max(target_id - 100, 0)
+    return max(target_id - 100, 0)
 
 
 def _save_state(source: str, last_id: int):
@@ -158,7 +158,7 @@ def run():
     """
     os.makedirs(DATA_DIR, exist_ok=True)
     for config in CRAWLERS:
-        crawler = config["cls"]()
+        crawler = config["cls"](crawl_delay=3.0, crawl_jitter=2.0)
         _run_crawler(config["source"], crawler, config.get("kwargs", {}))
 
 
@@ -166,5 +166,5 @@ if __name__ == "__main__":
     import time
     while True:
         run()
-        print("\n[오케스트레이터] 모든 크롤러 완료 - 5초 대기 후 재실행")
-        time.sleep(5)
+        print("\n[오케스트레이터] 모든 크롤러 완료 - 10초 대기 후 재실행")
+        time.sleep(10)
