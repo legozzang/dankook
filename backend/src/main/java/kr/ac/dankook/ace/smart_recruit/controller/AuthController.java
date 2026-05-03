@@ -6,6 +6,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import kr.ac.dankook.ace.smart_recruit.dto.*;
 import kr.ac.dankook.ace.smart_recruit.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,7 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<Long> signUp(@RequestBody SignUpRequest request){
+    public ResponseEntity<Long> signUp(@Valid @RequestBody SignUpRequest request){
         // 회원가입 성공 시 201 상태코드와 함께 ID를 리턴
         Long memberId = authService.signUp(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(memberId);

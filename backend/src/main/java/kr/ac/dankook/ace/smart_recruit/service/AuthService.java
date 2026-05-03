@@ -50,12 +50,23 @@ public class AuthService {
         // 2. 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         
+        // Role 변환 방어 로직
+        Role role;
+        try {
+            if (request.getRole() == null) {
+                throw new IllegalArgumentException("역할(Role)은 필수 입력값입니다.");
+            }
+            role = Role.valueOf(request.getRole().toUpperCase()); // 대소문자 무시를 위해 toUpperCase() 권장
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("유효하지 않은 역할입니다: " + request.getRole());
+        }
+
         // 3. 회원 엔티티 생성 및 저장
         Member member = Member.builder()
                 .email(request.getEmail())
                 .password(encodedPassword)
                 .nickname(request.getNickname())
-                .role(Role.valueOf(request.getRole()))
+                .role(role)
                 .build();
 
         // 데이터베이스에 저장 후 해당 member의 id를 리턴

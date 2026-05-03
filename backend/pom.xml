@@ -76,6 +76,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Validation -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
 		<!-- h2의존성 주입 DB연동 전 사용 -->
 		<dependency>
     		<groupId>com.h2database</groupId>
