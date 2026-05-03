@@ -57,9 +57,22 @@ public class AuthService {
                 .nickname(request.getNickname())
                 .role(Role.valueOf(request.getRole()))
                 .build();
-                
+
         // 데이터베이스에 저장 후 해당 member의 id를 리턴
         Member savedMember = memberRepository.save(member);
         return savedMember.getId();
+    }
+
+    @Transactional
+    public void deleteMember(Long memberId, String userEmail){
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        
+        if(!member.getEmail().equals(userEmail)){
+            throw new IllegalStateException("권한이 없습니다.");
+        }
+
+        memberRepository.delete(member);
     }
 }
