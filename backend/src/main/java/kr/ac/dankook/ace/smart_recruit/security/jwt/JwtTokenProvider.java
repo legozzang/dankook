@@ -43,8 +43,8 @@ public class JwtTokenProvider {
 
     // 1. 토큰 생성 (Member 정보를 담음)
     public String createToken(Long memberId, String email, String role) {
-        Claims claims = Jwts.claims().setSubject(String.valueOf(memberId));
-        claims.put("email", email);
+        Claims claims = Jwts.claims().setSubject(email);
+        claims.put("memberId", memberId);
         claims.put("role", role); // DB의 Role(SEEKER, EMPLOYER 등)을 주입
 
         Date now = new Date();
