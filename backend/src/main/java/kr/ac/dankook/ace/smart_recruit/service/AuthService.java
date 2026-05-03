@@ -5,8 +5,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import kr.ac.dankook.ace.smart_recruit.dto.LoginRequest;
+import kr.ac.dankook.ace.smart_recruit.dto.SignUpRequest;
 import kr.ac.dankook.ace.smart_recruit.dto.TokenResponse;
 import kr.ac.dankook.ace.smart_recruit.model.member.Member;
+import kr.ac.dankook.ace.smart_recruit.model.member.Role;
 import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
 import kr.ac.dankook.ace.smart_recruit.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -38,5 +40,26 @@ public class AuthService {
         );
 
         return new TokenResponse(token, member.getEmail(), member.getRole().name());
+    }
+
+    public Long signUp(SignUpRequest request){
+        // 1. 이메일 중복 체크
+        if(memberRepository.existsByEmail(request.getEmail())){
+            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+        }
+        // 2. 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        
+        // 3. 회원 엔티티 생성 및 저장
+        Member member = Member.builder()
+                .email(request.getEmail())
+                .password(encodedPassword)
+                .nickname(request.getNickname())
+                .role(Role.valueOf(request.getRole()))
+                .build();
+                
+        // 데이터베이스에 저장 후 해당 member의 id를 리턴
+        Member savedMember = memberRepository.save(member);
+        return savedMember.getId();
     }
 }

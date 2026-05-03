@@ -11,6 +11,8 @@ import kr.ac.dankook.ace.smart_recruit.model.postingcomment.PostingComment;
 import kr.ac.dankook.ace.smart_recruit.model.scrap.Scrap;
 import lombok.*;
 @Getter //getter 생성
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 무분별한 생성을 차단
 @Entity // 이 클래스를 엔티티로 사용하겠다는 뜻
 @Table(name = "members")
