@@ -60,6 +60,7 @@ public class JwtTokenProvider {
 
     // 2. 토큰에서 권한 정보 꺼내기 (Spring Security 연동용)
     public Authentication getAuthentication(String token) {
+        // 토큰에서 Claims 추출
         Claims claims = Jwts.parserBuilder().setSigningKey(key).build()
                             .parseClaimsJws(token).getBody();
 
@@ -69,6 +70,7 @@ public class JwtTokenProvider {
                         .map(role -> new SimpleGrantedAuthority("ROLE_" + role)) // Spring Security는 "ROLE_" 접두사를 권장
                         .collect(Collectors.toList());
 
+        // User 객체 생성 (Spring Security에서 인증된 사용자 정보를 담는 객체)
         User principal = new User(claims.getSubject(), "", authorities);
         return new UsernamePasswordAuthenticationToken(principal, token, authorities);
     }

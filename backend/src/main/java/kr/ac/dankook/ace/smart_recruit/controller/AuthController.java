@@ -1,8 +1,9 @@
 package kr.ac.dankook.ace.smart_recruit.controller;
 
-import org.apache.catalina.connector.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 
 import kr.ac.dankook.ace.smart_recruit.dto.*;
@@ -29,5 +30,11 @@ public class AuthController {
         // 회원가입 성공 시 201 상태코드와 함께 ID를 리턴
         Long memberId = authService.signUp(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(memberId);
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<Void> deleteMember(@PathVariable Long id, @AuthenticationPrincipal User user){
+        authService.deleteMember(id, user.getUsername());
+        return ResponseEntity.noContent().build();
     }
 }
