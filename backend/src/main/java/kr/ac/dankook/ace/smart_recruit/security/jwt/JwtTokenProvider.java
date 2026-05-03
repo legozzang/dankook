@@ -79,7 +79,6 @@ public class JwtTokenProvider {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            // 실무에서는 여기서 에러 로그를 남깁니다.
             return false;
         }
     }

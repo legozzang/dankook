@@ -14,7 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
-@EnableWebSecurity // @EnableWebMvc 대신 시큐리티 설정을 위해 이것을 사용하세요
+@EnableWebSecurity // @EnableWebMvc 대신 시큐리티 설정을 위해 이것을 사용
 @RequiredArgsConstructor
 public class SecurityConfig {
 
