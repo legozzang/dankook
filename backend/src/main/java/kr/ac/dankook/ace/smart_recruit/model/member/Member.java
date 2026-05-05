@@ -96,4 +96,12 @@ public class Member{
     public void changeNickname(String newNickname){
         this.nickname = newNickname;
     }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
 }

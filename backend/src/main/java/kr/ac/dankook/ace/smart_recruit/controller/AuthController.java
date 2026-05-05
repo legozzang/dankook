@@ -38,4 +38,10 @@ public class AuthController {
         authService.deleteMember(id, user.getUsername());
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/update/{id}")
+    public ResponseEntity<Void> updateMember(@PathVariable Long id, @AuthenticationPrincipal User user, @Valid @RequestBody UpdateRequest request){
+        authService.updateMember(id, user.getUsername(), request);
+        return ResponseEntity.noContent().build();
+    }
 }

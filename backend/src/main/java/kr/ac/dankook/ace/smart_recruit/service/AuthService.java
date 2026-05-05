@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import kr.ac.dankook.ace.smart_recruit.dto.LoginRequest;
 import kr.ac.dankook.ace.smart_recruit.dto.SignUpRequest;
 import kr.ac.dankook.ace.smart_recruit.dto.TokenResponse;
+import kr.ac.dankook.ace.smart_recruit.dto.UpdateRequest;
 import kr.ac.dankook.ace.smart_recruit.model.member.Member;
 import kr.ac.dankook.ace.smart_recruit.model.member.Role;
 import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
@@ -22,6 +23,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
+    // 로그인
     public TokenResponse login(LoginRequest request) {
         // 1. 이메일로 회원 조회
         Member member = memberRepository.findByEmail(request.getEmail())
@@ -42,6 +44,7 @@ public class AuthService {
         return new TokenResponse(token, member.getEmail(), member.getRole().name());
     }
 
+    // 회원 가입
     public Long signUp(SignUpRequest request){
         // 1. 이메일 중복 체크
         if(memberRepository.existsByEmail(request.getEmail())){
@@ -74,6 +77,7 @@ public class AuthService {
         return savedMember.getId();
     }
 
+    // 회원 탈퇴 (삭제)
     @Transactional
     public void deleteMember(Long memberId, String userEmail){
 
@@ -85,5 +89,35 @@ public class AuthService {
         }
 
         memberRepository.delete(member);
+    }
+
+    // 회원 정보 수정
+    @Transactional
+    public void updateMember(Long memberId, String userEmail, UpdateRequest request){
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        
+       if(!member.getEmail().equals(userEmail)){
+            throw new IllegalStateException("권한이 없습니다.");
+        }
+
+        if(request.getNewPassword() != null && !request.getNewPassword().isBlank()){
+            // 현재 비밀번호 확인
+            if (request.getCurrentPassword() == null ||
+                !passwordEncoder.matches(request.getCurrentPassword(), member.getPassword())) {
+                throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+            }
+            String encodedPassword = passwordEncoder.encode(request.getNewPassword());
+            member.updatePassword(encodedPassword);
+        }
+
+        if (request.getNickname() != null && !request.getNickname().isBlank()) {
+            // 본인의 현재 닉네임과 다르면서, 동시에 다른 사람이 이미 사용 중인지 체크
+            if (!member.getNickname().equals(request.getNickname()) && 
+                memberRepository.existsByNickname(request.getNickname())) {
+                throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+            }
+            member.updateNickname(request.getNickname());
+        }
     }
 }
