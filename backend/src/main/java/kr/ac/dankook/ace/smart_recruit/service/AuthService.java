@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import kr.ac.dankook.ace.smart_recruit.dto.LoginRequest;
+import kr.ac.dankook.ace.smart_recruit.dto.MemberInfoResponse;
 import kr.ac.dankook.ace.smart_recruit.dto.SignUpRequest;
 import kr.ac.dankook.ace.smart_recruit.dto.TokenResponse;
 import kr.ac.dankook.ace.smart_recruit.dto.UpdateRequest;
@@ -41,10 +42,11 @@ public class AuthService {
                 member.getRole().name()
         );
 
-        return new TokenResponse(token, member.getEmail(), member.getRole().name());
+        return new TokenResponse(token, member.getId(), member.getEmail(), member.getRole().name());
     }
 
     // 회원 가입
+    @Transactional
     public Long signUp(SignUpRequest request){
         // 1. 이메일 중복 체크 & 닉네임 중복 체크
         if(memberRepository.existsByEmail(request.getEmail())){
@@ -83,27 +85,18 @@ public class AuthService {
 
     // 회원 탈퇴 (삭제)
     @Transactional
-    public void deleteMember(Long memberId, String userEmail){
+    public void deleteMember(String userEmail){
 
-        Member member = memberRepository.findById(memberId)
+        Member member = memberRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        
-        if(!member.getEmail().equals(userEmail)){
-            throw new IllegalStateException("권한이 없습니다.");
-        }
-
         memberRepository.delete(member);
     }
 
     // 회원 정보 수정
     @Transactional
-    public void updateMember(Long memberId, String userEmail, UpdateRequest request){
-        Member member = memberRepository.findById(memberId)
+    public void updateMember(String userEmail, UpdateRequest request){
+        Member member = memberRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        
-       if(!member.getEmail().equals(userEmail)){
-            throw new IllegalStateException("권한이 없습니다.");
-        }
 
         if(request.getNewPassword() != null && !request.getNewPassword().isBlank()){
             // 현재 비밀번호 확인
@@ -123,5 +116,12 @@ public class AuthService {
             }
             member.updateNickname(request.getNickname());
         }
+    }
+
+    // 회원 정보 조회
+    public MemberInfoResponse getMemberInfo(String userEmail){
+        Member member = memberRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        return new MemberInfoResponse(member.getEmail(), member.getNickname());
     }
 }

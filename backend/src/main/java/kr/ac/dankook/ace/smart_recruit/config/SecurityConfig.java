@@ -3,6 +3,8 @@ package kr.ac.dankook.ace.smart_recruit.config;
 import kr.ac.dankook.ace.smart_recruit.security.jwt.JwtAuthenticationFilter;
 import kr.ac.dankook.ace.smart_recruit.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.boot.security.autoconfigure.web.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -35,10 +37,23 @@ public class SecurityConfig {
             // 3. 요청별 권한 설정
             .authorizeHttpRequests(auth -> auth
                 // 누구나 접근 가능한 경로 (화이트리스트)
-                .requestMatchers("/auth/signup", "/auth/login").permitAll()
+                .requestMatchers("/auth/signup",
+                                "/auth/login",
+                                "/auth/mypage", 
+                                "/main", 
+                                "/jobs/list",
+                                "/auth/edit-profile"
+                                ).permitAll()
                 
-                // /auth/ 하위 경로는 모두 인증 필요
-                .requestMatchers("/auth/update/**", "/auth/delete/**").authenticated()
+                // 정적 리소스 (CSS, JS, 이미지 등)도 모두 허용
+                .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
+
+                // 회원 정보 수정/삭제는 인증된 사용자만 접근 가능
+                .requestMatchers("/auth/update/me",
+                                "/auth/delete/me",
+                                "/auth/members/me"
+                                ).authenticated()
+
                 .anyRequest().authenticated() // 나머지는 인증 필요
             )
 
