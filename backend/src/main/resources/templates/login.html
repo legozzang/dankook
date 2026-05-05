@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Smart Recruit - Login</title>
+</head>
+<body>
+    <h2>로그인</h2>
+    <form id="loginForm">
+        <input type="email" id="email" name="email" placeholder="이메일" required>
+        <input type="password" id="password" name="password" placeholder="비밀번호" required>
+        <button type="button" onclick="handleLogin()">로그인</button>
+    </form>
+
+    <script>
+        async function handleLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // 작성한 /auth/login API를 호출
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem('accessToken', data.accessToken);
+                localStorage.setItem('memberId', data.memberId);
+
+                // 리다이렉트 주소가 있으면 거기로, 없으면 공고 메인으로
+                const urlParams = new URLSearchParams(window.location.search);
+                const redirectUrl = urlParams.get('redirect') || '/jobs/list'; 
+                location.href = redirectUrl;
+            } else {
+                alert('로그인 실패: 이메일 또는 비밀번호를 확인하세요.');
+            }
+        }
+    </script>
+</body>
+</html>

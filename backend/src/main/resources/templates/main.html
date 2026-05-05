@@ -1,0 +1,53 @@
+<!-- 지훈: 메인 페이지를 위한 thymeleaf 템플릿 입니다.-->
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Recruit Test</title>
+</head>
+<body>
+    <h1>test</h1>
+    <!-- 상단 내비게이션 바 예시 -->
+    <nav id="navBar">
+        <!-- 로그인 전: 로그인 버튼만 표시 -->
+        <div id="guestMenu">
+            <button onclick="location.href='/auth/login'">로그인</button>
+        </div>
+        <!-- 로그인 후: 마이페이지, 로그아웃 버튼 표시 (초기에는 숨김) -->
+        <div id="userMenu" style="display: none;">
+            <button onclick="location.href='/auth/mypage'">마이페이지</button>
+            <button onclick="handleLogout()">로그아웃</button>
+        </div>
+    </nav>
+
+    <script>
+        function updateNav() {
+            const token = localStorage.getItem('accessToken');
+            const guestMenu = document.getElementById('guestMenu');
+            const userMenu = document.getElementById('userMenu');
+
+            if (token) {
+                guestMenu.style.display = 'none';
+                userMenu.style.display = 'block';
+            } else {
+                guestMenu.style.display = 'block';
+                userMenu.style.display = 'none';
+            }
+        }
+
+        // 페이지 로드 시 상태 확인
+        window.onload = updateNav;
+        
+        // 메인 페이지 스크립트 하단에 추가
+        function handleLogout() {
+            if (confirm('로그아웃 하시겠습니까?')) {
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('memberId');
+                alert('로그아웃 되었습니다.');
+                location.reload(); // 현재 페이지 새로고침하여 navBar 갱신
+            }
+        }
+    </script>
+</body>
+</html>
