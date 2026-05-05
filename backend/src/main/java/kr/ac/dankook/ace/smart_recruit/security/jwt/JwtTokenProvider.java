@@ -3,7 +3,6 @@ package kr.ac.dankook.ace.smart_recruit.security.jwt;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders; // 추가 필수
 import io.jsonwebtoken.security.Keys; // 추가 필수
 import io.jsonwebtoken.JwtException; // 추가 필수
 import jakarta.annotation.PostConstruct;
@@ -18,6 +17,7 @@ import org.springframework.security.core.userdetails.User; // 추가 필수
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils; // 추가 필수
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Arrays;
 import java.util.Collection;
@@ -37,7 +37,7 @@ public class JwtTokenProvider {
 
     @PostConstruct
     public void init() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 

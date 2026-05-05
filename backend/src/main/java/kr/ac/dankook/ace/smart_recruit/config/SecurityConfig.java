@@ -34,8 +34,11 @@ public class SecurityConfig {
 
             // 3. 요청별 권한 설정
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**").permitAll() // 로그인/회원가입 허용
-                .requestMatchers("/employer/**").hasRole("EMPLOYER") //
+                // 누구나 접근 가능한 경로 (화이트리스트)
+                .requestMatchers("/auth/signup", "/auth/login").permitAll()
+                
+                // /auth/ 하위 경로는 모두 인증 필요
+                .requestMatchers("/auth/update/**", "/auth/delete/**").authenticated()
                 .anyRequest().authenticated() // 나머지는 인증 필요
             )
 
