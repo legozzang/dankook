@@ -46,9 +46,13 @@ public class AuthService {
 
     // 회원 가입
     public Long signUp(SignUpRequest request){
-        // 1. 이메일 중복 체크
+        // 1. 이메일 중복 체크 & 닉네임 중복 체크
         if(memberRepository.existsByEmail(request.getEmail())){
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+        }
+
+        if(memberRepository.existsByNickname(request.getNickname())){
+            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
         }
         // 2. 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(request.getPassword());
