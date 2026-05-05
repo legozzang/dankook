@@ -37,6 +37,7 @@ public class JwtTokenProvider {
 
     @PostConstruct
     public void init() {
+        // Secret Key를 바이트 배열로 변환 후 HMAC-SHA 알고리즘에 맞는 Key 객체 생성
         byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }

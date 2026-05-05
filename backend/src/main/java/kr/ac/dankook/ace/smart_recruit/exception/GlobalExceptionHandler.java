@@ -1,5 +1,6 @@
 package kr.ac.dankook.ace.smart_recruit.exception;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -31,7 +32,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(message);
     }
 
-    // 4. 그 외 예상치 못한 모든 에러
+    // 4. 데이터베이스 제약 조건 위반 (예: 중복된 이메일이나 닉네임)
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity <String> handleDataIntegrityViolation(DataIntegrityViolationException e){
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body("이미 존재하는 이메일이나 닉네임입니다.");
+    }
+
+    //  그 외 예상치 못한 모든 에러
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleAllException(Exception e) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류가 발생했습니다.");
