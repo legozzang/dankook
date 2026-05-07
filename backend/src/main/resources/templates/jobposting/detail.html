@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="|${jobPosting.title} | Smart Recruit|">공고 상세 | Smart Recruit</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #f4f6f8;
+            color: #1f2933;
+            font-family: Arial, "Noto Sans KR", sans-serif;
+        }
+
+        .page {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 32px 20px 52px;
+        }
+
+        .back-link,
+        .external-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            padding: 0 14px;
+            border-radius: 6px;
+            background: #1769aa;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .back-link {
+            margin-bottom: 18px;
+            background: #52606d;
+        }
+
+        .detail {
+            display: grid;
+            gap: 22px;
+            padding: 28px;
+            border: 1px solid #dbe2ea;
+            background: #ffffff;
+        }
+
+        .company {
+            margin: 0 0 8px;
+            color: #52606d;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 30px;
+            letter-spacing: 0;
+            line-height: 1.25;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .meta-item {
+            padding: 13px;
+            border-radius: 6px;
+            background: #f6f8fb;
+        }
+
+        .meta-label {
+            display: block;
+            margin-bottom: 5px;
+            color: #697586;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .meta-value {
+            display: block;
+            overflow-wrap: anywhere;
+            color: #202939;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        h2 {
+            margin: 0 0 12px;
+            font-size: 19px;
+            letter-spacing: 0;
+        }
+
+        .summary {
+            display: grid;
+            gap: 8px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .summary li {
+            padding: 12px;
+            border-left: 3px solid #1769aa;
+            background: #eef6fd;
+            color: #243b53;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .location-state {
+            width: fit-content;
+            min-height: 30px;
+            padding: 7px 10px;
+            border-radius: 6px;
+            background: #e8f1fa;
+            color: #1769aa;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .location-state.pending {
+            background: #fff4e5;
+            color: #a05a00;
+        }
+
+        .content {
+            margin: 0;
+            color: #344054;
+            font-size: 15px;
+            line-height: 1.75;
+            white-space: pre-wrap;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        @media (max-width: 640px) {
+            .page {
+                padding: 22px 14px 40px;
+            }
+
+            .detail {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .meta-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <a class="back-link" href="/jobpostings">목록으로</a>
+
+    <article class="detail">
+        <header>
+            <p class="company" th:text="${jobPosting.companyName}">회사명</p>
+            <h1 th:text="${jobPosting.title}">공고 제목</h1>
+        </header>
+
+        <section class="meta-grid" aria-label="공고 핵심 조건">
+            <div class="meta-item">
+                <span class="meta-label">위치</span>
+                <span class="meta-value" th:text="${jobPosting.location}">위치</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">시급/급여</span>
+                <span class="meta-value" th:text="${jobPosting.salary}">급여</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">근무시간</span>
+                <span class="meta-value" th:text="${jobPosting.workTime}">근무시간</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">마감일</span>
+                <span class="meta-value" th:text="${jobPosting.deadline}">마감일</span>
+            </div>
+        </section>
+
+        <p class="location-state"
+           th:classappend="${jobPosting.exactLocation} ? '' : ' pending'"
+           th:text="${jobPosting.exactLocation} ? '지도에는 실제 좌표가 반영되었습니다.' : '아직 좌표가 없어 지도에서는 임시 위치로 표시됩니다.'">
+            지도에는 실제 좌표가 반영되었습니다.
+        </p>
+
+        <section>
+            <h2>AI 요약</h2>
+            <ul class="summary">
+                <li th:each="line : ${jobPosting.summaryLines}" th:text="${line}">핵심 조건 요약</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>상세 내용</h2>
+            <p class="content" th:text="${jobPosting.content}">공고 상세 내용</p>
+        </section>
+
+        <div class="actions" th:if="${jobPosting.externalUrl != null and !jobPosting.externalUrl.isBlank()}">
+            <a class="external-link" th:href="${jobPosting.externalUrl}" target="_blank" rel="noopener">원문 공고 보기</a>
+        </div>
+    </article>
+</main>
+</body>
+</html>

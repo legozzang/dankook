@@ -17,7 +17,8 @@ import lombok.*;
     name = "job_postings",
     indexes = {
         @Index(name = "idx_job_posting_region", columnList = "region"),
-        @Index(name = "idx_job_posting_job_type", columnList = "job_type")
+        @Index(name = "idx_job_posting_job_type", columnList = "job_type"),
+        @Index(name = "idx_job_posting_location", columnList = "latitude, longitude")
     }
 )
 public class JobPosting {
@@ -75,6 +76,12 @@ public class JobPosting {
     @Column(name = "external_url", length = 500)
     private String externalUrl;
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
@@ -93,6 +100,22 @@ public class JobPosting {
             JobSourceType sourceType,
             String externalUrl
     ) {
+        this(employer, title, content, region, jobType, status, deadline, sourceType, externalUrl, null, null);
+    }
+
+    public JobPosting(
+            Employer employer,
+            String title,
+            String content,
+            String region,
+            String jobType,
+            JobStatus status,
+            String deadline,
+            JobSourceType sourceType,
+            String externalUrl,
+            Double latitude,
+            Double longitude
+    ) {
         this.employer = employer;
         this.title = title;
         this.content = content;
@@ -102,6 +125,8 @@ public class JobPosting {
         this.deadline = deadline;
         this.sourceType = sourceType;
         this.externalUrl = externalUrl;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     @PrePersist

@@ -38,6 +38,8 @@ public class JobPostingApiController {
                         jp.getDeadline(),
                         jp.getSourceType().name(),
                         jp.getExternalUrl(),
+                        jp.getLatitude(),
+                        jp.getLongitude(),
                         jp.getCreatedAt() != null ? jp.getCreatedAt().toString() : null
                 ))
                 .toList();
@@ -57,7 +59,9 @@ public class JobPostingApiController {
                 JobStatus.valueOf(request.status()),
                 request.deadline(),
                 JobSourceType.valueOf(request.sourceType()),
-                request.externalUrl()
+                request.externalUrl(),
+                request.latitude(),
+                request.longitude()
         ));
         return ResponseEntity.ok().build();
     }
@@ -72,6 +76,8 @@ public class JobPostingApiController {
             String deadline,
             String sourceType,
             String externalUrl,
+            Double latitude,
+            Double longitude,
             String createdAt
     ) {}
 
@@ -83,6 +89,8 @@ public class JobPostingApiController {
             String status,
             String deadline,
             String sourceType,
-            String externalUrl
+            String externalUrl,
+            Double latitude,
+            Double longitude
     ) {}
 }

@@ -3,6 +3,7 @@ package kr.ac.dankook.ace.smart_recruit.controller;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,17 @@ public class JobPostingViewController {
     // http://localhost:8080/jobpostings
     @GetMapping("/jobpostings")
     public String jobPostingList(Model model) {
-        model.addAttribute("jobPostings", jobPostingService.findAll());
+        model.addAttribute("jobPostings", jobPostingService.findAllCards());
         return "jobposting/list";
+    }
+
+    @GetMapping("/jobpostings/{id}")
+    public String jobPostingDetail(@PathVariable Long id, Model model) {
+        return jobPostingService.findCardById(id)
+                .map(jobPosting -> {
+                    model.addAttribute("jobPosting", jobPosting);
+                    return "jobposting/detail";
+                })
+                .orElse("redirect:/jobpostings");
     }
 }
