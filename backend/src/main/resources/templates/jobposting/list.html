@@ -1,7 +1,7 @@
-<!-- 
+<!--
     최초 작성자 : 유지훈
     최초 작성일 : 2026.04.18
-    목적 : /jobpostings 를 위한 프론트
+    목적 : /jobpostings 를 위한 지도형 채용 공고 화면
 -->
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
@@ -9,18 +9,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>채용 공고 | Smart Recruit</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
-            background: #f5f6f8;
-            color: #222831;
+            background: #f4f6f8;
+            color: #1f2933;
             font-family: Arial, "Noto Sans KR", sans-serif;
         }
 
         .page {
-            max-width: 1040px;
-            margin: 0 auto;
-            padding: 40px 20px;
+            min-height: 100vh;
+            padding: 24px;
         }
 
         .header {
@@ -28,21 +32,23 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 24px;
+            margin: 0 auto 18px;
+            max-width: 1280px;
         }
 
         h1 {
             margin: 0;
-            font-size: 30px;
+            font-size: 28px;
             letter-spacing: 0;
         }
 
-        .write-button {
+        .write-button,
+        .detail-link {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 40px;
-            padding: 0 16px;
+            min-height: 38px;
+            padding: 0 14px;
             border-radius: 6px;
             background: #1769aa;
             color: #ffffff;
@@ -51,73 +57,238 @@
             text-decoration: none;
         }
 
-        .tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 410px;
+            gap: 18px;
+            max-width: 1280px;
+            margin: 0 auto;
         }
 
-        .tab {
-            padding: 9px 13px;
-            border: 1px solid #d7dde4;
+        .map-panel,
+        .list-panel {
+            min-height: 0;
+            border: 1px solid #dbe2ea;
+            background: #ffffff;
+        }
+
+        .map-panel {
+            position: sticky;
+            top: 20px;
+            height: calc(100vh - 110px);
+        }
+
+        #jobMap {
+            width: 100%;
+            height: 100%;
+        }
+
+        .list-panel {
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 110px);
+        }
+
+        .filters {
+            display: grid;
+            gap: 12px;
+            padding: 16px;
+            border-bottom: 1px solid #e5eaf0;
+        }
+
+        .filter-title {
+            margin: 0;
+            color: #52606d;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filter-button {
+            min-height: 34px;
+            padding: 0 12px;
+            border: 1px solid #ccd5df;
             border-radius: 6px;
             background: #ffffff;
             color: #344054;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
-            text-decoration: none;
+            cursor: pointer;
         }
 
-        .tab.active {
+        .filter-button.active {
             border-color: #1769aa;
             background: #e8f1fa;
             color: #1769aa;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #ffffff;
-            border: 1px solid #dde3ea;
-        }
-
-        th,
-        td {
-            padding: 14px 16px;
-            border-bottom: 1px solid #e7ebf0;
-            text-align: left;
-            font-size: 14px;
-        }
-
-        th {
-            background: #eef2f6;
-            color: #4b5563;
+        .result-count {
+            color: #52606d;
             font-size: 13px;
         }
 
+        .cards {
+            display: grid;
+            gap: 12px;
+            overflow: auto;
+            padding: 16px;
+        }
+
+        .job-card {
+            display: grid;
+            gap: 12px;
+            padding: 16px;
+            border: 1px solid #dde3ea;
+            border-radius: 8px;
+            background: #ffffff;
+            cursor: pointer;
+        }
+
+        .job-card.active {
+            border-color: #1769aa;
+            box-shadow: 0 0 0 2px rgba(23, 105, 170, 0.12);
+        }
+
+        .job-title {
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: 0;
+        }
+
+        .company {
+            margin: 0;
+            color: #52606d;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .meta-item {
+            min-width: 0;
+            padding: 10px;
+            border-radius: 6px;
+            background: #f6f8fb;
+        }
+
+        .meta-label {
+            display: block;
+            margin-bottom: 4px;
+            color: #697586;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .meta-value {
+            display: block;
+            overflow-wrap: anywhere;
+            color: #202939;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .summary {
+            display: grid;
+            gap: 6px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .summary li {
+            color: #364152;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .location-badge {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            min-height: 28px;
+            padding: 0 9px;
+            border-radius: 6px;
+            background: #e8f1fa;
+            color: #1769aa;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .location-badge.pending {
+            background: #fff4e5;
+            color: #a05a00;
+        }
+
         .empty {
-            padding: 52px 16px;
+            padding: 48px 16px;
             color: #667085;
             text-align: center;
         }
 
-        @media (max-width: 720px) {
+        .leaflet-popup-content {
+            min-width: 180px;
+            margin: 12px;
+            font-family: Arial, "Noto Sans KR", sans-serif;
+        }
+
+        .popup-title {
+            margin: 0 0 6px;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .popup-meta {
+            margin: 0;
+            color: #52606d;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 980px) {
             .page {
-                padding: 28px 14px;
+                padding: 16px;
             }
 
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .map-panel {
+                position: relative;
+                top: 0;
+                height: 420px;
+            }
+
+            .list-panel {
+                max-height: none;
+            }
+        }
+
+        @media (max-width: 560px) {
             .header {
                 align-items: flex-start;
                 flex-direction: column;
             }
 
-            .hide-mobile {
-                display: none;
+            h1 {
+                font-size: 24px;
             }
 
-            th,
-            td {
-                padding: 12px 10px;
+            .map-panel {
+                height: 340px;
+            }
+
+            .meta-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -129,39 +300,213 @@
         <a class="write-button" href="#">공고 등록</a>
     </div>
 
-    <nav class="tabs" aria-label="채용 공고 상태">
-        <a class="tab active" href="#">전체</a>
-        <a class="tab" href="#">모집중</a>
-        <a class="tab" href="#">마감</a>
-    </nav>
+    <section class="layout" th:with="jobCount=${#lists.size(jobPostings)}">
+        <div class="map-panel" aria-label="채용 공고 지도">
+            <div id="jobMap"></div>
+        </div>
 
-    <table>
-        <thead>
-        <tr>
-            <th>번호</th>
-            <th>제목</th>
-            <th class="hide-mobile">회사명</th>
-            <th>지역</th>
-            <th class="hide-mobile">직무</th>
-            <th>상태</th>
-            <th class="hide-mobile">마감일</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:if="${#lists.isEmpty(jobPostings)}">
-            <td class="empty" colspan="7">아직 등록된 채용 공고가 없습니다.</td>
-        </tr>
-        <tr th:each="jobPosting : ${jobPostings}">
-            <td th:text="${jobPosting.id}">1</td>
-            <td th:text="${jobPosting.title}">채용 공고 제목</td>
-            <td class="hide-mobile" th:text="${jobPosting.employer.companyName}">회사명</td>
-            <td th:text="${jobPosting.region}">지역</td>
-            <td class="hide-mobile" th:text="${jobPosting.jobType}">직무</td>
-            <td th:text="${jobPosting.status}">OPEN</td>
-            <td class="hide-mobile" th:text="${jobPosting.deadline}">마감일</td>
-        </tr>
-        </tbody>
-    </table>
+        <aside class="list-panel" aria-label="채용 공고 목록">
+            <div class="filters">
+                <div>
+                    <p class="filter-title">반경 필터</p>
+                    <div class="filter-row" role="group" aria-label="반경 필터">
+                        <button class="filter-button active" type="button" data-radius="all">전체</button>
+                        <button class="filter-button" type="button" data-radius="1">1km</button>
+                        <button class="filter-button" type="button" data-radius="3">3km</button>
+                        <button class="filter-button" type="button" data-radius="5">5km</button>
+                    </div>
+                </div>
+                <div>
+                    <p class="filter-title">행정동 기준</p>
+                    <div class="filter-row" role="group" aria-label="행정동 필터">
+                        <button class="filter-button active" type="button" data-dong="all">전체</button>
+                        <button class="filter-button" type="button" th:each="dong : ${#sets.toSet(jobPostings.![dong])}" th:data-dong="${dong}" th:text="${dong}">죽전동</button>
+                    </div>
+                </div>
+                <span class="result-count"><strong id="visibleCount" th:text="${jobCount}">0</strong>개의 공고</span>
+            </div>
+
+            <div class="cards">
+                <p class="empty" th:if="${#lists.isEmpty(jobPostings)}">아직 등록된 채용 공고가 없습니다.</p>
+
+                <article class="job-card"
+                         th:each="jobPosting : ${jobPostings}"
+                         th:id="|job-${jobPosting.id}|"
+                         th:data-id="${jobPosting.id}"
+                         th:data-title="${jobPosting.title}"
+                         th:data-company="${jobPosting.companyName}"
+                         th:data-location="${jobPosting.location}"
+                         th:data-salary="${jobPosting.salary}"
+                         th:data-deadline="${jobPosting.deadline}"
+                         th:data-dong="${jobPosting.dong}"
+                         th:data-lat="${jobPosting.latitude}"
+                         th:data-lng="${jobPosting.longitude}"
+                         th:data-exact-location="${jobPosting.exactLocation}">
+                    <div>
+                        <p class="company" th:text="${jobPosting.companyName}">회사명</p>
+                        <h2 class="job-title" th:text="${jobPosting.title}">공고 제목</h2>
+                    </div>
+
+                    <div class="meta-grid">
+                        <div class="meta-item">
+                            <span class="meta-label">위치</span>
+                            <span class="meta-value" th:text="${jobPosting.location}">죽전동</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">시급/급여</span>
+                            <span class="meta-value" th:text="${jobPosting.salary}">급여 협의</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">근무시간</span>
+                            <span class="meta-value" th:text="${jobPosting.workTime}">근무시간 협의</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">마감일</span>
+                            <span class="meta-value" th:text="${jobPosting.deadline}">마감일 미정</span>
+                        </div>
+                    </div>
+
+                    <ul class="summary" aria-label="AI 요약">
+                        <li th:each="line : ${jobPosting.summaryLines}" th:text="${line}">핵심 조건 요약</li>
+                    </ul>
+
+                    <span class="location-badge"
+                          th:classappend="${jobPosting.exactLocation} ? '' : ' pending'"
+                          th:text="${jobPosting.exactLocation} ? '실제 위치' : '좌표 미등록 - 임시 위치'">실제 위치</span>
+
+                    <a class="detail-link" th:href="@{/jobpostings/{id}(id=${jobPosting.id})}">상세 보기</a>
+                </article>
+            </div>
+        </aside>
+    </section>
 </main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const campus = {lat: 37.3216, lng: 127.1267};
+    const cards = Array.from(document.querySelectorAll(".job-card"));
+    const radiusButtons = Array.from(document.querySelectorAll("[data-radius]"));
+    const dongButtons = Array.from(document.querySelectorAll("[data-dong]"));
+    const visibleCount = document.getElementById("visibleCount");
+    let selectedRadius = "all";
+    let selectedDong = "all";
+    let map;
+    const markers = new Map();
+
+    function distanceKm(a, b) {
+        const earthRadius = 6371;
+        const dLat = (b.lat - a.lat) * Math.PI / 180;
+        const dLng = (b.lng - a.lng) * Math.PI / 180;
+        const lat1 = a.lat * Math.PI / 180;
+        const lat2 = b.lat * Math.PI / 180;
+        const value = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+        return earthRadius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+    }
+
+    function setActive(buttons, activeButton) {
+        buttons.forEach((button) => button.classList.toggle("active", button === activeButton));
+    }
+
+    function selectCard(card) {
+        cards.forEach((item) => item.classList.toggle("active", item === card));
+        card.scrollIntoView({block: "nearest"});
+    }
+
+    function applyFilters() {
+        let count = 0;
+        const visibleMarkers = [];
+
+        cards.forEach((card) => {
+            const point = {lat: Number(card.dataset.lat), lng: Number(card.dataset.lng)};
+            const inRadius = selectedRadius === "all" || distanceKm(campus, point) <= Number(selectedRadius);
+            const inDong = selectedDong === "all" || card.dataset.dong === selectedDong;
+            const visible = inRadius && inDong;
+            const marker = markers.get(card.dataset.id);
+
+            card.hidden = !visible;
+            if (marker) {
+                if (visible) {
+                    marker.addTo(map);
+                    visibleMarkers.push(marker);
+                } else {
+                    marker.remove();
+                }
+            }
+            if (visible) {
+                count += 1;
+            }
+        });
+
+        visibleCount.textContent = count;
+        if (visibleMarkers.length > 0) {
+            map.fitBounds(L.featureGroup(visibleMarkers).getBounds().pad(0.22), {maxZoom: 15});
+        }
+    }
+
+    function initMap() {
+        map = L.map("jobMap", {scrollWheelZoom: true}).setView([campus.lat, campus.lng], 14);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap"
+        }).addTo(map);
+
+        L.circle([campus.lat, campus.lng], {
+            radius: 5000,
+            color: "#1769aa",
+            fillColor: "#1769aa",
+            fillOpacity: 0.04,
+            weight: 1
+        }).addTo(map);
+
+        cards.forEach((card) => {
+            const marker = L.marker([Number(card.dataset.lat), Number(card.dataset.lng)]);
+            const locationState = card.dataset.exactLocation === "true" ? "실제 위치" : "좌표 미등록 - 임시 위치";
+            marker.bindPopup(`
+                <p class="popup-title">${card.dataset.title}</p>
+                <p class="popup-meta">${card.dataset.company}<br>${card.dataset.location}<br>${card.dataset.salary}<br>${card.dataset.deadline}<br>${locationState}</p>
+            `);
+            marker.on("click", () => selectCard(card));
+            markers.set(card.dataset.id, marker);
+            marker.addTo(map);
+        });
+
+        applyFilters();
+    }
+
+    radiusButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            selectedRadius = button.dataset.radius;
+            setActive(radiusButtons, button);
+            applyFilters();
+        });
+    });
+
+    dongButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            selectedDong = button.dataset.dong;
+            setActive(dongButtons, button);
+            applyFilters();
+        });
+    });
+
+    cards.forEach((card) => {
+        card.addEventListener("click", (event) => {
+            if (event.target.closest("a")) {
+                return;
+            }
+            selectCard(card);
+            const marker = markers.get(card.dataset.id);
+            if (marker) {
+                marker.openPopup();
+                map.setView(marker.getLatLng(), 15);
+            }
+        });
+    });
+
+    if (window.L) {
+        initMap();
+    }
+</script>
 </body>
 </html>
