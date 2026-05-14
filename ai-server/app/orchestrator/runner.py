@@ -20,11 +20,14 @@ from dataclasses import asdict
 from datetime import datetime
 from dotenv import load_dotenv
 
-load_dotenv()
+# ai-server/.env — 실행 cwd와 무관하게 로드 (로컬_crawler와 동일 취지)
+_AI_SERVER_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+load_dotenv(os.path.join(_AI_SERVER_ROOT, ".env"))
 
 from app.collector.base.collector import CrawlJob
 from app.collector.crawlers.albaheaven_crawler import AlbaHeavenCrawler
 from app.collector.crawlers.albamon_crawler import AlbamonCrawler
+from app.geocoder.kakao_geocoder import geocode
 
 # ── 설정 ──────────────────────────────────────────────────────────────────────
 
@@ -114,7 +117,7 @@ def _send_to_backend(job: CrawlJob):
 
 # ── 크롤러 실행 ───────────────────────────────────────────────────────────────
 
-def _run_crawler(source: str, crawler, extra_kwargs: dict):
+def _run_crawler(source: str, crawler, extra_kwargs: dict, region_cache: dict):
     """
     크롤러 하나를 실행한다.
 
@@ -122,8 +125,10 @@ def _run_crawler(source: str, crawler, extra_kwargs: dict):
     target_id는 항상 현재 최신 id로 설정한다.
 
     공고 하나를 수집할 때마다:
-      1. 백엔드로 전송
-      2. 상태 저장 (중단 시 이 지점부터 resume)
+      1. 상태 저장 (중단 시 이 지점부터 resume)
+      2. region → 카카오 Geocoding (region_cache로 중복 호출 방지)
+      3. 백엔드로 전송
+      
     """
 
     target_id = crawler.get_latest_id()
@@ -140,6 +145,11 @@ def _run_crawler(source: str, crawler, extra_kwargs: dict):
         item_id = crawler._parse_id_from_url(job.external_url)
         if item_id is not None:
             _save_state(source, item_id)
+            if job.region not in region_cache:
+                region_cache[job.region] = geocode(job.region)
+            coord = region_cache[job.region]
+            if coord:
+                job.latitude, job.longitude = coord
             _send_to_backend(job)
 
         count += 1
@@ -157,9 +167,10 @@ def run():
     모든 크롤러가 완료되면 종료 → 재실행은 OS 스케줄러 또는 오케스트레이터가 담당.
     """
     os.makedirs(DATA_DIR, exist_ok=True)
+    region_cache: dict = {}
     for config in CRAWLERS:
         crawler = config["cls"](crawl_delay=3.0, crawl_jitter=2.0)
-        _run_crawler(config["source"], crawler, config.get("kwargs", {}))
+        _run_crawler(config["source"], crawler, config.get("kwargs", {}), region_cache)
 
 
 if __name__ == "__main__":
