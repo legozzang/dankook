@@ -51,6 +51,9 @@ class CrawlJob:
     deadline:     str  = ""         # 모집마감
     headcount:    str  = ""         # 모집인원
 
+    latitude:  float | None = None   # 위도 (카카오 Geocoding y값)
+    longitude: float | None = None   # 경도 (카카오 Geocoding x값)
+
     status: JobStatus = field(default=JobStatus.OPEN)  # 수집 시점엔 항상 모집중
 
     def __post_init__(self):
