@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Recruit - 회원가입</title>
+    <style>
+        .container { width: 400px; margin: 50px auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        /* 일반 입력창만 100%로 설정 */
+        input[type="email"], input[type="password"], input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        /* 라디오 버튼은 원래 크기 유지 */
+        input[type="radio"] {
+            width: auto;
+            margin-right: 5px;
+        }
+        button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+        .error-msg { color: red; font-size: 0.9em; margin-top: 5px; display: none; }
+    </style>
+</head>
+<body>
+    <!-- 상단 버튼 모음 (Navigation) -->
+<nav style="text-align: right; padding: 10px; background-color: #f8f9fa; border-bottom: 1px solid #ddd;">
+    <button onclick="location.href='/auth/login'" style="width: auto; padding: 5px 10px; background-color: #6c757d;">로그인 페이지</button>
+    <button onclick="location.href='/auth/signup'" style="width: auto; padding: 5px 10px; background-color: #007bff;">회원가입 페이지</button>
+    <button onclick="goToMyPage()" style="width: auto; padding: 5px 10px; background-color: #28a745;">마이페이지</button>
+    <button onclick="handleLogout()" style="width: auto; padding: 5px 10px; background-color: #dc3545;">로그아웃</button>
+</nav>
+<div class="container">
+    <h2>회원가입</h2>
+    <form id="signupForm">
+        <div class="form-group">
+            <label for="email">이메일</label>
+            <input type="email" id="email" name="email" placeholder="example@dankook.ac.kr" required>
+        </div>
+        <div class="form-group">
+            <label for="password">비밀번호</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div class="form-group">
+            <label for="nickname">닉네임</label>
+            <input type="text" id="nickname" name="nickname" placeholder="특수문자 제외 2~10자" required>
+        </div>
+        <div class="form-group">
+            <label>가입 유형</label>
+            <input type="radio" name="role" value="SEEKER" checked> 개인 구직자
+            <input type="radio" name="role" value="EMPLOYER"> 기업 담당자
+        </div>
+        <div id="errorMessage" class="error-msg"></div>
+        <button type="submit">가입하기</button>
+    </form>
+    <p style="text-align: center; margin-top: 15px;">
+        이미 계정이 있으신가요? <a href="/auth/login">로그인</a>
+    </p>
+</div>
+
+<script>
+    // 1. 회원가입 처리 (POST /auth/signup)
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorDiv = document.getElementById('errorMessage');
+        const signupData = {
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value,
+            nickname: document.getElementById('nickname').value,
+            role: document.querySelector('input[name="role"]:checked').value
+        };
+
+        try {
+            const response = await fetch('/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(signupData)
+            });
+
+            if (response.ok) {
+                alert('회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.');
+                window.location.href = '/auth/login';
+            } else {
+                const result = await response.text();
+                errorDiv.textContent = result;
+                errorDiv.style.display = 'block';
+            }
+        } catch (error) {
+            alert('서버와 통신 중 오류가 발생했습니다.');
+        }
+    });
+
+    // 2. 공통 네비게이션 함수들
+    function goToMyPage() {
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+            alert('로그인이 필요한 서비스입니다.');
+            location.href = '/auth/login';
+        } else {
+            location.href = '/auth/mypage';
+        }
+    }
+
+    function handleLogout() {
+        if (confirm('로그아웃 하시겠습니까?')) {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('memberId');
+            alert('로그아웃 되었습니다.');
+            location.href = '/auth/login';
+        }
+    }
+</script>
+</body>
+</html>

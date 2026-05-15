@@ -26,9 +26,9 @@ public class JobPosting {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // company_id (FK)
+    // employer_id (FK)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "company_id", nullable = false)
+    @JoinColumn(name = "employer_id", nullable = false)
     private Employer employer;
 
     // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
