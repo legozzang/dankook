@@ -1,12 +1,12 @@
 """
 runner.py
-등록된 크롤러를 순차적으로 실행하고 수집 결과를 백엔드로 전송한다.
+등록된 크롤러를 순차적으로 실행하고 수집 결과를 CSV로 스테이징한다.
 
 전체 흐름:
   1. CRAWLERS 목록을 순서대로 순회
   2. 각 크롤러마다 crawler_state.csv에서 이전 상태(last_id)를 불러옴
   3. 크롤러의 collect()를 호출해 CrawlJob을 하나씩 yield 받음
-  4. yield 받을 때마다 백엔드 POST + 상태 즉시 저장 (중단 시 resume 가능)
+  4. yield 받을 때마다 상태 즉시 저장 + Geocoding + CSV append (중단 시 resume 가능)
   5. 모든 크롤러 완료 후 종료 → OS 스케줄러 또는 오케스트라가 재실행
 
 실행 방법 (ai-server/ 루트에서):
@@ -15,7 +15,6 @@ runner.py
 
 import csv
 import os
-import requests
 from dataclasses import asdict
 from datetime import datetime
 from dotenv import load_dotenv
@@ -31,12 +30,10 @@ from app.geocoder.kakao_geocoder import geocode
 
 # ── 설정 ──────────────────────────────────────────────────────────────────────
 
-# 백엔드 API 주소: .env의 BACKEND_URL이 없으면 로컬 기본값 사용
-BACKEND_URL    = os.getenv("BACKEND_URL", "http://localhost:8080/api/job-postings")
-
 BASE_DIR       = "."
 DATA_DIR       = os.path.join(BASE_DIR, "data")                      # orchestrator/data/
 STATE_CSV_PATH = os.path.join(DATA_DIR, "crawler_state.csv")         # 크롤러별 상태 파일
+GEOCODED_CSV_PATH = os.path.join(DATA_DIR, "jobs_geocoded.csv")
 
 STATE_CSV_HEADER = ["source", "last_id", "updated_at"]
 
@@ -96,28 +93,45 @@ def _save_state(source: str, last_id: int):
         writer.writerows(rows)
 
 
-# ── 백엔드 전송 ───────────────────────────────────────────────────────────────
+# ── CSV 스테이징 ──────────────────────────────────────────────────────────────
 
-def _send_to_backend(job: CrawlJob):
-    """
-    수집한 CrawlJob 하나를 백엔드 API로 POST 전송한다.
+def _enum_to_csv_value(value) -> str:
+    raw = value.value
+    return raw[0] if isinstance(raw, tuple) else raw
 
-    Enum 필드(source_type, status)는 문자열 값으로 변환해서 전송한다.
-    전송 실패 시 해당 공고는 스킵하고 로그를 출력한다 (프로세스는 계속 진행).
-    """
+
+def _load_seen_urls() -> set[str]:
+    """jobs_geocoded.csv에 이미 기록된 external_url 세트를 읽는다."""
+    if not os.path.exists(GEOCODED_CSV_PATH):
+        return set()
+
+    with open(GEOCODED_CSV_PATH, "r", newline="", encoding="utf-8") as f:
+        return {
+            row["external_url"]
+            for row in csv.DictReader(f)
+            if row.get("external_url")
+        }
+
+
+def _append_to_csv(job: CrawlJob) -> None:
+    """수집·지오코딩된 CrawlJob 하나를 jobs_geocoded.csv에 append한다."""
+    os.makedirs(os.path.dirname(GEOCODED_CSV_PATH), exist_ok=True)
+    should_write_header = not os.path.exists(GEOCODED_CSV_PATH)
+
     payload = asdict(job)
-    payload["source_type"] = job.source_type.value  # Enum → 문자열
-    payload["status"]      = job.status.value        # Enum → 문자열
-    try:
-        res = requests.post(BACKEND_URL, json=payload, timeout=10)
-        res.raise_for_status()
-    except requests.RequestException as e:
-        print(f"  [전송 실패] {job.title} - {e}")
+    payload["source_type"] = _enum_to_csv_value(job.source_type)
+    payload["status"] = _enum_to_csv_value(job.status)
+
+    with open(GEOCODED_CSV_PATH, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(payload.keys()))
+        if should_write_header:
+            writer.writeheader()
+        writer.writerow(payload)
 
 
 # ── 크롤러 실행 ───────────────────────────────────────────────────────────────
 
-def _run_crawler(source: str, crawler, extra_kwargs: dict, region_cache: dict):
+def _run_crawler(source: str, crawler, extra_kwargs: dict, region_cache: dict, url_seen: set[str]):
     """
     크롤러 하나를 실행한다.
 
@@ -127,7 +141,7 @@ def _run_crawler(source: str, crawler, extra_kwargs: dict, region_cache: dict):
     공고 하나를 수집할 때마다:
       1. 상태 저장 (중단 시 이 지점부터 resume)
       2. region → 카카오 Geocoding (region_cache로 중복 호출 방지)
-      3. 백엔드로 전송
+      3. jobs_geocoded.csv에 중복 없이 append
       
     """
 
@@ -150,7 +164,9 @@ def _run_crawler(source: str, crawler, extra_kwargs: dict, region_cache: dict):
             coord = region_cache[job.region]
             if coord:
                 job.latitude, job.longitude = coord
-            _send_to_backend(job)
+            if job.external_url not in url_seen:
+                _append_to_csv(job)
+                url_seen.add(job.external_url)
 
         count += 1
         print(f"  [{count}] {job.company} - {job.title}")
@@ -167,10 +183,11 @@ def run():
     모든 크롤러가 완료되면 종료 → 재실행은 OS 스케줄러 또는 오케스트레이터가 담당.
     """
     os.makedirs(DATA_DIR, exist_ok=True)
+    url_seen = _load_seen_urls()
     region_cache: dict = {}
     for config in CRAWLERS:
         crawler = config["cls"](crawl_delay=3.0, crawl_jitter=2.0)
-        _run_crawler(config["source"], crawler, config.get("kwargs", {}), region_cache)
+        _run_crawler(config["source"], crawler, config.get("kwargs", {}), region_cache, url_seen)
 
 
 if __name__ == "__main__":
