@@ -161,7 +161,7 @@ def _run_crawler(source: str, crawler, extra_kwargs: dict, region_cache: dict, u
                 region_cache[job.region] = geocode(job.region)
             coord = region_cache[job.region]
             if coord:
-                job.latitude, job.longitude = coord
+                job.latitude, job.longitude, job.region_sido, job.region_sigungu = coord
             if job.external_url not in url_seen:
                 _append_to_csv(job)
                 url_seen.add(job.external_url)
