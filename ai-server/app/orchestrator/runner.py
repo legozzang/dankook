@@ -86,7 +86,7 @@ def _save_state(source: str, last_id: int):
         })
 
     with open(STATE_CSV_PATH, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=STATE_CSV_HEADER)
+        writer = csv.DictWriter(f, fieldnames=STATE_CSV_HEADER, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
 
