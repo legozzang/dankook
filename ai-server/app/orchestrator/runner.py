@@ -192,5 +192,5 @@ if __name__ == "__main__":
     import time
     while True:
         run()
-        print("\n[오케스트레이터] 모든 크롤러 완료 - 10초 대기 후 재실행")
-        time.sleep(10)
+        print("\n[오케스트레이터] 모든 크롤러 완료 - 60초 대기 후 재실행")
+        time.sleep(60)
