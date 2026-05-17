@@ -37,3 +37,5 @@ build/
 
 ### Test files ###
 **/controller/TestJobPostingApiController.java
+**/model/testjobposting/TestJobPosting.java
+**/repository/TestJobPostingRepository.java
