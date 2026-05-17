@@ -30,8 +30,7 @@ from app.geocoder.kakao_geocoder import geocode
 
 # ── 설정 ──────────────────────────────────────────────────────────────────────
 
-BASE_DIR       = "."
-DATA_DIR       = os.path.join(BASE_DIR, "data")                      # orchestrator/data/
+DATA_DIR       = os.path.join(_AI_SERVER_ROOT, "data")
 STATE_CSV_PATH = os.path.join(DATA_DIR, "crawler_state.csv")         # 크롤러별 상태 파일
 GEOCODED_CSV_PATH = os.path.join(DATA_DIR, "jobs_geocoded.csv")
 
@@ -46,7 +45,6 @@ STATE_CSV_HEADER = ["source", "last_id", "updated_at"]
 CRAWLERS = [
     {"source": "ALBAHEAVEN", "cls": AlbaHeavenCrawler, "kwargs": {}},
     {"source": "ALBAMON",    "cls": AlbamonCrawler,    "kwargs": {}},
-    # {"source": "WORK24", "cls": Work24Client, "kwargs": {"total_pages": 10}},
 ]
 
 # ── 상태 관리 ─────────────────────────────────────────────────────────────────
