@@ -17,6 +17,6 @@ public class JobPostingService {
     private final JobPostingRepository jobPostingRepository;
 
     public List<JobPosting> findAll() {
-        return jobPostingRepository.findAllWithEmployerOrderByCreatedAtDesc();
+        return jobPostingRepository.findAllByOrderByCreatedAtDesc();
     }
 }
