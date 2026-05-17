@@ -4,7 +4,7 @@ runner.py
 
 전체 흐름:
   1. CRAWLERS 목록을 순서대로 순회
-  2. 각 크롤러마다 crawler_state.csv에서 이전 상태(last_adid, run_target_adid)를 불러옴
+  2. 각 크롤러마다 crawler_state.csv에서 이전 상태(last_id)를 불러옴
   3. 크롤러의 collect()를 호출해 CrawlJob을 하나씩 yield 받음
   4. yield 받을 때마다 백엔드 POST + 상태 즉시 저장 (중단 시 resume 가능)
   5. 모든 크롤러 완료 후 종료 → OS 스케줄러 또는 오케스트라가 재실행
@@ -35,7 +35,7 @@ BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR       = os.path.join(BASE_DIR, "data")                      # orchestrator/data/
 STATE_CSV_PATH = os.path.join(DATA_DIR, "crawler_state.csv")         # 크롤러별 상태 파일
 
-STATE_CSV_HEADER = ["source", "last_id", "target_id", "updated_at"]
+STATE_CSV_HEADER = ["source", "last_id", "updated_at"]
 
 # ── 크롤러 목록 ───────────────────────────────────────────────────────────────
 # 크롤러를 추가할 때 이 목록에만 항목을 추가하면 된다.
@@ -51,59 +51,39 @@ CRAWLERS = [
 
 # ── 상태 관리 ─────────────────────────────────────────────────────────────────
 
-def _load_state(source: str) -> tuple:
-    """
-    crawler_state.csv에서 해당 source의 (last_id, target_id)를 읽는다.
-
-    last_id   : 직전 run에서 마지막으로 수집 완료한 id.
-                크롤러가 이 값 이후부터 이어서 수집한다 (resume).
-    target_id : 현재 run의 목표 id.
-                run 시작 시 당시 최신 id로 고정되며,
-                이 값을 초과하는 공고는 수집하지 않는다.
-
-    파일이 없거나 해당 source 행이 없으면 (None, None) 반환 → 첫 실행으로 처리.
-    값이 비어있거나 숫자가 아니면 (None, None) 반환 → 새 run으로 처리.
-    """
+def _load_state(source: str, target_id: int):
+    """crawler_state.csv에서 해당 source의 last_id를 읽는다. 없으면 None 반환."""
     if not os.path.exists(STATE_CSV_PATH):
-        return None, None
+        return target_id
     with open(STATE_CSV_PATH, "r", newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             if row["source"] == source:
                 try:
-                    return int(row["last_id"]), int(row["target_id"])
+                    return int(row["last_id"])
                 except (ValueError, KeyError):
-                    return None, None
-    return None, None
+                    return target_id
+    return target_id
 
 
-def _save_state(source: str, last_id: int, target_id: int):
-    """
-    crawler_state.csv에 해당 source의 상태를 저장한다.
-
-    공고를 하나 수집할 때마다 호출되므로, 중간에 프로세스가 종료되더라도
-    마지막으로 저장된 id부터 resume이 가능하다.
-
-    이미 해당 source 행이 있으면 덮어쓰고, 없으면 새 행을 추가한다.
-    """
+def _save_state(source: str, last_id: int):
+    """crawler_state.csv에 해당 source의 last_id를 저장한다."""
     os.makedirs(os.path.dirname(STATE_CSV_PATH), exist_ok=True)
-    rows   = []
+    rows    = []
     updated = False
 
     if os.path.exists(STATE_CSV_PATH):
         with open(STATE_CSV_PATH, "r", newline="", encoding="utf-8") as f:
             for row in csv.DictReader(f):
                 if row["source"] == source:
-                    row["last_id"]   = last_id
-                    row["target_id"] = target_id
+                    row["last_id"]    = last_id
                     row["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     updated = True
                 rows.append(row)
 
     if not updated:
         rows.append({
-            "source":    source,
-            "last_id":   last_id,
-            "target_id": target_id,
+            "source":     source,
+            "last_id":    last_id,
             "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         })
 
@@ -138,46 +118,29 @@ def _run_crawler(source: str, crawler, extra_kwargs: dict):
     """
     크롤러 하나를 실행한다.
 
-    run 시작 조건 판단:
-      - last_id가 없음   → 첫 실행: 크롤러가 알아서 처리 (크롤러 의존적 동작)
-      - target_id가 없음 → 상태 파일 손상, 새 run으로 처리
-      - last >= target   → 이전 run 완료, 새 run 시작
-
-    새 run: target_id를 현재 최신 id로 고정 후 수집 시작
-    재시작: 기존 target_id 유지, last_id 이후부터 이어서 수집
+    last_id가 없으면 첫 실행, 있으면 해당 id 이후부터 resume.
+    target_id는 항상 현재 최신 id로 설정한다.
 
     공고 하나를 수집할 때마다:
       1. 백엔드로 전송
       2. 상태 저장 (중단 시 이 지점부터 resume)
     """
-    last_id, target_id = _load_state(source)
 
-    # 현재 사이트의 가장 최신 id (이진탐색 상한 계산 + 새 run target 설정에 사용)
-    newest_id  = crawler.get_latest_id()
+    target_id = crawler.get_latest_id()
+    last_id = _load_state(source, target_id)
 
-    is_new_run = (last_id is None) or (target_id is None) or (last_id >= target_id)
-
-    if is_new_run:
-        # 이번 run에서 수집할 최대 id를 현재 최신으로 고정
-        # → 수집 도중 새 공고가 올라와도 이번 run에서는 수집하지 않음 (다음 run에서 처리)
-        target_id = newest_id
-        print(f"\n[{source}] 새 run 시작 (last={last_id}, target={target_id})")
-    else:
-        print(f"\n[{source}] 재시작 (last={last_id}, target={target_id})")
+    print(f"\n[{source}] {'새 run' if last_id is None else '재시작'} (last={last_id}, target={target_id})")
 
     count = 0
     for job in crawler.collect(
-        last_id=last_id,       # 이 id 이후부터 수집
-        target_id=target_id,   # 이 id 초과 시 종료
-        newest_id=newest_id,   # 이진탐색 hi 계산용
+        last_id=last_id,
+        target_id=target_id,
         **extra_kwargs,
     ):
-        _send_to_backend(job)
-
-        # external_url에서 id 추출 후 상태 저장 (추출 방식은 크롤러마다 다름)
         item_id = crawler._parse_id_from_url(job.external_url)
         if item_id is not None:
-            _save_state(source, item_id, target_id)
+            _save_state(source, item_id)
+            _send_to_backend(job)
 
         count += 1
         print(f"  [{count}] {job.company} - {job.title}")
@@ -203,5 +166,5 @@ if __name__ == "__main__":
     import time
     while True:
         run()
-        print("\n[오케스트레이터] 모든 크롤러 완료 - 10초 대기 후 재실행")
-        time.sleep(10)
+        print("\n[오케스트레이터] 모든 크롤러 완료 - 5초 대기 후 재실행")
+        time.sleep(5)
