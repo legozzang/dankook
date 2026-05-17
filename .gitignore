@@ -37,3 +37,4 @@ build/
 cursorrules
 AGENTS.md
 CLAUDE.md
+ai-server/local_crawler/validate_classified.py
