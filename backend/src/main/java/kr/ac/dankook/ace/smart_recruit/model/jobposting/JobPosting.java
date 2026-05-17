@@ -139,4 +139,9 @@ public class JobPosting {
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void updateLocation(Double latitude, Double longitude) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+    }
 }

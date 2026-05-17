@@ -8,11 +8,13 @@ import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobSourceType;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus;
 import kr.ac.dankook.ace.smart_recruit.repository.EmployerRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
+import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/job-postings")
@@ -23,6 +25,7 @@ public class JobPostingApiController {
 
     private final JobPostingRepository jobPostingRepository;
     private final EmployerRepository employerRepository;
+    private final GeocodingService geocodingService;
 
     // 공고 목록 조회
     @GetMapping
@@ -50,6 +53,7 @@ public class JobPostingApiController {
     @PostMapping
     public ResponseEntity<Void> create(@RequestBody JobPostingRequest request) {
         Employer employer = employerRepository.getReferenceById(AI_EMPLOYER_ID);
+        Optional<GeocodingService.Coordinate> coordinate = resolveCoordinate(request);
         jobPostingRepository.save(new JobPosting(
                 employer,
                 request.title(),
@@ -60,10 +64,17 @@ public class JobPostingApiController {
                 request.deadline(),
                 JobSourceType.valueOf(request.sourceType()),
                 request.externalUrl(),
-                request.latitude(),
-                request.longitude()
+                coordinate.map(GeocodingService.Coordinate::latitude).orElse(null),
+                coordinate.map(GeocodingService.Coordinate::longitude).orElse(null)
         ));
         return ResponseEntity.ok().build();
+    }
+
+    private Optional<GeocodingService.Coordinate> resolveCoordinate(JobPostingRequest request) {
+        if (request.latitude() != null && request.longitude() != null) {
+            return Optional.of(new GeocodingService.Coordinate(request.latitude(), request.longitude()));
+        }
+        return geocodingService.geocode(request.region());
     }
 
     record JobPostingResponse(
