@@ -34,3 +34,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Test files ###
+**/controller/TestJobPostingApiController.java
