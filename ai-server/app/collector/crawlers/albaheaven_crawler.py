@@ -15,7 +15,8 @@ class AlbaHeavenCrawler(BaseCrawler):
     상세 페이지 HTML + iframe 요청으로 본문을 수집한다.
     """
 
-    NAME = "알바천국"
+    SOURCE_TYPE = SourceType.ALBAHEAVEN
+    NAME        = SOURCE_TYPE.label
 
     BASE_URL      = "https://www.alba.co.kr"
     BASE_LIST_URL = "https://www.alba.co.kr/job/main"
@@ -28,12 +29,6 @@ class AlbaHeavenCrawler(BaseCrawler):
         "hidsortfilter": "Y",
     }
 
-    HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/120.0.0.0 Safari/537.36"
-    }
-
     PAY_TYPE_MAP = {
         "hour":  "시급",
         "day":   "일급",
@@ -42,9 +37,6 @@ class AlbaHeavenCrawler(BaseCrawler):
         "year":  "연봉",
         "per":   "건별",
     }
-
-    def __init__(self, crawl_max_retries: int = 3, crawl_delay: float = 1.5, crawl_jitter: float = 1.0):
-        super().__init__(crawl_max_retries, crawl_delay, crawl_jitter)
 
     # ── 목록 페이지 파싱 ──────────────────────────────────────────────────────
 
@@ -74,15 +66,6 @@ class AlbaHeavenCrawler(BaseCrawler):
 
         return adids
 
-    # ── 수집 진입점 ───────────────────────────────────────────────────────────
-
-    def get_latest_id(self) -> int:
-        """목록 페이지 첫 번째 공고의 adid를 최신 id로 반환한다."""
-        ids = self._get_page_ids(1)
-        if not ids:
-            raise RuntimeError("[ERROR] 알바천국 목록 페이지에서 최신 adid를 찾을 수 없음")
-        return max(ids)
-
     # ── 내부 헬퍼 ─────────────────────────────────────────────────────────────
 
     def _build_item_url(self, item_id: int) -> str:
@@ -93,12 +76,6 @@ class AlbaHeavenCrawler(BaseCrawler):
         """URL의 adid 쿼리 파라미터에서 id를 추출한다."""
         m = re.search(r"adid=(\d+)", url)
         return int(m.group(1)) if m else None
-
-    def _fetch(self, url: str) -> str:
-        """HTTP GET 요청으로 HTML을 가져온다."""
-        response = requests.get(url, headers=self.HEADERS, timeout=10)
-        response.raise_for_status()
-        return response.text
 
     def parse(self, html: str) -> Optional[CrawlJob]:
         """
