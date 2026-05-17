@@ -14,6 +14,7 @@ import kr.ac.dankook.ace.smart_recruit.model.employer.Employer;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobPosting;
 import kr.ac.dankook.ace.smart_recruit.model.jobpostingaisummary.JobPostingAiSummary;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
+import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -27,17 +28,20 @@ public class JobPostingService {
     private static final Pattern WORK_TIME_PATTERN = Pattern.compile("((근무\\s*시간|근무시간|시간)\\s*[:：]?\\s*)?([0-2]?\\d\\s*[:시]\\s*\\d{0,2}\\s*~\\s*[0-2]?\\d\\s*[:시]\\s*\\d{0,2}|오전\\s*\\d+\\s*시\\s*~\\s*오후\\s*\\d+\\s*시|주\\s*\\d+\\s*일|요일\\s*협의)");
 
     private final JobPostingRepository jobPostingRepository;
+    private final GeocodingService geocodingService;
 
     public List<JobPosting> findAll() {
         return jobPostingRepository.findAllWithEmployerOrderByCreatedAtDesc();
     }
 
+    @Transactional
     public List<JobPostingCard> findAllCards() {
         return jobPostingRepository.findAllWithEmployerAndAiSummaryOrderByCreatedAtDesc().stream()
                 .map(this::toCard)
                 .toList();
     }
 
+    @Transactional
     public Optional<JobPostingCard> findCardById(Long id) {
         return jobPostingRepository.findByIdWithEmployerAndAiSummary(id).map(this::toCard);
     }
@@ -45,7 +49,8 @@ public class JobPostingService {
     private JobPostingCard toCard(JobPosting jobPosting) {
         String location = locationLabel(jobPosting);
         String dong = dongLabel(jobPosting, location);
-        boolean hasExactLocation = jobPosting.getLatitude() != null && jobPosting.getLongitude() != null;
+        resolveMissingCoordinate(jobPosting, location);
+        boolean hasExactLocation = hasCoordinate(jobPosting);
         Coordinate coordinate = hasExactLocation
                 ? new Coordinate(jobPosting.getLatitude(), jobPosting.getLongitude())
                 : fallbackCoordinateFor(jobPosting.getId(), dong);
@@ -68,6 +73,19 @@ public class JobPostingService {
                 coordinate.longitude(),
                 hasExactLocation
         );
+    }
+
+    private void resolveMissingCoordinate(JobPosting jobPosting, String location) {
+        if (hasCoordinate(jobPosting) || isBlank(location) || "위치 미등록".equals(location)) {
+            return;
+        }
+
+        geocodingService.geocode(location)
+                .ifPresent(coordinate -> jobPosting.updateLocation(coordinate.latitude(), coordinate.longitude()));
+    }
+
+    private boolean hasCoordinate(JobPosting jobPosting) {
+        return jobPosting.getLatitude() != null && jobPosting.getLongitude() != null;
     }
 
     private String companyName(Employer employer) {
