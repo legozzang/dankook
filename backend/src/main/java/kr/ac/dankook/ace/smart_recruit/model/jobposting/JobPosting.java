@@ -59,7 +59,7 @@ public class JobPosting {
     private JobStatus status;
 
     // (예: 2003-08-10)
-    @Column(name = "deadline", length = 10)
+    @Column(name = "deadline", length = 50)
     private String deadline;
 
     @Enumerated(EnumType.STRING)
