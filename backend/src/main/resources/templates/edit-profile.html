@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Recruit - 정보 수정</title>
+    <style>
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; }
+        .hint { color: gray; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+    <h2>내 정보 수정</h2>
+    
+    <div class="form-group">
+        <label>닉네임</label>
+        <input type="text" id="nicknameInput" placeholder="새 닉네임 입력">
+    </div>
+
+    <hr>
+    <p class="hint">비밀번호를 변경하려면 아래 정보를 모두 입력하세요.</p>
+    
+    <div class="form-group">
+        <label>현재 비밀번호</label>
+        <input type="password" id="currentPassword">
+    </div>
+    
+    <div class="form-group">
+        <label>새 비밀번호</label>
+        <input type="password" id="newPassword">
+    </div>
+
+    <button onclick="handleUpdate()">수정 완료</button>
+    <button onclick="location.href='/auth/mypage'" style="background-color: #ccc;">취소</button>
+
+    <script>
+        async function handleUpdate() {
+            const token = localStorage.getItem('accessToken');
+            const nickname = document.getElementById('nicknameInput').value;
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+
+            // 값이 있는 필드만 객체에 담기
+            const updateData = {};
+            if (nickname) updateData.nickname = nickname;
+            if (newPassword) {
+                updateData.currentPassword = currentPassword;
+                updateData.newPassword = newPassword;
+            }
+
+            if (Object.keys(updateData).length === 0) {
+                alert('수정할 정보를 입력해주세요.');
+                return;
+            }
+
+            const response = await fetch('/auth/update/me', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(updateData)
+            });
+
+            if (response.ok) {
+                alert('정보가 성공적으로 수정되었습니다.');
+                location.href = '/auth/mypage';
+            } else {
+                const errorMsg = await response.text();
+                alert('수정 실패: ' + errorMsg);
+            }
+        }
+    </script>
+</body>
+</html>
