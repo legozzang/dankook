@@ -39,6 +39,7 @@ MODEL_CYCLE = [
     "gemini-3.1-flash-lite",
 ]
 
+REGION_COLS = ["region_sido", "region_sigungu"]
 NEW_COLS = ["job_type_major", "job_type_mid", "job_type_minor", "job_type_detail"]
 
 
@@ -185,7 +186,7 @@ def main() -> str | None:
 
     print("입력 CSV 로딩 중...")
     fieldnames_in, input_rows = _load_input()
-    fieldnames = fieldnames_in + [col for col in NEW_COLS if col not in fieldnames_in]
+    fieldnames = fieldnames_in + [col for col in REGION_COLS + NEW_COLS if col not in fieldnames_in]
     total_rows = len(input_rows)
 
     existing = _load_existing_results()
@@ -193,9 +194,17 @@ def main() -> str | None:
     for row in input_rows:
         url = row.get("external_url", "").strip()
         if url and url in existing:
-            merged = {**row, **{col: existing[url].get(col, "") for col in NEW_COLS}}
+            merged = {
+                **row,
+                **{col: row.get(col, "") for col in REGION_COLS},
+                **{col: existing[url].get(col, "") for col in NEW_COLS},
+            }
         else:
-            merged = {**row, **{col: row.get(col, "") for col in NEW_COLS}}
+            merged = {
+                **row,
+                **{col: row.get(col, "") for col in REGION_COLS},
+                **{col: row.get(col, "") for col in NEW_COLS},
+            }
         rows.append(merged)
 
     pending_indices = [idx for idx, row in enumerate(rows) if not _is_classified(row)]
