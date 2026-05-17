@@ -25,6 +25,7 @@ CLASSIFIED_CSV_PATH = os.path.join(DATA_DIR, "jobs_classified.csv")
 SNAPSHOT_PATH = os.path.join(DATA_DIR, "jobs_classified_snapshot.csv")
 SENT_IDS_PATH = os.path.join(DATA_DIR, "sent_ids.txt")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8080/api/job-postings")
+DEFAULT_EMPTY_COLS = ["region_sido", "region_sigungu"]
 
 
 def _load_sent_ids() -> set[str]:
@@ -44,8 +45,9 @@ def _is_ready_to_send(row: dict) -> bool:
 
 
 def _post_job(row: dict) -> bool:
+    payload = {**row, **{col: row.get(col, "") for col in DEFAULT_EMPTY_COLS}}
     try:
-        res = requests.post(BACKEND_URL, json=row, timeout=10)
+        res = requests.post(BACKEND_URL, json=payload, timeout=10)
         res.raise_for_status()
         return True
     except requests.RequestException as e:
