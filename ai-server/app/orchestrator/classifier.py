@@ -9,6 +9,7 @@ data/jobs_geocoded.csv를 AI 직종 분류로 보강해 data/jobs_classified.csv
 import csv
 import json
 import os
+import shutil
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -21,14 +22,14 @@ load_dotenv(os.path.join(_AI_SERVER_ROOT, ".env"))
 
 from google import genai
 
-BASE_DIR = "."
-DATA_DIR = os.path.join(BASE_DIR, "data")
+DATA_DIR = os.path.join(_AI_SERVER_ROOT, "data")
 INPUT_CSV = os.path.join(DATA_DIR, "jobs_geocoded.csv")
+SNAPSHOT_CSV = os.path.join(DATA_DIR, "jobs_geocoded_snapshot.csv")
 OUTPUT_CSV = os.path.join(DATA_DIR, "jobs_classified.csv")
 KSCO_JSON = os.path.join(_AI_SERVER_ROOT, "resources", "ksco_2025_reverse.json")
 
 BATCH_SIZE = 20
-MAX_WORKERS = 8
+MAX_WORKERS = 4
 
 # Gemma RPD 1500 : Flash Lite RPD 500 = 3:1 비율
 MODEL_CYCLE = [
@@ -47,10 +48,15 @@ def _load_ksco() -> dict:
 
 
 def _load_input() -> tuple[list[str], list[dict]]:
-    with open(INPUT_CSV, newline="", encoding="utf-8") as f:
+    with open(SNAPSHOT_CSV, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         fieldnames = list(reader.fieldnames or [])
-        rows = list(reader)
+        rows = []
+        for row in reader:
+            try:
+                rows.append(dict(row))
+            except Exception:
+                pass
     return fieldnames, rows
 
 
@@ -156,14 +162,17 @@ def _write_output(fieldnames: list[str], rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
-def main() -> None:
+def main() -> str | None:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         print("[ERROR] GEMINI_API_KEY 환경변수 없음", file=sys.stderr)
         sys.exit(1)
     if not os.path.exists(INPUT_CSV):
-        print(f"[ERROR] 입력 파일 없음: {INPUT_CSV}", file=sys.stderr)
-        sys.exit(1)
+        print(f"[INFO] 입력 파일 없음, 대기 중: {INPUT_CSV}", file=sys.stderr)
+        return "no_work"
+    if os.path.exists(SNAPSHOT_CSV):
+        os.remove(SNAPSHOT_CSV)
+    shutil.copy2(INPUT_CSV, SNAPSHOT_CSV)
     if not os.path.exists(KSCO_JSON):
         print(f"[ERROR] KSCO 파일 없음: {KSCO_JSON}", file=sys.stderr)
         sys.exit(1)
@@ -188,7 +197,7 @@ def main() -> None:
 
     if not pending_indices:
         print("모든 행 분류 완료.")
-        return
+        return "no_work"
 
     batches = [
         pending_indices[i:i + BATCH_SIZE]
@@ -226,7 +235,13 @@ def main() -> None:
     _write_output(fieldnames, rows)
     print(f"\n완료: {total_rows}행, 분류 성공 {sum(1 for row in rows if _is_classified(row))}건")
     print(f"출력: {OUTPUT_CSV}")
+    return None
 
 
 if __name__ == "__main__":
-    main()
+    IDLE_INTERVAL = 30 * 60
+    while True:
+        result = main()
+        if result == "no_work":
+            print(f"[분류기] 새 데이터 없음 — {IDLE_INTERVAL // 60}분 후 재시도")
+            time.sleep(IDLE_INTERVAL)
