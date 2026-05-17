@@ -39,3 +39,5 @@ build/
 **/controller/TestJobPostingApiController.java
 **/model/testjobposting/TestJobPosting.java
 **/repository/TestJobPostingRepository.java
+**/controller/TestJobPostingViewController.java
+**/templates/testjobposting/list.html
