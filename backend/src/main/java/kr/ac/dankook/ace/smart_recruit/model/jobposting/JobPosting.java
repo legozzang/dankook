@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 import jakarta.persistence.*;
-import kr.ac.dankook.ace.smart_recruit.model.employer.Employer;
 import kr.ac.dankook.ace.smart_recruit.model.jobpostingaisummary.JobPostingAiSummary;
 import kr.ac.dankook.ace.smart_recruit.model.postingcomment.PostingComment;
 import kr.ac.dankook.ace.smart_recruit.model.scrap.Scrap;
@@ -25,11 +24,6 @@ public class JobPosting {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    // company_id (FK)
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "company_id", nullable = false)
-    private Employer employer;
 
     // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
     @OneToOne(mappedBy = "jobPosting")
@@ -72,8 +66,41 @@ public class JobPosting {
     @Column(name = "source_type", nullable = false, length = 20)
     private JobSourceType sourceType;
 
-    @Column(name = "external_url", length = 500)
+    @Column(name = "external_url", length = 1024)
     private String externalUrl;
+
+    @Column(name = "company", nullable = false, length = 255)
+    private String company;
+
+    @Column(name = "latitude", nullable = false)
+    private Double latitude;
+
+    @Column(name = "longitude", nullable = false)
+    private Double longitude;
+
+    @Column(name = "region_sido", nullable = false, length = 50)
+    private String regionSido;
+
+    @Column(name = "region_sigungu", nullable = false, length = 100)
+    private String regionSigungu;
+
+    @Column(name = "pay_type", length = 20)
+    private String payType;
+
+    @Column(name = "pay_amount")
+    private Integer payAmount;
+
+    @Column(name = "job_type_major", nullable = false, length = 100)
+    private String jobTypeMajor;
+
+    @Column(name = "job_type_mid", nullable = false, length = 100)
+    private String jobTypeMid;
+
+    @Column(name = "job_type_minor", nullable = false, length = 100)
+    private String jobTypeMinor;
+
+    @Column(name = "job_type_detail", nullable = false, length = 100)
+    private String jobTypeDetail;
 
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
@@ -83,7 +110,6 @@ public class JobPosting {
 
     // 생성자
     public JobPosting(
-            Employer employer,
             String title,
             String content,
             String region,
@@ -91,9 +117,19 @@ public class JobPosting {
             JobStatus status,
             String deadline,
             JobSourceType sourceType,
-            String externalUrl
+            String externalUrl,
+            String company,
+            Double latitude,
+            Double longitude,
+            String regionSido,
+            String regionSigungu,
+            String payType,
+            Integer payAmount,
+            String jobTypeMajor,
+            String jobTypeMid,
+            String jobTypeMinor,
+            String jobTypeDetail
     ) {
-        this.employer = employer;
         this.title = title;
         this.content = content;
         this.region = region;
@@ -102,6 +138,17 @@ public class JobPosting {
         this.deadline = deadline;
         this.sourceType = sourceType;
         this.externalUrl = externalUrl;
+        this.company = company;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.regionSido = regionSido;
+        this.regionSigungu = regionSigungu;
+        this.payType = payType;
+        this.payAmount = payAmount;
+        this.jobTypeMajor = jobTypeMajor;
+        this.jobTypeMid = jobTypeMid;
+        this.jobTypeMinor = jobTypeMinor;
+        this.jobTypeDetail = jobTypeDetail;
     }
 
     @PrePersist
