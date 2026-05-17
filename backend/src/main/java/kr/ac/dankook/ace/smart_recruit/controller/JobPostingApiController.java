@@ -36,7 +36,8 @@ public class JobPostingApiController {
                         jp.getSourceType().name(),
                         jp.getExternalUrl(),
                         jp.getCreatedAt() != null ? jp.getCreatedAt().toString() : null,
-                        jp.getCompany()
+                        jp.getCompany(),
+                        jp.getWelfare()
                 ))
                 .toList();
         return ResponseEntity.ok(result);
@@ -63,7 +64,8 @@ public class JobPostingApiController {
                 request.jobTypeMajor() != null ? request.jobTypeMajor() : "",
                 request.jobTypeMid() != null ? request.jobTypeMid() : "",
                 request.jobTypeMinor() != null ? request.jobTypeMinor() : "",
-                request.jobTypeDetail() != null ? request.jobTypeDetail() : ""
+                request.jobTypeDetail() != null ? request.jobTypeDetail() : "",
+                request.welfare()
         ));
         return ResponseEntity.status(201).build();
     }
@@ -95,7 +97,8 @@ public class JobPostingApiController {
             String sourceType,
             String externalUrl,
             String createdAt,
-            String company
+            String company,
+            String welfare
     ) {
     }
 
@@ -118,7 +121,8 @@ public class JobPostingApiController {
             @JsonProperty("job_type_major") String jobTypeMajor,
             @JsonProperty("job_type_mid") String jobTypeMid,
             @JsonProperty("job_type_minor") String jobTypeMinor,
-            @JsonProperty("job_type_detail") String jobTypeDetail
+            @JsonProperty("job_type_detail") String jobTypeDetail,
+            String welfare
     ) {
     }
 }

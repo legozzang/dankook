@@ -102,6 +102,9 @@ public class JobPosting {
     @Column(name = "job_type_detail", nullable = false, length = 100)
     private String jobTypeDetail;
 
+    @Column(name = "welfare", columnDefinition = "TEXT")
+    private String welfare;
+
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
@@ -128,7 +131,8 @@ public class JobPosting {
             String jobTypeMajor,
             String jobTypeMid,
             String jobTypeMinor,
-            String jobTypeDetail
+            String jobTypeDetail,
+            String welfare
     ) {
         this.title = title;
         this.content = content;
@@ -149,6 +153,7 @@ public class JobPosting {
         this.jobTypeMid = jobTypeMid;
         this.jobTypeMinor = jobTypeMinor;
         this.jobTypeDetail = jobTypeDetail;
+        this.welfare = welfare;
     }
 
     @PrePersist
