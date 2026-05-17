@@ -64,19 +64,22 @@ def _is_classified(row: dict) -> bool:
     return bool(row.get("job_type_detail", "").strip())
 
 
-def _load_existing_results(fieldnames: list[str], total_rows: int) -> list[dict] | None:
+def _load_existing_results() -> dict[str, dict]:
+    """external_url → row (job_type_detail이 있는 행만)"""
     if not os.path.exists(OUTPUT_CSV):
-        return None
+        return {}
 
+    result = {}
     with open(OUTPUT_CSV, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        rows = list(reader)
-
-    if reader.fieldnames != fieldnames or len(rows) != total_rows:
-        print("[INFO] 출력 파일 구조 불일치 — 재생성")
-        return None
-
-    return rows
+        for row in reader:
+            try:
+                url = row.get("external_url", "").strip()
+                if url and row.get("job_type_detail", "").strip():
+                    result[url] = dict(row)
+            except Exception:
+                pass
+    return result
 
 
 def _empty_classification() -> dict:
@@ -185,11 +188,15 @@ def main() -> str | None:
     fieldnames = fieldnames_in + [col for col in NEW_COLS if col not in fieldnames_in]
     total_rows = len(input_rows)
 
-    existing_rows = _load_existing_results(fieldnames, total_rows)
-    rows = existing_rows if existing_rows is not None else [
-        {**row, **{col: row.get(col, "") for col in NEW_COLS}}
-        for row in input_rows
-    ]
+    existing = _load_existing_results()
+    rows = []
+    for row in input_rows:
+        url = row.get("external_url", "").strip()
+        if url and url in existing:
+            merged = {**row, **{col: existing[url].get(col, "") for col in NEW_COLS}}
+        else:
+            merged = {**row, **{col: row.get(col, "") for col in NEW_COLS}}
+        rows.append(merged)
 
     pending_indices = [idx for idx, row in enumerate(rows) if not _is_classified(row)]
     done_count = total_rows - len(pending_indices)
