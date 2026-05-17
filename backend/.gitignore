@@ -35,9 +35,3 @@ build/
 ### VS Code ###
 .vscode/
 
-### Test files ###
-**/controller/TestJobPostingApiController.java
-**/model/testjobposting/TestJobPosting.java
-**/repository/TestJobPostingRepository.java
-**/controller/TestJobPostingViewController.java
-**/templates/testjobposting/list.html
