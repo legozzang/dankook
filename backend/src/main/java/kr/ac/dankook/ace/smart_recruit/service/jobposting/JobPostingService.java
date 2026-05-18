@@ -46,6 +46,38 @@ public class JobPostingService {
         return jobPostingRepository.findByIdWithEmployerAndAiSummary(id).map(this::toCard);
     }
 
+    public CoordinateStatus coordinateStatus() {
+        List<MissingCoordinate> missingCoordinates = jobPostingRepository.findAllMissingCoordinateWithEmployer().stream()
+                .map(jobPosting -> MissingCoordinate.from(jobPosting, locationLabel(jobPosting)))
+                .toList();
+        return new CoordinateStatus(missingCoordinates.size(), missingCoordinates);
+    }
+
+    @Transactional
+    public CoordinateUpdateResult updateMissingCoordinates() {
+        List<JobPosting> jobPostings = jobPostingRepository.findAllMissingCoordinateWithEmployer();
+        int updatedCount = 0;
+        List<MissingCoordinate> stillMissing = new ArrayList<>();
+
+        for (JobPosting jobPosting : jobPostings) {
+            String location = locationLabel(jobPosting);
+            if (isBlank(location) || "위치 미등록".equals(location)) {
+                stillMissing.add(MissingCoordinate.from(jobPosting, location));
+                continue;
+            }
+
+            Optional<GeocodingService.Coordinate> coordinate = geocodingService.geocode(location);
+            if (coordinate.isPresent()) {
+                jobPosting.updateLocation(coordinate.get().latitude(), coordinate.get().longitude());
+                updatedCount += 1;
+            } else {
+                stillMissing.add(MissingCoordinate.from(jobPosting, location));
+            }
+        }
+
+        return new CoordinateUpdateResult(jobPostings.size(), updatedCount, stillMissing);
+    }
+
     private JobPostingCard toCard(JobPosting jobPosting) {
         String location = locationLabel(jobPosting);
         String dong = dongLabel(jobPosting, location);
@@ -229,6 +261,27 @@ public class JobPostingService {
             double longitude,
             boolean exactLocation
     ) {}
+
+    public record CoordinateUpdateResult(
+            int targetCount,
+            int updatedCount,
+            List<MissingCoordinate> stillMissing
+    ) {}
+
+    public record CoordinateStatus(
+            int missingCount,
+            List<MissingCoordinate> missing
+    ) {}
+
+    public record MissingCoordinate(
+            Long id,
+            String title,
+            String location
+    ) {
+        private static MissingCoordinate from(JobPosting jobPosting, String location) {
+            return new MissingCoordinate(jobPosting.getId(), jobPosting.getTitle(), location);
+        }
+    }
 
     private record Coordinate(double latitude, double longitude) {}
 }

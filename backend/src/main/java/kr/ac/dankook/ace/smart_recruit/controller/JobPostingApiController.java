@@ -8,6 +8,9 @@ import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobSourceType;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus;
 import kr.ac.dankook.ace.smart_recruit.repository.EmployerRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
+import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService;
+import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.CoordinateStatus;
+import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.CoordinateUpdateResult;
 import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +29,7 @@ public class JobPostingApiController {
     private final JobPostingRepository jobPostingRepository;
     private final EmployerRepository employerRepository;
     private final GeocodingService geocodingService;
+    private final JobPostingService jobPostingService;
 
     // 공고 목록 조회
     @GetMapping
@@ -52,7 +56,7 @@ public class JobPostingApiController {
     // 공고 등록
     @PostMapping
     public ResponseEntity<Void> create(@RequestBody JobPostingRequest request) {
-        Employer employer = employerRepository.getReferenceById(AI_EMPLOYER_ID);
+        Employer employer = employerRepository.findById(AI_EMPLOYER_ID).orElse(null);
         Optional<GeocodingService.Coordinate> coordinate = resolveCoordinate(request);
         jobPostingRepository.save(new JobPosting(
                 employer,
@@ -68,6 +72,16 @@ public class JobPostingApiController {
                 coordinate.map(GeocodingService.Coordinate::longitude).orElse(null)
         ));
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/coordinate-status")
+    public ResponseEntity<CoordinateStatus> coordinateStatus() {
+        return ResponseEntity.ok(jobPostingService.coordinateStatus());
+    }
+
+    @PostMapping("/geocode-missing")
+    public ResponseEntity<CoordinateUpdateResult> geocodeMissingCoordinates() {
+        return ResponseEntity.ok(jobPostingService.updateMissingCoordinates());
     }
 
     private Optional<GeocodingService.Coordinate> resolveCoordinate(JobPostingRequest request) {
