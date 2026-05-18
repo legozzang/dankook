@@ -86,6 +86,9 @@ public class Member{
     @Column(name = "min_pay_amount")
     private Integer minPayAmount;
 
+    @Column(name = "email_notification", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private boolean emailNotification = false;
+
     // 아래 두 어노테이션으로 시간 자동 입력
     @PrePersist
     public void prePersist() {
@@ -121,6 +124,12 @@ public class Member{
 
     public void updateRole(Role role) {
         this.role = role;
+    }
+
+    public void updateEmailNotification(Boolean emailNotification) {
+        if (emailNotification != null) {
+            this.emailNotification = emailNotification;
+        }
     }
 
     public void updatePreferences(

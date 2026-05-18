@@ -128,6 +128,7 @@ public class AuthService {
                 request.getPreferredPayType(),
                 request.getMinPayAmount()
         );
+        member.updateEmailNotification(request.getEmailNotification());
     }
 
     // 회원 정보 조회
@@ -145,7 +146,8 @@ public class AuthService {
                 member.getPreferredJobTypeMinor(),
                 member.getPreferredJobTypeDetail(),
                 member.getPreferredPayType(),
-                member.getMinPayAmount()
+                member.getMinPayAmount(),
+                member.isEmailNotification()
         );
     }
 }
