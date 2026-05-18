@@ -1,83 +1,92 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title>Smart Recruit - 마이페이지</title>
-    <style>
-        .container { width: 500px; margin: 50px auto; border: 1px solid #ccc; padding: 20px; border-radius: 8px; }
-        .info-box { background: #f9f9f9; padding: 15px; margin-bottom: 20px; border-radius: 4px; }
-        .btn-update { background: #28a745; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; }
-        .btn-delete { background: #dc3545; color: white; border: none; padding: 10px 15px; cursor: pointer; margin-top: 20px; border-radius: 4px; }
-        .btn-home { background: #007bff; color: white; border: none; padding: 10px 15px; cursor: pointer; margin-left: 10px; border-radius: 4px; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Recruit - 마이페이지</title>
+  <style>
+    :root{
+      --bg:#f3f5f7; --card:#fff; --line:#d7dde4; --text:#1f2937; --muted:#667085;
+      --primary:#1f6fb2; --primary-strong:#185f99; --danger:#b42318; --radius:12px;
+    }
+    *{box-sizing:border-box} body{margin:0;font-family:"Noto Sans KR",Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:720px;margin:40px auto;padding:0 16px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin-bottom:16px}
+    h1{margin:0 0 16px;font-size:28px} h2{margin:0 0 10px;font-size:20px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .info{padding:12px;border:1px solid #e4e9f0;border-radius:10px;background:#fafbfc;margin-bottom:10px}
+    .label{color:var(--muted);font-size:13px} .value{font-size:16px;font-weight:700}
+    .btn{height:42px;border:none;border-radius:10px;padding:0 14px;font-weight:800;cursor:pointer}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:var(--primary-strong)}
+    .btn-ghost{background:#fff;color:var(--text);border:1px solid #cfd6df}
+    .btn-danger{background:#fff;color:var(--danger);border:1px solid #efc6c2}
+  </style>
 </head>
 <body>
-<div class="container">
-    <h2>내 계정 정보</h2>
-    <div class="info-box">
-        <!-- 서버에서 데이터를 받아와 동적으로 채울 부분 -->
-        <p><strong>이메일:</strong> <span id="displayEmail">로딩 중...</span></p>
-        <p><strong>닉네임:</strong> <span id="displayNickname">로딩 중...</span></p>
-        <button class="btn-update" onclick="location.href='/auth/edit-profile'">정보 수정하기</button>
-        <button class="btn-home" onclick="location.href='/main'">메인으로</button>
-    </div>
+  <main class="wrap">
+    <section class="card">
+      <h1>내 계정 정보</h1>
+      <div class="info"><div class="label">이메일</div><div class="value" id="displayEmail">로딩 중...</div></div>
+      <div class="info"><div class="label">닉네임</div><div class="value" id="displayNickname">로딩 중...</div></div>
+      <div class="row">
+        <button class="btn btn-primary" onclick="location.href='/auth/edit-profile'">정보 수정하기</button>
+        <button class="btn btn-ghost" onclick="location.href='/jobpostings'">메인으로</button>
+      </div>
+    </section>
 
-    <hr>
-    <h3>회원 탈퇴</h3>
-    <p style="color: #666; font-size: 0.9em;">탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
-    <button class="btn-delete" onclick="deleteAccount()">계정 삭제하기</button>
-</div>
+    <section class="card">
+      <h2>회원 탈퇴</h2>
+      <p style="color:#667085">탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
+      <button class="btn btn-danger" onclick="deleteAccount()">계정 삭제하기</button>
+    </section>
+  </main>
 
-<script>
+  <script>
     const token = localStorage.getItem('accessToken');
-
-    // 1. 초기 인증 체크
     if (!token) {
-        alert('로그인이 필요합니다.');
-        window.location.href = '/auth/login';
+      alert('로그인이 필요합니다.');
+      location.href = '/auth/login';
     }
 
-    // 2. 페이지 로드 시 유저 정보 불러오기
     window.onload = async function() {
-        try {
-            const response = await fetch('/auth/members/me', { // 회원 정보 조회 API 엔드포인트
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                document.getElementById('displayEmail').textContent = data.email;
-                document.getElementById('displayNickname').textContent = data.nickname;
-            } else if (response.status === 401) {
-                alert('세션이 만료되었습니다. 다시 로그인해주세요.');
-                localStorage.clear();
-                location.href = '/auth/login';
-            }
-        } catch (error) {
-            console.error('정보 로드 실패:', error);
-        }
-    };
-
-    // 3. 회원 탈퇴 (Delete)
-    async function deleteAccount() {
-        if (!confirm('정말로 탈퇴하시겠습니까? 모든 정보가 파기됩니다.')) return;
-
-        // URL에서 ${memberId}를 제거하고 /me로 요청
-        const response = await fetch('/auth/delete/me', {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+      try {
+        const response = await fetch('/auth/members/me', {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (response.ok || response.status === 204) {
-            alert('탈퇴 처리가 완료되었습니다. 이용해 주셔서 감사합니다.');
-            localStorage.clear();
-            window.location.href = '/main';
-        } else {
-            const errorMsg = await response.text();
-            alert('탈퇴 실패: ' + (errorMsg || '권한이 없습니다.'));
+        if (response.ok) {
+          const data = await response.json();
+          document.getElementById('displayEmail').textContent = data.email;
+          document.getElementById('displayNickname').textContent = data.nickname;
+        } else if (response.status === 401) {
+          alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+          localStorage.clear();
+          location.href = '/auth/login';
         }
+      } catch (error) {
+        console.error('정보 로드 실패:', error);
+      }
+    };
+
+    async function deleteAccount() {
+      if (!confirm('정말로 탈퇴하시겠습니까? 모든 정보가 파기됩니다.')) return;
+
+      const response = await fetch('/auth/delete/me', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok || response.status === 204) {
+        alert('탈퇴 처리가 완료되었습니다.');
+        localStorage.clear();
+        location.href = '/jobpostings';
+      } else {
+        const errorMsg = await response.text();
+        alert('탈퇴 실패: ' + (errorMsg || '권한이 없습니다.'));
+      }
     }
-</script>
+  </script>
 </body>
 </html>

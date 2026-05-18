@@ -36,17 +36,16 @@ public class AuthController {
         return "mypage"; // mypage.html
     }
 
+    @GetMapping("/edit-profile")
+    public String editProfilePage(){
+        return "edit-profile"; // templates/edit-profile.html
+    }
 
     @GetMapping("/members/me")
     @ResponseBody
     public ResponseEntity<MemberInfoResponse> getMemberInfo(@AuthenticationPrincipal User user) {
         MemberInfoResponse response = authService.getMemberInfo(user.getUsername());
         return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/edit-profile")
-    public String editProfilePage(){
-        return "edit-profile"; // templates/edit-profile.html
     }
 
     @PostMapping("/login")
