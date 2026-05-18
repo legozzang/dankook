@@ -25,8 +25,21 @@ RESTART_DELAY = 5
 
 
 def _start(module: str) -> subprocess.Popen:
-    print(f"[supervisor] 시작: {module}")
-    return subprocess.Popen([sys.executable, "-m", module], cwd=_AI_SERVER_ROOT)
+    stage_name = module.split(".")[-1]  # e.g. "crawl"
+    log_dir = os.path.join(_AI_SERVER_ROOT, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, f"{stage_name}.log")
+    log_file = open(log_path, "a", encoding="utf-8")
+    print(f"[supervisor] 시작: {module} → logs/{stage_name}.log")
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    return subprocess.Popen(
+        [sys.executable, "-m", module],
+        cwd=_AI_SERVER_ROOT,
+        stdout=log_file,
+        stderr=log_file,
+        env=env,
+    )
 
 
 def run():
