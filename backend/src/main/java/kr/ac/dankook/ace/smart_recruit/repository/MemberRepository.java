@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import kr.ac.dankook.ace.smart_recruit.model.member.Member;
+import kr.ac.dankook.ace.smart_recruit.model.member.Role;
 
 import java.util.Optional;
 
@@ -15,4 +16,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     boolean existsByEmail(String email);
 
     boolean existsByNickname(String nickname);
+
+    long countByRole(Role role);
 }
