@@ -33,8 +33,8 @@ public class SignUpRequest {
 
     @NotBlank(message = "역할(Role)을 입력해주세요.") // null과 빈 문자열 모두 방지
     @Pattern(
-        regexp = "^(SEEKER|EMPLOYER)$",
-        message = "역할(Role)은 'SEEKER' 또는 'EMPLOYER'여야 합니다."
+        regexp = "^(SEEKER)$",
+        message = "역할(Role)은 'SEEKER'여야 합니다."
     )
-    private String role; // "SEEKER" 또는 "EMPLOYER"
+    private String role; // "SEEKER"
 }
