@@ -22,7 +22,8 @@
         .salary-section { margin-top: 32px; }
         .salary-heading { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
         .salary-heading label { font-size: 14px; font-weight: 400; }
-        .salary-card { border: 1px solid #dbe2ea; border-radius: 6px; background: #fff; padding: 16px; }
+        .salary-card, .salary-empty { border: 1px solid #dbe2ea; border-radius: 6px; background: #fff; padding: 16px; }
+        .salary-empty { color: #667085; }
         .salary-card ol { margin: 0; padding-left: 22px; }
         .salary-card li { margin: 8px 0; font-size: 14px; }
         .bar { height: 16px; border-radius: 3px; min-width: 2px; }
@@ -59,6 +60,10 @@
         </select>
         <select name="jobTypeMid" id="dMid">
             <option value="">전체 중분류</option>
+        </select>
+        <select name="payType">
+            <option value="">급여유형 선택</option>
+            <option th:each="pt : ${payTypeList}" th:value="${pt}" th:text="${pt}" th:selected="${pt == selectedPayType}">시급</option>
         </select>
         <button type="submit">적용</button>
         <a href="/admin">초기화</a>
@@ -117,7 +122,10 @@
             <h2>급여 비교</h2>
             <label><input type="checkbox" id="vizToggle" onchange="toggleViz()"> 시각화</label>
         </div>
-        <div class="salary-grid">
+        <div th:if="${selectedPayType == ''}" class="salary-empty">
+            급여 유형을 선택하면 직종별·지역별 평균 급여를 비교할 수 있습니다.
+        </div>
+        <div th:if="${selectedPayType != ''}" class="salary-grid">
             <div class="salary-card">
                 <h3>직종별 평균 급여</h3>
                 <ol id="jobPayText">
@@ -178,11 +186,18 @@
     }
 
     function toggleViz() {
-        const viz = document.getElementById('vizToggle').checked;
-        document.getElementById('jobPayText').style.display = viz ? 'none' : '';
-        document.getElementById('jobPayTable').style.display = viz ? '' : 'none';
-        document.getElementById('regionPayText').style.display = viz ? 'none' : '';
-        document.getElementById('regionPayTable').style.display = viz ? '' : 'none';
+        const toggle = document.getElementById('vizToggle');
+        const jobText = document.getElementById('jobPayText');
+        const jobTable = document.getElementById('jobPayTable');
+        const regionText = document.getElementById('regionPayText');
+        const regionTable = document.getElementById('regionPayTable');
+        if (!toggle || !jobText || !jobTable || !regionText || !regionTable) return;
+
+        const viz = toggle.checked;
+        jobText.style.display = viz ? 'none' : '';
+        jobTable.style.display = viz ? '' : 'none';
+        regionText.style.display = viz ? 'none' : '';
+        regionTable.style.display = viz ? '' : 'none';
     }
 
     document.addEventListener('DOMContentLoaded', () => {
