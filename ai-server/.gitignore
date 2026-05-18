@@ -14,3 +14,7 @@ check_pay_type.py
 check_skip_reason.py
 migrate_region_depth.py
 
+# 로컬 모니터링
+logs/
+monitor.py
+
