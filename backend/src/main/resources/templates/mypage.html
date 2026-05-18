@@ -66,19 +66,19 @@
                 setText('displayEmail', data.email);
                 setText('displayNickname', data.nickname);
                 setText('displayRegion', joinConfigured([
-                    data.desiredRegionSido,
-                    data.desiredRegionSigungu,
-                    data.desiredRegionDong
+                    data.desired_region_sido,
+                    data.desired_region_sigungu,
+                    data.desired_region_dong
                 ]));
                 setText('displayJobType', joinConfigured([
-                    data.preferredJobTypeMajor,
-                    data.preferredJobTypeMid,
-                    data.preferredJobTypeMinor,
-                    data.preferredJobTypeDetail
+                    data.preferred_job_type_major,
+                    data.preferred_job_type_mid,
+                    data.preferred_job_type_minor,
+                    data.preferred_job_type_detail
                 ]));
-                setText('displayPayType', data.preferredPayType);
+                setText('displayPayType', data.preferred_pay_type);
                 document.getElementById('displayMinPay').textContent =
-                    data.minPayAmount > 0 ? data.minPayAmount.toLocaleString() + '원' : '미설정';
+                    data.min_pay_amount > 0 ? data.min_pay_amount.toLocaleString() + '원' : '미설정';
             } else if (response.status === 401 || response.status === 403) {
                 alert('로그인이 필요합니다.');
                 location.href = '/auth/login';
