@@ -9,10 +9,14 @@ import kr.ac.dankook.ace.smart_recruit.model.jobpostingaisummary.JobPostingAiSum
 import kr.ac.dankook.ace.smart_recruit.model.postingcomment.PostingComment;
 import kr.ac.dankook.ace.smart_recruit.model.scrap.Scrap;
 import lombok.*;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 롬복이 만들어주는 protected 생성자는 JPA가 객체를 생성하기에 충분
 @Entity
+@DynamicUpdate
 @Table(
     name = "job_postings",
     indexes = {
@@ -30,6 +34,7 @@ public class JobPosting {
     // employer_id (FK)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employer_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    @NotFound(action = NotFoundAction.IGNORE)
     private Employer employer;
 
     // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계

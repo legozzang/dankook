@@ -8,7 +8,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,14 +41,25 @@ public class GeocodingService {
             return Optional.empty();
         }
 
-        if (!isBlank(kakaoRestApiKey)) {
-            Optional<Coordinate> kakaoResult = geocodeWithKakao(address);
-            if (kakaoResult.isPresent()) {
-                return kakaoResult;
+        List<String> queries = geocodingQueries(address);
+
+        for (String query : queries) {
+            if (!isBlank(kakaoRestApiKey)) {
+                Optional<Coordinate> kakaoResult = geocodeWithKakao(query);
+                if (kakaoResult.isPresent()) {
+                    return kakaoResult;
+                }
             }
         }
 
-        return geocodeWithNominatim(address);
+        for (String query : queries) {
+            Optional<Coordinate> nominatimResult = geocodeWithNominatim(query);
+            if (nominatimResult.isPresent()) {
+                return nominatimResult;
+            }
+        }
+
+        return Optional.empty();
     }
 
     private Optional<Coordinate> geocodeWithKakao(String address) {
@@ -95,6 +110,42 @@ public class GeocodingService {
             ));
         }
         return Optional.empty();
+    }
+
+    private List<String> geocodingQueries(String address) {
+        String normalized = normalizeAddress(address);
+        Set<String> queries = new LinkedHashSet<>();
+        addIfPresent(queries, normalized);
+
+        String withoutFloor = normalized.replaceAll("\\s+\\d+\\s*층.*$", "").trim();
+        addIfPresent(queries, withoutFloor);
+
+        String roadOrDongAddress = withoutFloor.replaceAll("\\s+[^\\s]*(빌딩|타워|센터|상가|점|호)$", "").trim();
+        addIfPresent(queries, roadOrDongAddress);
+
+        String[] parts = roadOrDongAddress.split("\\s+");
+        if (parts.length > 3) {
+            addIfPresent(queries, String.join(" ", List.of(parts).subList(0, Math.min(parts.length, 5))));
+        }
+
+        return new ArrayList<>(queries);
+    }
+
+    private String normalizeAddress(String address) {
+        return address.replaceAll("[\\r\\n\\t]+", " ")
+                .replaceAll("\\([^)]*\\)", " ")
+                .replaceAll("\\[[^]]*]", " ")
+                .replace("지도보기", " ")
+                .replace("상세보기", " ")
+                .replace("근무지", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private void addIfPresent(Set<String> values, String value) {
+        if (!isBlank(value)) {
+            values.add(value.trim());
+        }
     }
 
     private boolean isBlank(String value) {
