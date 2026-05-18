@@ -60,8 +60,11 @@
 
         if (response.ok) {
           const data = await response.json();
-          localStorage.setItem('accessToken', data.accessToken);
-          localStorage.setItem('memberId', data.memberId);
+          localStorage.setItem('accessToken', data.access_token);
+          localStorage.setItem('memberId', data.member_id);
+
+          // 로그인 성공 메시지 알림 추가
+          alert('로그인 성공! 메인 페이지로 이동합니다.');
 
           const urlParams = new URLSearchParams(window.location.search);
           const redirectUrl = urlParams.get('redirect') || '/jobpostings';
