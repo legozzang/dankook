@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>관리자 대시보드 | Smart Recruit</title>
+    <style>
+        body { margin: 0; background: #f6f7f9; color: #1f2937; font-family: Arial, "Noto Sans KR", sans-serif; }
+        .page { max-width: 1180px; margin: 0 auto; padding: 32px 20px; }
+        nav { display: flex; gap: 10px; margin: 18px 0 24px; }
+        nav a { padding: 9px 13px; border: 1px solid #cfd6df; border-radius: 6px; background: #fff; color: #1f2937; text-decoration: none; font-weight: 700; }
+        nav a.active { border-color: #1769aa; color: #1769aa; background: #eaf3fb; }
+        .filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+        .filters select { min-height: 38px; min-width: 150px; border: 1px solid #cfd6df; border-radius: 6px; background: #fff; padding: 0 10px; }
+        .filters button, .filters a { padding: 9px 14px; border-radius: 6px; text-decoration: none; font-weight: 700; }
+        .filters button { background: #1769aa; color: #fff; border: none; cursor: pointer; }
+        .filters a { border: 1px solid #cfd6df; color: #1f2937; background: #fff; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .card { border: 1px solid #dbe2ea; border-radius: 6px; background: #fff; padding: 16px; }
+        .label { color: #667085; font-size: 13px; }
+        .value { margin-top: 8px; font-size: 28px; font-weight: 800; }
+        .tables, .salary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+        .salary-section { margin-top: 32px; }
+        .salary-heading { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+        .salary-heading label { font-size: 14px; font-weight: 400; }
+        .salary-card { border: 1px solid #dbe2ea; border-radius: 6px; background: #fff; padding: 16px; }
+        .salary-card ol { margin: 0; padding-left: 22px; }
+        .salary-card li { margin: 8px 0; font-size: 14px; }
+        .bar { height: 16px; border-radius: 3px; min-width: 2px; }
+        .bar.job { background: #1769aa; }
+        .bar.region { background: #059669; }
+        table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #dbe2ea; }
+        th, td { padding: 11px 12px; border-bottom: 1px solid #e7ebf0; text-align: left; font-size: 14px; }
+        th { background: #eef2f6; color: #4b5563; }
+        h1, h2, h3 { margin: 0; }
+        h2 { margin-bottom: 10px; font-size: 18px; }
+        h3 { margin-bottom: 12px; font-size: 16px; }
+    </style>
+</head>
+<body>
+<main class="page">
+    <h1>관리자 대시보드</h1>
+    <nav>
+        <a class="active" href="/admin">대시보드</a>
+        <a href="/admin/members">유저 관리</a>
+        <a href="/admin/job-postings">공고 관리</a>
+    </nav>
+
+    <form class="filters" method="get" action="/admin">
+        <select name="regionSido" id="dSido" onchange="updateSigungu('dSido', 'dSigungu')">
+            <option value="">전체 지역</option>
+            <option th:each="sido : ${sidoList}" th:value="${sido}" th:text="${sido}" th:selected="${sido == selectedSido}">서울</option>
+        </select>
+        <select name="regionSigungu" id="dSigungu">
+            <option value="">전체 시군구</option>
+        </select>
+        <select name="jobTypeMajor" id="dMajor" onchange="updateMid('dMajor', 'dMid')">
+            <option value="">전체 직종</option>
+            <option th:each="major : ${majorList}" th:value="${major}" th:text="${major}" th:selected="${major == selectedMajor}">음식서비스</option>
+        </select>
+        <select name="jobTypeMid" id="dMid">
+            <option value="">전체 중분류</option>
+        </select>
+        <button type="submit">적용</button>
+        <a href="/admin">초기화</a>
+    </form>
+
+    <section class="stats">
+        <div class="card"><div class="label">총 유저</div><div class="value" th:text="${totalMembers}">0</div></div>
+        <div class="card"><div class="label">SEEKER</div><div class="value" th:text="${seekerCount}">0</div></div>
+        <div class="card"><div class="label">ADMIN</div><div class="value" th:text="${adminCount}">0</div></div>
+        <div class="card"><div class="label">총 공고</div><div class="value" th:text="${totalJobPostings}">0</div></div>
+        <div class="card"><div class="label">OPEN</div><div class="value" th:text="${openCount}">0</div></div>
+        <div class="card"><div class="label">CLOSED</div><div class="value" th:text="${closedCount}">0</div></div>
+    </section>
+
+    <section class="tables">
+        <div>
+            <h2>지역별 공고 수</h2>
+            <table>
+                <thead><tr><th>지역</th><th>공고 수</th></tr></thead>
+                <tbody>
+                <tr th:each="entry : ${regionStats}">
+                    <td th:text="${entry.key}">서울 · 강남구</td>
+                    <td th:text="${entry.value}">0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <h2 th:text="${dashboardFilterLabel != '' ? dashboardFilterLabel + ' · 직종별 공고 수' : '직종별 공고 수'}">직종별 공고 수</h2>
+            <table>
+                <thead><tr><th>직종</th><th>공고 수</th></tr></thead>
+                <tbody>
+                <tr th:each="entry : ${jobTypeStats}">
+                    <td th:text="${entry.key}">음식서비스 · 한식조리사</td>
+                    <td th:text="${entry.value}">0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <h2 th:text="${dashboardFilterLabel != '' ? dashboardFilterLabel + ' · 급여유형별 평균 급여' : '급여유형별 평균 급여'}">급여유형별 평균 급여</h2>
+            <table>
+                <thead><tr><th>급여유형</th><th>평균 금액(원)</th></tr></thead>
+                <tbody>
+                <tr th:each="entry : ${payStats}">
+                    <td th:text="${entry.key}">월급</td>
+                    <td th:text="${#numbers.formatInteger(entry.value, 0, 'COMMA')}">0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="salary-section">
+        <div class="salary-heading">
+            <h2>급여 비교</h2>
+            <label><input type="checkbox" id="vizToggle" onchange="toggleViz()"> 시각화</label>
+        </div>
+        <div class="salary-grid">
+            <div class="salary-card">
+                <h3>직종별 평균 급여</h3>
+                <ol id="jobPayText">
+                    <li th:each="item : ${jobPayStats}"
+                        th:text="|${item.label} ${#numbers.formatInteger(item.avgPay, 1, 'COMMA')}원 (${item.count}건)|">직종 평균</li>
+                </ol>
+                <table id="jobPayTable" style="display:none">
+                    <tbody>
+                    <tr th:each="item : ${jobPayStats}">
+                        <td style="width:160px;font-size:13px" th:text="${item.label}">직종</td>
+                        <td><div class="bar job" th:style="|width:${item.barPct}%|"></div></td>
+                        <td style="font-size:13px;white-space:nowrap"
+                            th:text="|${#numbers.formatInteger(item.avgPay, 1, 'COMMA')}원 (${item.count}건)|">0원</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="salary-card">
+                <h3>지역별 평균 급여</h3>
+                <ol id="regionPayText">
+                    <li th:each="item : ${regionPayStats}"
+                        th:text="|${item.label} ${#numbers.formatInteger(item.avgPay, 1, 'COMMA')}원 (${item.count}건)|">지역 평균</li>
+                </ol>
+                <table id="regionPayTable" style="display:none">
+                    <tbody>
+                    <tr th:each="item : ${regionPayStats}">
+                        <td style="width:140px;font-size:13px" th:text="${item.label}">지역</td>
+                        <td><div class="bar region" th:style="|width:${item.barPct}%|"></div></td>
+                        <td style="font-size:13px;white-space:nowrap"
+                            th:text="|${#numbers.formatInteger(item.avgPay, 1, 'COMMA')}원 (${item.count}건)|">0원</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+<script th:inline="javascript">
+    const SIGUNGU_BY_SIDO = JSON.parse(/*[[${sigunguBySidoJson}]]*/ '{}');
+    const MID_BY_MAJOR = JSON.parse(/*[[${midByMajorJson}]]*/ '{}');
+    const SEL_SIGUNGU = /*[[${selectedSigungu}]]*/ '';
+    const SEL_MID = /*[[${selectedMid}]]*/ '';
+
+    function fillSelect(select, items, current) {
+        items.forEach((value) => select.add(new Option(value, value, value === current, value === current)));
+    }
+
+    function updateSigungu(sidoId, sigunguId) {
+        const select = document.getElementById(sigunguId);
+        select.innerHTML = '<option value="">전체 시군구</option>';
+        fillSelect(select, SIGUNGU_BY_SIDO[document.getElementById(sidoId).value] || [], SEL_SIGUNGU);
+    }
+
+    function updateMid(majorId, midId) {
+        const select = document.getElementById(midId);
+        select.innerHTML = '<option value="">전체 중분류</option>';
+        fillSelect(select, MID_BY_MAJOR[document.getElementById(majorId).value] || [], SEL_MID);
+    }
+
+    function toggleViz() {
+        const viz = document.getElementById('vizToggle').checked;
+        document.getElementById('jobPayText').style.display = viz ? 'none' : '';
+        document.getElementById('jobPayTable').style.display = viz ? '' : 'none';
+        document.getElementById('regionPayText').style.display = viz ? 'none' : '';
+        document.getElementById('regionPayTable').style.display = viz ? '' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateSigungu('dSido', 'dSigungu');
+        updateMid('dMajor', 'dMid');
+        toggleViz();
+    });
+</script>
+</body>
+</html>
