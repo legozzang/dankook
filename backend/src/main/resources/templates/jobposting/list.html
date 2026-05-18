@@ -320,7 +320,7 @@
                     <p class="filter-title">행정동 기준</p>
                     <div class="filter-row" role="group" aria-label="행정동 필터">
                         <button class="filter-button active" type="button" data-dong="all">전체</button>
-                        <button class="filter-button" type="button" th:each="dong : ${#sets.toSet(jobPostings.![dong])}" th:data-dong="${dong}" th:text="${dong}">죽전동</button>
+                        <button class="filter-button" type="button" th:each="dong : ${dongs}" th:data-dong="${dong}" th:text="${dong}">죽전동</button>
                     </div>
                 </div>
                 <span class="result-count"><strong id="visibleCount" th:text="${jobCount}">0</strong>개의 공고</span>
