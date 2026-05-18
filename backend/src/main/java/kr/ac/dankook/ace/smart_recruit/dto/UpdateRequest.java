@@ -19,7 +19,12 @@ public class UpdateRequest {
     private String nickname;
 
     private String desiredRegionSido;
+    private String desiredRegionSigungu;
+    private String desiredRegionDong;
     private String preferredJobTypeMajor;
+    private String preferredJobTypeMid;
+    private String preferredJobTypeMinor;
+    private String preferredJobTypeDetail;
     private String preferredPayType;
     private Integer minPayAmount;
 }
