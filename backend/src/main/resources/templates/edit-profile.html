@@ -30,44 +30,112 @@
         <input type="password" id="newPassword">
     </div>
 
+    <hr>
+    <h3>선호 조건 설정</h3>
+
+    <div class="form-group">
+        <label>희망 지역 (시/도)</label>
+        <input type="text" id="desiredRegionSido" placeholder="예: 서울, 경기">
+    </div>
+
+    <div class="form-group">
+        <label>희망 직종 (대분류)</label>
+        <input type="text" id="preferredJobTypeMajor" placeholder="예: 음식서비스, 경영·행정">
+    </div>
+
+    <div class="form-group">
+        <label>선호 급여 유형</label>
+        <select id="preferredPayType">
+            <option value="">선택 안 함</option>
+            <option value="시급">시급</option>
+            <option value="일급">일급</option>
+            <option value="주급">주급</option>
+            <option value="월급">월급</option>
+            <option value="연봉">연봉</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>희망 최소 급여 (원)</label>
+        <input type="number" id="minPayAmount" placeholder="예: 2000000">
+    </div>
+
     <button onclick="handleUpdate()">수정 완료</button>
     <button onclick="location.href='/auth/mypage'" style="background-color: #ccc;">취소</button>
 
     <script>
+        document.addEventListener('DOMContentLoaded', loadMemberInfo);
+
+        async function loadMemberInfo() {
+            try {
+                const token = localStorage.getItem('accessToken');
+                if (!token) return;
+
+                const response = await fetch('/auth/members/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                document.getElementById('desiredRegionSido').value = data.desiredRegionSido || '';
+                document.getElementById('preferredJobTypeMajor').value = data.preferredJobTypeMajor || '';
+                document.getElementById('preferredPayType').value = data.preferredPayType || '';
+                document.getElementById('minPayAmount').value = data.minPayAmount || '';
+            } catch (error) {
+                console.error('회원 정보 조회 실패:', error);
+            }
+        }
+
         async function handleUpdate() {
-            const token = localStorage.getItem('accessToken');
-            const nickname = document.getElementById('nicknameInput').value;
-            const currentPassword = document.getElementById('currentPassword').value;
-            const newPassword = document.getElementById('newPassword').value;
+            try {
+                const token = localStorage.getItem('accessToken');
+                const nickname = document.getElementById('nicknameInput').value;
+                const currentPassword = document.getElementById('currentPassword').value;
+                const newPassword = document.getElementById('newPassword').value;
+                const desiredRegionSido = document.getElementById('desiredRegionSido').value;
+                const preferredJobTypeMajor = document.getElementById('preferredJobTypeMajor').value;
+                const preferredPayType = document.getElementById('preferredPayType').value;
+                const minPayAmount = document.getElementById('minPayAmount').value;
 
-            // 값이 있는 필드만 객체에 담기
-            const updateData = {};
-            if (nickname) updateData.nickname = nickname;
-            if (newPassword) {
-                updateData.currentPassword = currentPassword;
-                updateData.newPassword = newPassword;
-            }
+                // 값이 있는 필드만 객체에 담기
+                const updateData = {};
+                if (nickname) updateData.nickname = nickname;
+                if (newPassword) {
+                    updateData.currentPassword = currentPassword;
+                    updateData.newPassword = newPassword;
+                }
+                if (desiredRegionSido) updateData.desiredRegionSido = desiredRegionSido;
+                if (preferredJobTypeMajor) updateData.preferredJobTypeMajor = preferredJobTypeMajor;
+                if (preferredPayType) updateData.preferredPayType = preferredPayType;
+                if (minPayAmount) updateData.minPayAmount = parseInt(minPayAmount);
 
-            if (Object.keys(updateData).length === 0) {
-                alert('수정할 정보를 입력해주세요.');
-                return;
-            }
+                if (Object.keys(updateData).length === 0) {
+                    alert('수정할 정보를 입력해주세요.');
+                    return;
+                }
 
-            const response = await fetch('/auth/update/me', {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(updateData)
-            });
+                const response = await fetch('/auth/update/me', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(updateData)
+                });
 
-            if (response.ok) {
-                alert('정보가 성공적으로 수정되었습니다.');
-                location.href = '/auth/mypage';
-            } else {
-                const errorMsg = await response.text();
-                alert('수정 실패: ' + errorMsg);
+                if (response.ok) {
+                    alert('정보가 성공적으로 수정되었습니다.');
+                    location.href = '/auth/mypage';
+                } else {
+                    const errorMsg = await response.text();
+                    alert('수정 실패: ' + errorMsg);
+                }
+            } catch (error) {
+                console.error('회원 정보 수정 실패:', error);
+                alert('수정 중 오류가 발생했습니다.');
             }
         }
     </script>

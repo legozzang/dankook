@@ -59,6 +59,18 @@ public class Member{
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "desired_region_sido", length = 50)
+    private String desiredRegionSido;
+
+    @Column(name = "preferred_job_type_major", length = 100)
+    private String preferredJobTypeMajor;
+
+    @Column(name = "preferred_pay_type", length = 20)
+    private String preferredPayType;
+
+    @Column(name = "min_pay_amount")
+    private Integer minPayAmount;
+
     // 아래 두 어노테이션으로 시간 자동 입력
     @PrePersist
     public void prePersist() {
@@ -90,5 +102,12 @@ public class Member{
 
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
+    }
+
+    public void updatePreferences(String desiredRegionSido, String preferredJobTypeMajor, String preferredPayType, Integer minPayAmount) {
+        if (desiredRegionSido != null) this.desiredRegionSido = desiredRegionSido;
+        if (preferredJobTypeMajor != null) this.preferredJobTypeMajor = preferredJobTypeMajor;
+        if (preferredPayType != null) this.preferredPayType = preferredPayType;
+        if (minPayAmount != null) this.minPayAmount = minPayAmount;
     }
 }

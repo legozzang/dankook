@@ -37,11 +37,16 @@ def _load_sent_ids() -> set[str]:
 
 
 def _is_ready_to_send(row: dict) -> bool:
-    return bool(
-        row.get("latitude", "").strip()
-        and row.get("longitude", "").strip()
-        and row.get("job_type_detail", "").strip()
-    )
+    lat = row.get("latitude", "").strip()
+    lon = row.get("longitude", "").strip()
+    if not lat or not lon or not row.get("job_type_detail", "").strip():
+        return False
+    try:
+        float(lat)
+        float(lon)
+        return True
+    except ValueError:
+        return False
 
 
 def _post_job(row: dict) -> bool:
