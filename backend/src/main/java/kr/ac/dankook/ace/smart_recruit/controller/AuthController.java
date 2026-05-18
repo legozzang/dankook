@@ -10,13 +10,16 @@ import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jakarta.validation.Valid;
 import kr.ac.dankook.ace.smart_recruit.dto.*;
+import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.service.AuthService;
 import lombok.RequiredArgsConstructor;
 
@@ -28,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
+    private final JobPostingRepository jobPostingRepository;
 
     @GetMapping("/login")
     public String loginPage() {
@@ -55,6 +59,7 @@ public class AuthController {
     @GetMapping("/edit-profile")
     public String editProfilePage(Model model){
         model.addAttribute("kscoHierarchyJson", buildKscoHierarchyJson());
+        model.addAttribute("sigunguBySidoJson", buildSigunguBySidoJson());
         return "edit-profile"; // templates/edit-profile.html
     }
 
@@ -133,6 +138,41 @@ public class AuthController {
         }
     }
 
+    private String buildSigunguBySidoJson() {
+        try {
+            List<Object[]> rows = jobPostingRepository.countGroupByRegion();
+            TreeMap<String, TreeSet<String>> grouped = new TreeMap<>();
+
+            for (Object[] row : rows) {
+                String sido = row[0] != null ? row[0].toString().trim() : "";
+                String sigungu = row[1] != null ? row[1].toString().trim() : "";
+                if (!sido.isBlank() && !sigungu.isBlank()) {
+                    grouped.computeIfAbsent(sido, ignored -> new TreeSet<>()).add(sigungu);
+                }
+            }
+
+            StringBuilder sb = new StringBuilder("{");
+            boolean firstSido = true;
+            for (Map.Entry<String, TreeSet<String>> entry : grouped.entrySet()) {
+                if (!firstSido) sb.append(',');
+                firstSido = false;
+                sb.append('"').append(escapeJson(entry.getKey())).append("\":[");
+
+                boolean firstSigungu = true;
+                for (String sigungu : entry.getValue()) {
+                    if (!firstSigungu) sb.append(',');
+                    firstSigungu = false;
+                    sb.append('"').append(escapeJson(sigungu)).append('"');
+                }
+                sb.append(']');
+            }
+            sb.append('}');
+            return sb.toString();
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+
     private Path resolveKscoPath() {
         Path[] candidates = {
                 Path.of("ai-server", "resources", "ksco_2025_reverse.json"),
@@ -186,6 +226,6 @@ public class AuthController {
     }
 
     private String escapeJson(String value) {
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+        return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

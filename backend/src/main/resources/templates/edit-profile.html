@@ -1,195 +1,210 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>Smart Recruit - 정보 수정</title>
     <style>
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; }
-        .hint { color: gray; font-size: 0.85em; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: #f5f7fa;
+            font-family: system-ui, -apple-system, 'Noto Sans KR', sans-serif;
+            color: #1f2937;
+            min-height: 100vh;
+            padding: 40px 16px;
+        }
+        .page { max-width: 680px; margin: 0 auto; }
+        .page-title { font-size: 24px; font-weight: 700; margin-bottom: 24px; color: #111827; }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08);
+            padding: 28px 32px;
+            margin-bottom: 16px;
+        }
+        .section-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #6b7280;
+            margin-bottom: 6px;
+            letter-spacing: .2px;
+        }
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #1f2937;
+            background: #fff;
+            transition: border-color .15s;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #1769aa;
+            box-shadow: 0 0 0 3px rgba(23,105,170,.1);
+        }
+        select:disabled { background: #f9fafb; color: #9ca3af; cursor: not-allowed; }
+        .hint { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+        .pay-row { display: grid; grid-template-columns: 160px 1fr; gap: 12px; align-items: end; }
+        .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+        .btn {
+            padding: 11px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: background .15s, transform .1s;
+        }
+        .btn:active { transform: scale(.98); }
+        .btn-primary { background: #1769aa; color: #fff; }
+        .btn-primary:hover { background: #145890; }
+        .btn-secondary { background: #f1f5f9; color: #4b5563; }
+        .btn-secondary:hover { background: #e5e9ef; }
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+            gap: 16px;
+        }
+        .toggle-label { font-size: 14px; color: #1f2937; }
+        .toggle-hint { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+        .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: #d1d5db;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: background .2s;
+        }
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 3px;
+            top: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform .2s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: #1769aa; }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+        @media (max-width: 720px) {
+            .card { padding: 22px 20px; }
+            .grid-2, .grid-3, .grid-4, .pay-row { grid-template-columns: 1fr; }
+            .actions { flex-direction: column-reverse; }
+            .btn { width: 100%; }
+        }
     </style>
 </head>
 <body>
-    <h2>내 정보 수정</h2>
-    
-    <div class="form-group">
-        <label>닉네임</label>
-        <input type="text" id="nicknameInput" placeholder="새 닉네임 입력">
+<div class="page">
+    <h1 class="page-title">내 정보 수정</h1>
+
+    <div class="card">
+        <div class="section-title">계정 정보</div>
+        <div class="form-group">
+            <label for="nicknameInput">닉네임</label>
+            <input type="text" id="nicknameInput" placeholder="새 닉네임 입력">
+        </div>
+        <div class="toggle-row" style="margin-top:8px">
+            <div>
+                <div class="toggle-label">이메일로 정보 받기</div>
+                <div class="toggle-hint">채용 추천, 공고 알림 등을 이메일로 받습니다</div>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="emailNotification">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
     </div>
 
-    <hr>
-    <p class="hint">비밀번호를 변경하려면 아래 정보를 모두 입력하세요.</p>
-    
-    <div class="form-group">
-        <label>현재 비밀번호</label>
-        <input type="password" id="currentPassword">
-    </div>
-    
-    <div class="form-group">
-        <label>새 비밀번호</label>
-        <input type="password" id="newPassword">
-    </div>
-
-    <hr>
-    <h3>선호 조건 설정</h3>
-
-    <div class="form-group">
-        <label>희망 지역 (시/도)</label>
-        <select id="regionSido">
-            <option value="">전체</option>
-        </select>
+    <div class="card">
+        <div class="section-title">비밀번호 변경</div>
+        <p class="hint" style="margin-bottom:16px">변경하지 않으려면 비워두세요.</p>
+        <div class="grid-2">
+            <div class="form-group">
+                <label for="currentPassword">현재 비밀번호</label>
+                <input type="password" id="currentPassword" placeholder="현재 비밀번호">
+            </div>
+            <div class="form-group">
+                <label for="newPassword">새 비밀번호</label>
+                <input type="password" id="newPassword" placeholder="새 비밀번호">
+            </div>
+        </div>
     </div>
 
-    <div class="form-group">
-        <label>희망 지역 (시/군/구)</label>
-        <select id="regionSigungu" disabled>
-            <option value="">전체</option>
-        </select>
+    <div class="card">
+        <div class="section-title">선호 조건</div>
+        <div class="form-group">
+            <label>희망 지역</label>
+            <div class="grid-3">
+                <select id="regionSido"><option value="">시/도</option></select>
+                <select id="regionSigungu" disabled><option value="">시/군/구</option></select>
+                <select id="regionDong" disabled><option value="">구/읍/면</option></select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>희망 직종</label>
+            <div class="grid-4">
+                <select id="jobMajor"><option value="">대분류</option></select>
+                <select id="jobMid" disabled><option value="">중분류</option></select>
+                <select id="jobMinor" disabled><option value="">소분류</option></select>
+                <select id="jobDetail" disabled><option value="">세분류</option></select>
+            </div>
+        </div>
+
+        <div class="pay-row">
+            <div class="form-group">
+                <label for="preferredPayType">선호 급여 유형</label>
+                <select id="preferredPayType">
+                    <option value="">선택 안 함</option>
+                    <option value="시급">시급</option>
+                    <option value="일급">일급</option>
+                    <option value="주급">주급</option>
+                    <option value="월급">월급</option>
+                    <option value="연봉">연봉</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="minPayAmount">최소 희망 급여 (원)</label>
+                <input type="number" id="minPayAmount" placeholder="예: 2000000">
+            </div>
+        </div>
     </div>
 
-    <div class="form-group">
-        <label>희망 지역 (구/읍/면)</label>
-        <select id="regionDong" disabled>
-            <option value="">전체</option>
-        </select>
+    <div class="actions">
+        <button class="btn btn-secondary" onclick="location.href='/auth/mypage'">취소</button>
+        <button class="btn btn-primary" onclick="handleUpdate()">저장하기</button>
     </div>
-
-    <div class="form-group">
-        <label>희망 직종 (대분류)</label>
-        <select id="jobMajor">
-            <option value="">전체</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label>희망 직종 (중분류)</label>
-        <select id="jobMid" disabled>
-            <option value="">전체</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label>희망 직종 (소분류)</label>
-        <select id="jobMinor" disabled>
-            <option value="">전체</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label>희망 직종 (세분류)</label>
-        <select id="jobDetail" disabled>
-            <option value="">전체</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label>선호 급여 유형</label>
-        <select id="preferredPayType">
-            <option value="">선택 안 함</option>
-            <option value="시급">시급</option>
-            <option value="일급">일급</option>
-            <option value="주급">주급</option>
-            <option value="월급">월급</option>
-            <option value="연봉">연봉</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label>희망 최소 급여 (원)</label>
-        <input type="number" id="minPayAmount" placeholder="예: 2000000">
-    </div>
-
-    <button onclick="handleUpdate()">수정 완료</button>
-    <button onclick="location.href='/auth/mypage'" style="background-color: #ccc;">취소</button>
-
+</div>
     <script th:inline="javascript">
         const KSCO_RAW = /*[[${kscoHierarchyJson}]]*/ '{}';
         const KSCO = typeof KSCO_RAW === 'string' ? JSON.parse(KSCO_RAW || '{}') : (KSCO_RAW || {});
-        const REGION_DATA = {
-            "서울": {
-                "종로구": ["청운효자동", "사직동", "혜화동"],
-                "강남구": ["역삼동", "삼성동", "대치동"],
-                "마포구": ["공덕동", "서교동", "상암동"]
-            },
-            "부산": {
-                "해운대구": ["우동", "중동", "좌동"],
-                "부산진구": ["부전동", "전포동", "가야동"],
-                "동래구": ["온천동", "사직동", "명륜동"]
-            },
-            "대구": {
-                "중구": ["동인동", "삼덕동", "남산동"],
-                "수성구": ["범어동", "만촌동", "지산동"],
-                "달서구": ["월성동", "상인동", "성서동"]
-            },
-            "인천": {
-                "남동구": ["구월동", "간석동", "논현동"],
-                "부평구": ["부평동", "삼산동", "청천동"],
-                "연수구": ["송도동", "연수동", "동춘동"]
-            },
-            "광주": {
-                "동구": ["충장동", "계림동", "학동"],
-                "서구": ["상무동", "화정동", "금호동"],
-                "광산구": ["수완동", "첨단동", "송정동"]
-            },
-            "대전": {
-                "서구": ["둔산동", "갈마동", "월평동"],
-                "유성구": ["온천동", "노은동", "관평동"],
-                "중구": ["은행선화동", "대흥동", "태평동"]
-            },
-            "울산": {
-                "남구": ["삼산동", "달동", "무거동"],
-                "중구": ["성안동", "태화동", "반구동"],
-                "울주군": ["범서읍", "언양읍", "온산읍"]
-            },
-            "세종": {
-                "세종시": ["조치원읍", "한솔동", "도담동"]
-            },
-            "경기": {
-                "수원시": ["장안구", "권선구", "팔달구", "영통구"],
-                "성남시": ["수정구", "중원구", "분당구"],
-                "용인시": ["처인구", "기흥구", "수지구"]
-            },
-            "강원": {
-                "춘천시": ["후평동", "석사동", "퇴계동"],
-                "원주시": ["단계동", "무실동", "반곡동"],
-                "강릉시": ["교동", "포남동", "주문진읍"]
-            },
-            "충북": {
-                "청주시": ["상당구", "서원구", "흥덕구", "청원구"],
-                "충주시": ["교현동", "연수동", "호암동"],
-                "제천시": ["중앙동", "청전동", "용두동"]
-            },
-            "충남": {
-                "천안시": ["동남구", "서북구"],
-                "아산시": ["온양동", "배방읍", "탕정면"],
-                "공주시": ["신관동", "웅진동", "유구읍"]
-            },
-            "전북": {
-                "전주시": ["완산구", "덕진구"],
-                "익산시": ["영등동", "모현동", "함열읍"],
-                "군산시": ["수송동", "나운동", "소룡동"]
-            },
-            "전남": {
-                "목포시": ["용당동", "상동", "옥암동"],
-                "여수시": ["여서동", "문수동", "소라면"],
-                "순천시": ["조례동", "연향동", "해룡면"]
-            },
-            "경북": {
-                "포항시": ["남구", "북구"],
-                "구미시": ["송정동", "인동동", "선산읍"],
-                "경산시": ["중방동", "하양읍", "진량읍"]
-            },
-            "경남": {
-                "창원시": ["의창구", "성산구", "마산합포구"],
-                "김해시": ["내외동", "장유동", "진영읍"],
-                "진주시": ["상대동", "평거동", "가좌동"]
-            },
-            "제주": {
-                "제주시": ["이도동", "연동", "애월읍"],
-                "서귀포시": ["동홍동", "대정읍", "성산읍"]
-            }
-        };
-
+        const SIGUNGU_BY_SIDO = JSON.parse(/*[[${sigunguBySidoJson}]]*/ '{}');
         document.addEventListener('DOMContentLoaded', loadMemberInfo);
 
         function getToken() {
@@ -226,18 +241,16 @@
             const sigungu = document.getElementById('regionSigungu');
             const dong = document.getElementById('regionDong');
 
-            fillSelect(sido, Object.keys(REGION_DATA));
+            fillSelect(sido, Object.keys(SIGUNGU_BY_SIDO));
             sido.disabled = false;
 
             sido.addEventListener('change', () => {
-                const sigunguMap = REGION_DATA[sido.value] || {};
-                fillSelect(sigungu, Object.keys(sigunguMap));
+                fillSelect(sigungu, SIGUNGU_BY_SIDO[sido.value] || []);
                 resetSelect(dong);
             });
 
             sigungu.addEventListener('change', () => {
-                const values = REGION_DATA[sido.value]?.[sigungu.value] || [];
-                fillSelect(dong, values);
+                resetSelect(dong);
             });
         }
 
@@ -271,9 +284,9 @@
             const sigungu = document.getElementById('regionSigungu');
             const dong = document.getElementById('regionDong');
 
-            sido.value = data.desiredRegionSido || '';
-            fillSelect(sigungu, Object.keys(REGION_DATA[sido.value] || {}), data.desiredRegionSigungu || '');
-            fillSelect(dong, REGION_DATA[sido.value]?.[sigungu.value] || [], data.desiredRegionDong || '');
+            sido.value = data.desired_region_sido || '';
+            fillSelect(sigungu, SIGUNGU_BY_SIDO[sido.value] || [], data.desired_region_sigungu || '');
+            resetSelect(dong);
         }
 
         function setJobValues(data) {
@@ -282,10 +295,10 @@
             const minor = document.getElementById('jobMinor');
             const detail = document.getElementById('jobDetail');
 
-            major.value = data.preferredJobTypeMajor || '';
-            fillSelect(mid, Object.keys(KSCO[major.value] || {}), data.preferredJobTypeMid || '');
-            fillSelect(minor, Object.keys(KSCO[major.value]?.[mid.value] || {}), data.preferredJobTypeMinor || '');
-            fillSelect(detail, Object.keys(KSCO[major.value]?.[mid.value]?.[minor.value] || {}), data.preferredJobTypeDetail || '');
+            major.value = data.preferred_job_type_major || '';
+            fillSelect(mid, Object.keys(KSCO[major.value] || {}), data.preferred_job_type_mid || '');
+            fillSelect(minor, Object.keys(KSCO[major.value]?.[mid.value] || {}), data.preferred_job_type_minor || '');
+            fillSelect(detail, Object.keys(KSCO[major.value]?.[mid.value]?.[minor.value] || {}), data.preferred_job_type_detail || '');
         }
 
         async function loadMemberInfo() {
@@ -302,8 +315,9 @@
                 const data = await response.json();
                 setRegionValues(data);
                 setJobValues(data);
-                document.getElementById('preferredPayType').value = data.preferredPayType || '';
-                document.getElementById('minPayAmount').value = data.minPayAmount || '';
+                document.getElementById('preferredPayType').value = data.preferred_pay_type || '';
+                document.getElementById('minPayAmount').value = data.min_pay_amount || '';
+                document.getElementById('emailNotification').checked = data.email_notification || false;
             } catch (error) {
                 console.error('회원 정보 조회 실패:', error);
             }
@@ -331,15 +345,16 @@
                     updateData.currentPassword = currentPassword;
                     updateData.newPassword = newPassword;
                 }
-                updateData.desiredRegionSido = desiredRegionSido;
-                updateData.desiredRegionSigungu = desiredRegionSigungu;
-                updateData.desiredRegionDong = desiredRegionDong;
-                updateData.preferredJobTypeMajor = preferredJobTypeMajor;
-                updateData.preferredJobTypeMid = preferredJobTypeMid;
-                updateData.preferredJobTypeMinor = preferredJobTypeMinor;
-                updateData.preferredJobTypeDetail = preferredJobTypeDetail;
-                updateData.preferredPayType = preferredPayType;
-                if (minPayAmount) updateData.minPayAmount = parseInt(minPayAmount);
+                updateData.desired_region_sido = desiredRegionSido;
+                updateData.desired_region_sigungu = desiredRegionSigungu;
+                updateData.desired_region_dong = desiredRegionDong;
+                updateData.preferred_job_type_major = preferredJobTypeMajor;
+                updateData.preferred_job_type_mid = preferredJobTypeMid;
+                updateData.preferred_job_type_minor = preferredJobTypeMinor;
+                updateData.preferred_job_type_detail = preferredJobTypeDetail;
+                updateData.preferred_pay_type = preferredPayType;
+                if (minPayAmount) updateData.min_pay_amount = parseInt(minPayAmount);
+                updateData.email_notification = document.getElementById('emailNotification').checked;
 
                 if (Object.keys(updateData).length === 0) {
                     alert('수정할 정보를 입력해주세요.');
@@ -367,3 +382,5 @@
     </script>
 </body>
 </html>
+
+
