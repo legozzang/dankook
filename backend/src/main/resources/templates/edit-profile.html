@@ -192,6 +192,18 @@
 
         document.addEventListener('DOMContentLoaded', loadMemberInfo);
 
+        function getToken() {
+            const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
+            return match ? match[1] : (localStorage.getItem('accessToken') || '');
+        }
+
+        function authHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const token = getToken();
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            return headers;
+        }
+
         function resetSelect(select, placeholder = '전체') {
             select.innerHTML = `<option value="">${placeholder}</option>`;
             select.disabled = true;
@@ -281,13 +293,8 @@
                 setupRegionCascade();
                 setupJobCascade();
 
-                const token = localStorage.getItem('accessToken');
-                if (!token) return;
-
                 const response = await fetch('/auth/members/me', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: authHeaders()
                 });
 
                 if (!response.ok) return;
@@ -304,7 +311,6 @@
 
         async function handleUpdate() {
             try {
-                const token = localStorage.getItem('accessToken');
                 const nickname = document.getElementById('nicknameInput').value;
                 const currentPassword = document.getElementById('currentPassword').value;
                 const newPassword = document.getElementById('newPassword').value;
@@ -342,10 +348,7 @@
 
                 const response = await fetch('/auth/update/me', {
                     method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: authHeaders(),
                     body: JSON.stringify(updateData)
                 });
 
