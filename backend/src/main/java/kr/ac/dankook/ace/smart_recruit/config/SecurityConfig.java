@@ -45,7 +45,10 @@ public class SecurityConfig {
                                 "/jobpostings",
                                 "/jobpostings/**",
                                 "/communities",
+                                // [임시] 로컬 테스트용 — 채용공고 화면·AI 파이프라인 업로드 경로 인증 해제
+                                // TODO: 운영 전 팀원과 협의 후 적절한 권한 정책으로 교체 필요
                                 "/api/job-postings",
+                                "/api/job-postings/**",
                                 "/auth/edit-profile"
                                 ).permitAll()
                 
@@ -57,6 +60,8 @@ public class SecurityConfig {
                                 "/auth/delete/me",
                                 "/auth/members/me"
                                 ).authenticated()
+
+                .requestMatchers("/admin/**").hasRole("ADMIN")
 
                 .anyRequest().authenticated() // 나머지는 인증 필요
             )
