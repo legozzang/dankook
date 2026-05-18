@@ -17,4 +17,9 @@ public class UpdateRequest {
     
     @Pattern(regexp = "^[a-zA-Z0-9가-힣]{2,10}$", message = "닉네임은 특수문자를 제외한 2~10자여야 합니다.")
     private String nickname;
+
+    private String desiredRegionSido;
+    private String preferredJobTypeMajor;
+    private String preferredPayType;
+    private Integer minPayAmount;
 }

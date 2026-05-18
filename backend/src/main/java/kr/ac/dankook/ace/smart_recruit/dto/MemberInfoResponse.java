@@ -8,4 +8,8 @@ import lombok.Getter;
 public class MemberInfoResponse {
     private String email;
     private String nickname;
+    private String desiredRegionSido;
+    private String preferredJobTypeMajor;
+    private String preferredPayType;
+    private Integer minPayAmount;
 }
