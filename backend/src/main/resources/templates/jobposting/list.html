@@ -154,7 +154,7 @@
         <tr th:each="jobPosting : ${jobPostings}">
             <td th:text="${jobPosting.id}">1</td>
             <td th:text="${jobPosting.title}">채용 공고 제목</td>
-            <td class="hide-mobile" th:text="${jobPosting.employer.companyName}">회사명</td>
+            <td class="hide-mobile" th:text="${jobPosting.company}">회사명</td>
             <td th:text="${jobPosting.region}">지역</td>
             <td class="hide-mobile" th:text="${jobPosting.jobType}">직무</td>
             <td th:text="${jobPosting.status}">OPEN</td>

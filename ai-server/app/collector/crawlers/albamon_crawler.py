@@ -15,7 +15,8 @@ class AlbamonCrawler(BaseCrawler):
     상세 페이지 __NEXT_DATA__ JSON에서 전체 필드 및 본문을 수집한다.
     """
 
-    NAME = "알바몬"
+    SOURCE_TYPE = SourceType.ALBAMON
+    NAME        = SOURCE_TYPE.label
 
     LIST_URL   = "https://www.albamon.com/jobs/total"
     DETAIL_URL = "https://www.albamon.com/jobs/detail/{recruit_no}"
@@ -26,12 +27,6 @@ class AlbamonCrawler(BaseCrawler):
         "sortType": "POSTED_DATE",
     }
 
-    HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/120.0.0.0 Safari/537.36"
-    }
-
     PAY_TYPE_MAP = {
         "HOURLY":  "시급",
         "DAILY":   "일급",
@@ -40,9 +35,6 @@ class AlbamonCrawler(BaseCrawler):
         "YEARLY":  "연봉",
         "PER":     "건별",
     }
-
-    def __init__(self, crawl_max_retries: int = 3, crawl_delay: float = 1.5, crawl_jitter: float = 1.0):
-        super().__init__(crawl_max_retries, crawl_delay, crawl_jitter)
 
     # ── 목록 페이지 파싱 ──────────────────────────────────────────────────────
 
@@ -79,15 +71,6 @@ class AlbamonCrawler(BaseCrawler):
 
         return []
 
-    # ── 수집 진입점 ───────────────────────────────────────────────────────────
-
-    def get_latest_id(self) -> int:
-        """목록 페이지 첫 번째 공고의 recruitNo를 최신 id로 반환한다."""
-        ids = self._get_page_ids(1)
-        if not ids:
-            raise RuntimeError("[ERROR] 알바몬 목록 페이지에서 최신 recruitNo를 찾을 수 없음")
-        return max(ids)
-
     # ── 내부 헬퍼 ─────────────────────────────────────────────────────────────
 
     def _build_item_url(self, item_id: int) -> str:
@@ -98,12 +81,6 @@ class AlbamonCrawler(BaseCrawler):
         """URL의 경로 마지막 숫자 세그먼트에서 id를 추출한다."""
         m = re.search(r"/detail/(\d+)", url)
         return int(m.group(1)) if m else None
-
-    def _fetch(self, url: str) -> str:
-        """HTTP GET 요청으로 HTML을 가져온다."""
-        response = requests.get(url, headers=self.HEADERS, timeout=10)
-        response.raise_for_status()
-        return response.text
 
     @staticmethod
     def _extract_next_data(html: str) -> Optional[dict]:
