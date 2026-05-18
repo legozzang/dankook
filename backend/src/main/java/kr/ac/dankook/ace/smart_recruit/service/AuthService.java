@@ -119,7 +119,12 @@ public class AuthService {
 
         member.updatePreferences(
                 request.getDesiredRegionSido(),
+                request.getDesiredRegionSigungu(),
+                request.getDesiredRegionDong(),
                 request.getPreferredJobTypeMajor(),
+                request.getPreferredJobTypeMid(),
+                request.getPreferredJobTypeMinor(),
+                request.getPreferredJobTypeDetail(),
                 request.getPreferredPayType(),
                 request.getMinPayAmount()
         );
@@ -133,7 +138,12 @@ public class AuthService {
                 member.getEmail(),
                 member.getNickname(),
                 member.getDesiredRegionSido(),
+                member.getDesiredRegionSigungu(),
+                member.getDesiredRegionDong(),
                 member.getPreferredJobTypeMajor(),
+                member.getPreferredJobTypeMid(),
+                member.getPreferredJobTypeMinor(),
+                member.getPreferredJobTypeDetail(),
                 member.getPreferredPayType(),
                 member.getMinPayAmount()
         );
