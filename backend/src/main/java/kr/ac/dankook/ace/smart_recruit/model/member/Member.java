@@ -6,7 +6,6 @@ import java.util.*;
 import jakarta.persistence.*;
 import kr.ac.dankook.ace.smart_recruit.model.community.Community;
 import kr.ac.dankook.ace.smart_recruit.model.communitycomment.CommunityComment;
-import kr.ac.dankook.ace.smart_recruit.model.employer.Employer;
 import kr.ac.dankook.ace.smart_recruit.model.postingcomment.PostingComment;
 import kr.ac.dankook.ace.smart_recruit.model.scrap.Scrap;
 import lombok.*;
@@ -21,18 +20,6 @@ public class Member{
     @GeneratedValue(strategy = GenerationType.IDENTITY) // PK생성 전략을 데이터베이스에 위임(MySQL의 AUTO_INCREMENT 사용)
     private Long id;
     
-    // DB 테이블에는 아래 Column이 생기지 않음 자바 객체 세상에만 존재하는 필드
-    // 논리적으로 나를 참조하는 곳은 member라는 곳이야 라고 알려줌
-    // 내부적으로 일어나는 일 (비하인드 스토리)
-    // 개발자가 자바 코드에서 member.getEmployer()를 호출하는 순간, JPA는 다음과 같은 논리로 동작
-    // "오, 이 Member 객체의 ID가 1이네?" (메모리 확인)
-    // "근데 이 녀석은 Employer랑 1:1 관계고, 주인은 Employer네?" (mappedBy 설정 확인)
-    // "그럼 employers 테이블에 가서 member_id가 1인 데이터를 찾아오면 되겠군!"
-    // SELECT * FROM employers WHERE member_id = 1; (실제 SQL 실행)
-    // 그래서 실제론 employerId가 뭔지 몰라야하지만 연관관계 매핑을 통해 Id만 가지고 employerId를 알 수 있음 (JPA덕분)
-    @OneToOne(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Employer employer; // 다리: "나랑 연결된 업체는 여기야"
-
     // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostingComment> postingComments = new ArrayList<>();
