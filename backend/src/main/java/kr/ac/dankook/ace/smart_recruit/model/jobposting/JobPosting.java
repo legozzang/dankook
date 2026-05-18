@@ -28,8 +28,8 @@ public class JobPosting {
     private Long id;
 
     // employer_id (FK)
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "employer_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employer_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Employer employer;
 
     // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계

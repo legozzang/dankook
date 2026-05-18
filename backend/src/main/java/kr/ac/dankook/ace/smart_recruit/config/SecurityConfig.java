@@ -42,6 +42,10 @@ public class SecurityConfig {
                                 "/auth/mypage", 
                                 "/main", 
                                 "/jobs/list",
+                                "/jobpostings",
+                                "/jobpostings/**",
+                                "/communities",
+                                "/api/job-postings",
                                 "/auth/edit-profile"
                                 ).permitAll()
                 
