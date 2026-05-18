@@ -391,6 +391,7 @@
     let selectedRadius = "all";
     let selectedDong = "all";
     let map;
+    let radiusCircle = null;
     const markers = new Map();
 
     function distanceKm(a, b) {
@@ -413,36 +414,73 @@
         card.scrollIntoView({block: "nearest"});
     }
 
-    function applyFilters() {
-        let count = 0;
-        const visibleMarkers = [];
-
-        cards.forEach((card) => {
-            const point = {lat: Number(card.dataset.lat), lng: Number(card.dataset.lng)};
-            const inRadius = selectedRadius === "all" || distanceKm(campus, point) <= Number(selectedRadius);
-            const inDong = selectedDong === "all" || card.dataset.dong === selectedDong;
-            const visible = inRadius && inDong;
-            const marker = markers.get(card.dataset.id);
-
-            card.hidden = !visible;
-            if (marker) {
-                if (visible) {
-                    marker.addTo(map);
-                    visibleMarkers.push(marker);
-                } else {
-                    marker.remove();
-                }
-            }
-            if (visible) {
-                count += 1;
-            }
-        });
-
-        visibleCount.textContent = count;
-        if (visibleMarkers.length > 0) {
-            map.fitBounds(L.featureGroup(visibleMarkers).getBounds().pad(0.22), {maxZoom: 15});
+    function updateRadiusCircle() {
+        if (!map) {
+            return;
         }
+
+        if (radiusCircle) {
+            radiusCircle.remove();
+            radiusCircle = null;
+        }
+
+        if (selectedRadius === "all") {
+            return;
+        }
+
+        radiusCircle = L.circle([campus.lat, campus.lng], {
+            radius: Number(selectedRadius) * 1000,
+            color: "#1769aa",
+            fillColor: "#1769aa",
+            fillOpacity: 0.12,
+            weight: 1
+        }).addTo(map);
     }
+    
+function applyFilters() {
+    let count = 0;
+    const visibleMarkers = [];
+
+    cards.forEach((card) => {
+        const isExactLocation = card.dataset.exactLocation === "true";
+        const lat = Number(card.dataset.lat);
+        const lng = Number(card.dataset.lng);
+        const hasValidPoint = isExactLocation && !Number.isNaN(lat) && !Number.isNaN(lng);
+
+        const point = {lat, lng};
+
+        const inRadius =
+            selectedRadius === "all" ||
+            (hasValidPoint && distanceKm(campus, point) <= Number(selectedRadius));
+
+        const inDong =
+            selectedDong === "all" || card.dataset.dong === selectedDong;
+
+        const visible = inRadius && inDong;
+        const marker = markers.get(card.dataset.id);
+
+        card.hidden = !visible;
+
+        if (marker) {
+            if (visible) {
+                marker.addTo(map);
+                visibleMarkers.push(marker);
+            } else {
+                marker.remove();
+            }
+        }
+
+        if (visible) {
+            count += 1;
+        }
+    });
+
+    visibleCount.textContent = count;
+
+    if (visibleMarkers.length > 0) {
+        map.fitBounds(L.featureGroup(visibleMarkers).getBounds().pad(0.22), {maxZoom: 15});
+    }
+}
 
     function initMap() {
         map = L.map("jobMap", {scrollWheelZoom: true}).setView([campus.lat, campus.lng], 14);
@@ -450,34 +488,43 @@
             maxZoom: 19,
             attribution: "&copy; OpenStreetMap"
         }).addTo(map);
-
-        L.circle([campus.lat, campus.lng], {
-            radius: 5000,
-            color: "#1769aa",
-            fillColor: "#1769aa",
-            fillOpacity: 0.04,
-            weight: 1
-        }).addTo(map);
+        
 
         cards.forEach((card) => {
-            const marker = L.marker([Number(card.dataset.lat), Number(card.dataset.lng)]);
-            const locationState = card.dataset.exactLocation === "true" ? "실제 위치" : "좌표 미등록 - 임시 위치";
+            const isExactLocation = card.dataset.exactLocation === "true";
+            const lat = Number(card.dataset.lat);
+            const lng = Number(card.dataset.lng);
+
+            // 정확한 좌표가 없거나 좌표값이 이상하면 지도에 마커를 찍지 않음
+            if (!isExactLocation || Number.isNaN(lat) || Number.isNaN(lng)) {
+                return;
+            }
+
+            const marker = L.marker([lat, lng]);
+            const locationState = "실제 위치";
+
             marker.bindPopup(`
                 <p class="popup-title">${card.dataset.title}</p>
-                <p class="popup-meta">${card.dataset.company}<br>${card.dataset.location}<br>${card.dataset.salary}<br>${card.dataset.deadline}<br>${locationState}</p>
+                <p class="popup-meta">
+                    ${card.dataset.company}<br>
+                    ${card.dataset.location}<br>
+                    ${card.dataset.salary}<br>
+                    ${card.dataset.deadline}<br>
+                    ${locationState}
+                </p>
             `);
+
             marker.on("click", () => selectCard(card));
             markers.set(card.dataset.id, marker);
             marker.addTo(map);
         });
-
-        applyFilters();
     }
 
     radiusButtons.forEach((button) => {
         button.addEventListener("click", () => {
             selectedRadius = button.dataset.radius;
             setActive(radiusButtons, button);
+            updateRadiusCircle();
             applyFilters();
         });
     });
