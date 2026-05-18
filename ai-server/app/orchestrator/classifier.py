@@ -41,6 +41,7 @@ MODEL_CYCLE = [
 
 REGION_COLS = ["region_sido", "region_sigungu"]
 NEW_COLS = ["job_type_major", "job_type_mid", "job_type_minor", "job_type_detail"]
+SUMMARY_COLS = ["recommendation_reason"]
 
 
 def _load_ksco() -> dict:
@@ -63,6 +64,10 @@ def _load_input() -> tuple[list[str], list[dict]]:
 
 def _is_classified(row: dict) -> bool:
     return bool(row.get("job_type_detail", "").strip())
+
+
+def _is_summarized(row: dict) -> bool:
+    return bool(row.get("recommendation_reason", "").strip())
 
 
 def _load_existing_results() -> dict[str, dict]:
@@ -90,6 +95,55 @@ def _empty_classification() -> dict:
         "job_type_mid": "",
         "job_type_major": "",
     }
+
+
+def _summarize_batch(client, batch: list[dict], model_name: str, batch_idx: int) -> tuple[int, list[str]]:
+    items = "\n".join(
+        f"{i + 1}. 제목: {row.get('title', '')}, 직종: {row.get('job_type_detail', '')}, "
+        f"급여: {row.get('pay_type', '')} {row.get('pay_amount', '')}, "
+        f"복지: {row.get('welfare', '')}, 지역: {row.get('region_sido', '')}"
+        for i, row in enumerate(batch)
+    )
+
+    prompt = f"""다음 채용공고 각각에 대해 구직자에게 추천하는 이유를 30자 이내로 작성하세요.
+설명 없이 JSON만 출력하세요.
+
+공고 목록:
+{items}
+
+응답 형식 (JSON만):
+{{"1": "추천 사유", "2": "추천 사유"}}"""
+
+    empty_results = ["" for _ in batch]
+
+    for attempt in range(5):
+        try:
+            response = client.models.generate_content(model=model_name, contents=prompt)
+            text = response.text.strip()
+            if "```" in text:
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+            result_map = json.loads(text.strip())
+            break
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "rate_limit" in err.lower() or "quota" in err.lower():
+                wait = 60 * (attempt + 1)
+                print(f"  [RateLimit:{model_name}] {wait}초 대기 ({attempt + 1}/5)...")
+                time.sleep(wait)
+            else:
+                print(f"  [오류:{model_name}] summary batch={batch_idx} {e} — 건너뜀")
+                return batch_idx, empty_results
+    else:
+        print(f"  [오류:{model_name}] summary batch={batch_idx} 최대 재시도 초과 — 건너뜀")
+        return batch_idx, empty_results
+
+    results = []
+    for i in range(len(batch)):
+        results.append(result_map.get(str(i + 1), "").strip())
+
+    return batch_idx, results
 
 
 def _classify_batch(client, ksco: dict, batch: list[dict], model_name: str, batch_idx: int) -> tuple[int, list[dict]]:
@@ -186,7 +240,7 @@ def main() -> str | None:
 
     print("입력 CSV 로딩 중...")
     fieldnames_in, input_rows = _load_input()
-    fieldnames = fieldnames_in + [col for col in REGION_COLS + NEW_COLS if col not in fieldnames_in]
+    fieldnames = fieldnames_in + [col for col in REGION_COLS + NEW_COLS + SUMMARY_COLS if col not in fieldnames_in]
     total_rows = len(input_rows)
 
     existing = _load_existing_results()
@@ -198,12 +252,14 @@ def main() -> str | None:
                 **row,
                 **{col: row.get(col, "") for col in REGION_COLS},
                 **{col: existing[url].get(col, "") for col in NEW_COLS},
+                **{col: existing[url].get(col, "") for col in SUMMARY_COLS},
             }
         else:
             merged = {
                 **row,
                 **{col: row.get(col, "") for col in REGION_COLS},
                 **{col: row.get(col, "") for col in NEW_COLS},
+                **{col: row.get(col, "") for col in SUMMARY_COLS},
             }
         rows.append(merged)
 
@@ -212,44 +268,87 @@ def main() -> str | None:
     print(f"전체: {total_rows}행 / 완료: {done_count}행 / 미완료: {len(pending_indices)}행")
 
     if not pending_indices:
-        print("모든 행 분류 완료.")
+        print("모든 행 KSCO 분류 완료.")
+    else:
+        batches = [
+            pending_indices[i:i + BATCH_SIZE]
+            for i in range(0, len(pending_indices), BATCH_SIZE)
+        ]
+
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = {
+                executor.submit(
+                    _classify_batch,
+                    client,
+                    ksco,
+                    [rows[idx] for idx in batch_indices],
+                    MODEL_CYCLE[batch_idx % len(MODEL_CYCLE)],
+                    batch_idx,
+                ): (batch_idx, batch_indices)
+                for batch_idx, batch_indices in enumerate(batches)
+            }
+
+            completed = 0
+            success_total = done_count
+            for future in as_completed(futures):
+                batch_idx, batch_indices = futures[future]
+                _, results = future.result()
+                for row_idx, cls in zip(batch_indices, results):
+                    if cls.get("job_type_detail"):
+                        rows[row_idx].update(cls)
+                        success_total += 1
+
+                completed += 1
+                if completed % 5 == 0 or completed == len(batches):
+                    _write_output(fieldnames, rows)
+                print(f"  batch={batch_idx:4d} 완료 ({completed}/{len(batches)}) 누적성공={success_total}")
+
+        _write_output(fieldnames, rows)
+        print(f"\nKSCO 분류 완료: {total_rows}행, 성공 {sum(1 for row in rows if _is_classified(row))}건")
+
+    summary_indices = [
+        idx for idx, row in enumerate(rows)
+        if _is_classified(row) and not _is_summarized(row)
+    ]
+    print(f"추천 사유 생성 대상: {len(summary_indices)}행")
+
+    if not summary_indices:
+        print("추천 사유 생성 완료 (또는 대상 없음).")
+        print(f"출력: {OUTPUT_CSV}")
         return "no_work"
 
-    batches = [
-        pending_indices[i:i + BATCH_SIZE]
-        for i in range(0, len(pending_indices), BATCH_SIZE)
+    summary_batches = [
+        summary_indices[i:i + BATCH_SIZE]
+        for i in range(0, len(summary_indices), BATCH_SIZE)
     ]
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {
             executor.submit(
-                _classify_batch,
+                _summarize_batch,
                 client,
-                ksco,
                 [rows[idx] for idx in batch_indices],
                 MODEL_CYCLE[batch_idx % len(MODEL_CYCLE)],
                 batch_idx,
             ): (batch_idx, batch_indices)
-            for batch_idx, batch_indices in enumerate(batches)
+            for batch_idx, batch_indices in enumerate(summary_batches)
         }
 
         completed = 0
-        success_total = done_count
         for future in as_completed(futures):
             batch_idx, batch_indices = futures[future]
-            _, results = future.result()
-            for row_idx, cls in zip(batch_indices, results):
-                if cls.get("job_type_detail"):
-                    rows[row_idx].update(cls)
-                    success_total += 1
+            _, reasons = future.result()
+            for row_idx, reason in zip(batch_indices, reasons):
+                if reason:
+                    rows[row_idx]["recommendation_reason"] = reason
 
             completed += 1
-            if completed % 5 == 0 or completed == len(batches):
+            if completed % 5 == 0 or completed == len(summary_batches):
                 _write_output(fieldnames, rows)
-            print(f"  batch={batch_idx:4d} 완료 ({completed}/{len(batches)}) 누적성공={success_total}")
+            print(f"  summary batch={batch_idx:4d} 완료 ({completed}/{len(summary_batches)})")
 
     _write_output(fieldnames, rows)
-    print(f"\n완료: {total_rows}행, 분류 성공 {sum(1 for row in rows if _is_classified(row))}건")
+    print(f"\n추천 사유 생성 완료: {sum(1 for row in rows if _is_summarized(row))}건")
     print(f"출력: {OUTPUT_CSV}")
     return None
 
