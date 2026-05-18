@@ -1,6 +1,7 @@
 # base_crawler.py
 import time
 import random
+import requests
 from abc import abstractmethod
 from typing import Optional
 
@@ -22,11 +23,17 @@ class BaseCrawler(BaseCollector):
               └─ parse()            HTML → CrawlJob
               └─ _fetch_content()   본문 수집
 
-    하위 크롤러는 아래 추상 메서드 6개만 구현하면 된다:
-      get_latest_id, _get_page_ids, _build_item_url, _fetch, parse, _fetch_content
+    하위 크롤러는 아래 추상 메서드 4개를 구현해야 된다:
+      _get_page_ids, _build_item_url, parse, _fetch_content, _parse_id_from_url
     """
 
-    NAME = ""  # 각 크롤러에서 정의 (로그 출력에 사용)
+    NAME = ""  # SOURCE_TYPE.label로 자동 설정됨
+
+    HEADERS = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/120.0.0.0 Safari/537.36"
+    }
 
     def __init__(self, crawl_max_retries: int = 3, crawl_delay: float = 1.5, crawl_jitter: float = 1.0):
         self.crawl_max_retries = crawl_max_retries
@@ -35,33 +42,16 @@ class BaseCrawler(BaseCollector):
 
     # ── 템플릿 메서드 (공통 흐름) ──────────────────────────────────────────────
 
-    def collect(self, **kwargs):
+    def collect(self, last_id, target_id, **kwargs):
         """
         오래된 공고부터 최신 공고 방향으로 (id 오름차순) CrawlJob을 yield한다.
 
-        kwargs:
-            last_id (int | None): 이전 세션의 마지막 수집 id.
-                None이면 첫 실행 → page 1에서 최신 공고 1건만 수집.
-                지정 시 이진탐색으로 해당 페이지를 찾아 이어서 크롤링.
-            target_id (int): 이번 run의 목표 id (이 값 초과 시 종료).
-            newest_id (int): 이진탐색 hi 계산용 현재 최신 id.
+        last_id   : 이전 세션의 마지막 수집 id. None이면 첫 실행.
+        target_id : 수집 상한 id (이 값 초과 시 종료, 이진탐색 hi 계산에도 사용).
         """
-        last_id   = kwargs.get("last_id")    # None = 첫 실행
-        target_id = kwargs.get("target_id")
-        newest_id = kwargs.get("newest_id")
 
-        if last_id is None:
-            # 첫 실행: page 1 최신 공고 1건만 수집하여 baseline id를 잡는다.
-            print(f"[{self.NAME}] 첫 실행 - 최신 공고 1건만 수집 후 종료")
-            ids = self._get_page_ids(1)
-            if ids:
-                job = self._crawl_item(max(ids))
-                if job:
-                    yield job
-            return
-
-        # resume: (newest - last) / 50 을 hi 상한으로 이진탐색
-        hi         = max((newest_id - last_id) // 50 + 10, 20)
+        # resume: (target - last) / 50 을 hi 상한으로 이진탐색
+        hi         = max((target_id - last_id) // 50 + 10, 20)
         start_page = self._find_start_page(last_id, hi)
         print(
             f"[{self.NAME}] 재시작 - start_page={start_page}, "
@@ -79,7 +69,7 @@ class BaseCrawler(BaseCollector):
                 if last_seen is not None and item_id <= last_seen:
                     continue  # 이미 수집했거나 중복
 
-                if target_id is not None and item_id > target_id:
+                if item_id > target_id:
                     print(f"[{self.NAME}] target({target_id}) 도달 → 종료")
                     return
 
@@ -88,12 +78,12 @@ class BaseCrawler(BaseCollector):
                     last_seen = item_id
                     yield job
 
-    def _find_start_page(self, last_adid: int, hi: int) -> int:
+    def _find_start_page(self, last_id: int, hi: int) -> int:
         """
         이진탐색으로 last_adid가 위치한 페이지 번호를 반환한다.
 
         목록은 id 내림차순 (page 1 = 최신, 마지막 page = 가장 오래된 공고).
-        hi = (newest_adid - last_adid) // 50 + buffer 로 추정한 상한값.
+        hi = (target_id - last_id) // 50 + buffer 로 추정한 상한값.
 
         빈 페이지(hi가 실제 마지막 페이지보다 큰 경우)는 hi를 줄여 처리한다.
         """
@@ -112,14 +102,14 @@ class BaseCrawler(BaseCollector):
             page_max = max(ids)
             page_min = min(ids)
 
-            if last_adid > page_max:
-                # last_adid가 더 앞(번호 작은) 페이지에 있음
+            if last_id > page_max:
+                # last_id가 더 앞(번호 작은) 페이지에 있음
                 hi = mid - 1
-            elif last_adid < page_min:
-                # last_adid가 더 뒤(번호 큰) 페이지에 있음
+            elif last_id < page_min:
+                # last_id가 더 뒤(번호 큰) 페이지에 있음
                 lo = mid + 1
             else:
-                # 이 페이지에 last_adid가 있거나 인접
+                # 이 페이지에 last_id가 있거나 인접
                 target_page = mid
                 break
         else:
@@ -165,12 +155,20 @@ class BaseCrawler(BaseCollector):
                 print(f"[RETRY] {attempt + 1}번째 실패, {wait}초 후 재시도 - {url}")
                 time.sleep(wait)
 
-    # ── 추상 메서드 (각 크롤러에서 구현) ──────────────────────────────────────
-
-    @abstractmethod
     def get_latest_id(self) -> int:
-        """목록 페이지에서 현재 가장 최신 id를 반환한다."""
-        pass
+        """목록 1페이지에서 가장 큰 id를 최신 id로 반환한다."""
+        ids = self._get_page_ids(1)
+        if not ids:
+            raise RuntimeError(f"[ERROR] {self.NAME} 목록 페이지에서 최신 id를 찾을 수 없음")
+        return max(ids)
+
+    def _fetch(self, url: str) -> str:
+        """HTTP GET 요청으로 HTML을 반환한다. 필요 시 하위 클래스에서 오버라이드."""
+        response = requests.get(url, headers=self.HEADERS, timeout=10)
+        response.raise_for_status()
+        return response.text
+
+    # ── 추상 메서드 (각 크롤러에서 구현) ──────────────────────────────────────
 
     @abstractmethod
     def _get_page_ids(self, page: int) -> list:
@@ -180,11 +178,6 @@ class BaseCrawler(BaseCollector):
     @abstractmethod
     def _build_item_url(self, item_id: int) -> str:
         """item_id로 상세 페이지 URL을 생성하여 반환한다."""
-        pass
-
-    @abstractmethod
-    def _fetch(self, url: str) -> str:
-        """HTTP GET 요청으로 HTML을 가져온다."""
         pass
 
     @abstractmethod

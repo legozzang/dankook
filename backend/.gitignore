@@ -19,7 +19,7 @@ target/
 *.iml
 *.ipr
 
-## Spring Boot ##
+### Spring Boot ###
 application.properties
 
 ### NetBeans ###
@@ -34,3 +34,4 @@ build/
 
 ### VS Code ###
 .vscode/
+
