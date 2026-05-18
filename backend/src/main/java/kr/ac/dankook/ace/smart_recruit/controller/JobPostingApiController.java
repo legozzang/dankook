@@ -1,37 +1,30 @@
 package kr.ac.dankook.ace.smart_recruit.controller;
 
-// 이 코드는 테스트 코드이므로 개발할 때에는 제거하신 후 새롭게 구성해 주세요.
-
-import kr.ac.dankook.ace.smart_recruit.model.employer.Employer;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobPosting;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobSourceType;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus;
-import kr.ac.dankook.ace.smart_recruit.repository.EmployerRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
-import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService;
-import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.CoordinateStatus;
-import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.CoordinateUpdateResult;
-import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/job-postings")
 @RequiredArgsConstructor
 public class JobPostingApiController {
 
-    private static final Long AI_EMPLOYER_ID = 1L;
+    private static final double DEFAULT_LATITUDE = 37.3216;
+    private static final double DEFAULT_LONGITUDE = 127.1267;
 
     private final JobPostingRepository jobPostingRepository;
-    private final EmployerRepository employerRepository;
-    private final GeocodingService geocodingService;
-    private final JobPostingService jobPostingService;
 
-    // 공고 목록 조회
     @GetMapping
     public ResponseEntity<List<JobPostingResponse>> list() {
         List<JobPostingResponse> result = jobPostingRepository.findAll().stream()
@@ -45,50 +38,55 @@ public class JobPostingApiController {
                         jp.getDeadline(),
                         jp.getSourceType().name(),
                         jp.getExternalUrl(),
-                        jp.getLatitude(),
-                        jp.getLongitude(),
-                        jp.getCreatedAt() != null ? jp.getCreatedAt().toString() : null
+                        jp.getCreatedAt() != null ? jp.getCreatedAt().toString() : null,
+                        jp.getCompany(),
+                        jp.getWelfare()
                 ))
                 .toList();
         return ResponseEntity.ok(result);
     }
 
-    // 공고 등록
     @PostMapping
     public ResponseEntity<Void> create(@RequestBody JobPostingRequest request) {
-        Employer employer = employerRepository.findById(AI_EMPLOYER_ID).orElse(null);
-        Optional<GeocodingService.Coordinate> coordinate = resolveCoordinate(request);
         jobPostingRepository.save(new JobPosting(
-                employer,
                 request.title(),
                 request.content(),
                 request.region(),
                 request.jobType(),
-                JobStatus.valueOf(request.status()),
+                safeJobStatus(request.status()),
                 request.deadline(),
-                JobSourceType.valueOf(request.sourceType()),
+                safeSourceType(request.sourceType()),
                 request.externalUrl(),
-                coordinate.map(GeocodingService.Coordinate::latitude).orElse(null),
-                coordinate.map(GeocodingService.Coordinate::longitude).orElse(null)
+                request.company() != null ? request.company() : "",
+                request.latitude() != null ? request.latitude() : DEFAULT_LATITUDE,
+                request.longitude() != null ? request.longitude() : DEFAULT_LONGITUDE,
+                request.regionSido() != null ? request.regionSido() : "",
+                request.regionSigungu() != null ? request.regionSigungu() : "",
+                request.payType(),
+                request.payAmount(),
+                request.jobTypeMajor() != null ? request.jobTypeMajor() : "",
+                request.jobTypeMid() != null ? request.jobTypeMid() : "",
+                request.jobTypeMinor() != null ? request.jobTypeMinor() : "",
+                request.jobTypeDetail() != null ? request.jobTypeDetail() : "",
+                request.welfare()
         ));
-        return ResponseEntity.ok().build();
+        return ResponseEntity.status(201).build();
     }
 
-    @GetMapping("/coordinate-status")
-    public ResponseEntity<CoordinateStatus> coordinateStatus() {
-        return ResponseEntity.ok(jobPostingService.coordinateStatus());
-    }
-
-    @PostMapping("/geocode-missing")
-    public ResponseEntity<CoordinateUpdateResult> geocodeMissingCoordinates() {
-        return ResponseEntity.ok(jobPostingService.updateMissingCoordinates());
-    }
-
-    private Optional<GeocodingService.Coordinate> resolveCoordinate(JobPostingRequest request) {
-        if (request.latitude() != null && request.longitude() != null) {
-            return Optional.of(new GeocodingService.Coordinate(request.latitude(), request.longitude()));
+    private JobStatus safeJobStatus(String s) {
+        try {
+            return JobStatus.valueOf(s);
+        } catch (Exception e) {
+            return JobStatus.OPEN;
         }
-        return geocodingService.geocode(request.region());
+    }
+
+    private JobSourceType safeSourceType(String s) {
+        try {
+            return JobSourceType.valueOf(s);
+        } catch (Exception e) {
+            return JobSourceType.INTERNAL;
+        }
     }
 
     record JobPostingResponse(
@@ -101,21 +99,33 @@ public class JobPostingApiController {
             String deadline,
             String sourceType,
             String externalUrl,
-            Double latitude,
-            Double longitude,
-            String createdAt
-    ) {}
+            String createdAt,
+            String company,
+            String welfare
+    ) {
+    }
 
     record JobPostingRequest(
             String title,
             String content,
             String region,
-            String jobType,
+            @JsonProperty("job_type") String jobType,
             String status,
             String deadline,
-            String sourceType,
-            String externalUrl,
+            @JsonProperty("source_type") String sourceType,
+            @JsonProperty("external_url") String externalUrl,
+            String company,
             Double latitude,
-            Double longitude
-    ) {}
+            Double longitude,
+            @JsonProperty("region_sido") String regionSido,
+            @JsonProperty("region_sigungu") String regionSigungu,
+            @JsonProperty("pay_type") String payType,
+            @JsonProperty("pay_amount") Integer payAmount,
+            @JsonProperty("job_type_major") String jobTypeMajor,
+            @JsonProperty("job_type_mid") String jobTypeMid,
+            @JsonProperty("job_type_minor") String jobTypeMinor,
+            @JsonProperty("job_type_detail") String jobTypeDetail,
+            String welfare
+    ) {
+    }
 }

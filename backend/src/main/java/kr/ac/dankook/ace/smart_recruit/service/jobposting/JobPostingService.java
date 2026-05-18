@@ -9,12 +9,9 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import kr.ac.dankook.ace.smart_recruit.model.employer.Address;
-import kr.ac.dankook.ace.smart_recruit.model.employer.Employer;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobPosting;
 import kr.ac.dankook.ace.smart_recruit.model.jobpostingaisummary.JobPostingAiSummary;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
-import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -28,60 +25,24 @@ public class JobPostingService {
     private static final Pattern WORK_TIME_PATTERN = Pattern.compile("((근무\\s*시간|근무시간|시간)\\s*[:：]?\\s*)?([0-2]?\\d\\s*[:시]\\s*\\d{0,2}\\s*~\\s*[0-2]?\\d\\s*[:시]\\s*\\d{0,2}|오전\\s*\\d+\\s*시\\s*~\\s*오후\\s*\\d+\\s*시|주\\s*\\d+\\s*일|요일\\s*협의)");
 
     private final JobPostingRepository jobPostingRepository;
-    private final GeocodingService geocodingService;
 
     public List<JobPosting> findAll() {
-        return jobPostingRepository.findAllWithEmployerOrderByCreatedAtDesc();
+        return jobPostingRepository.findAllByOrderByCreatedAtDesc();
     }
 
-    @Transactional
     public List<JobPostingCard> findAllCards() {
-        return jobPostingRepository.findAllWithEmployerAndAiSummaryOrderByCreatedAtDesc().stream()
+        return jobPostingRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::toCard)
                 .toList();
     }
 
-    @Transactional
     public Optional<JobPostingCard> findCardById(Long id) {
-        return jobPostingRepository.findByIdWithEmployerAndAiSummary(id).map(this::toCard);
-    }
-
-    public CoordinateStatus coordinateStatus() {
-        List<MissingCoordinate> missingCoordinates = jobPostingRepository.findAllMissingCoordinateWithEmployer().stream()
-                .map(jobPosting -> MissingCoordinate.from(jobPosting, locationLabel(jobPosting)))
-                .toList();
-        return new CoordinateStatus(missingCoordinates.size(), missingCoordinates);
-    }
-
-    @Transactional
-    public CoordinateUpdateResult updateMissingCoordinates() {
-        List<JobPosting> jobPostings = jobPostingRepository.findAllMissingCoordinateWithEmployer();
-        int updatedCount = 0;
-        List<MissingCoordinate> stillMissing = new ArrayList<>();
-
-        for (JobPosting jobPosting : jobPostings) {
-            String location = locationLabel(jobPosting);
-            if (isBlank(location) || "위치 미등록".equals(location)) {
-                stillMissing.add(MissingCoordinate.from(jobPosting, location));
-                continue;
-            }
-
-            Optional<GeocodingService.Coordinate> coordinate = geocodingService.geocode(location);
-            if (coordinate.isPresent()) {
-                jobPosting.updateLocation(coordinate.get().latitude(), coordinate.get().longitude());
-                updatedCount += 1;
-            } else {
-                stillMissing.add(MissingCoordinate.from(jobPosting, location));
-            }
-        }
-
-        return new CoordinateUpdateResult(jobPostings.size(), updatedCount, stillMissing);
+        return jobPostingRepository.findById(id).map(this::toCard);
     }
 
     private JobPostingCard toCard(JobPosting jobPosting) {
         String location = locationLabel(jobPosting);
         String dong = dongLabel(jobPosting, location);
-        resolveMissingCoordinate(jobPosting, location);
         boolean hasExactLocation = hasCoordinate(jobPosting);
         Coordinate coordinate = hasExactLocation
                 ? new Coordinate(jobPosting.getLatitude(), jobPosting.getLongitude())
@@ -90,14 +51,14 @@ public class JobPostingService {
         return new JobPostingCard(
                 jobPosting.getId(),
                 jobPosting.getTitle(),
-                companyName(jobPosting.getEmployer()),
+                companyName(jobPosting.getCompany()),
                 jobPosting.getContent(),
                 location,
                 dong,
                 jobPosting.getJobType(),
                 jobPosting.getStatus().name(),
                 deadlineLabel(jobPosting.getDeadline()),
-                extractSalary(jobPosting.getContent()),
+                salaryLabel(jobPosting),
                 extractWorkTime(jobPosting.getContent()),
                 summaryLines(jobPosting),
                 jobPosting.getExternalUrl(),
@@ -107,37 +68,20 @@ public class JobPostingService {
         );
     }
 
-    private void resolveMissingCoordinate(JobPosting jobPosting, String location) {
-        if (hasCoordinate(jobPosting) || isBlank(location) || "위치 미등록".equals(location)) {
-            return;
-        }
-
-        geocodingService.geocode(location)
-                .ifPresent(coordinate -> jobPosting.updateLocation(coordinate.latitude(), coordinate.longitude()));
-    }
-
     private boolean hasCoordinate(JobPosting jobPosting) {
         return jobPosting.getLatitude() != null && jobPosting.getLongitude() != null;
     }
 
-    private String companyName(Employer employer) {
-        if (employer == null || isBlank(employer.getCompanyName())) {
-            return "회사명 미등록";
-        }
-        return employer.getCompanyName();
+    private String companyName(String company) {
+        return isBlank(company) ? "회사명 미등록" : company;
     }
 
     private String locationLabel(JobPosting jobPosting) {
-        Employer employer = jobPosting.getEmployer();
-        if (employer != null && employer.getAddress() != null) {
-            Address address = employer.getAddress();
-            List<String> parts = new ArrayList<>();
-            addIfPresent(parts, address.getCity());
-            addIfPresent(parts, address.getDistrict());
-            addIfPresent(parts, address.getDetailAddress());
-            if (!parts.isEmpty()) {
-                return String.join(" ", parts);
-            }
+        List<String> parts = new ArrayList<>();
+        addIfPresent(parts, jobPosting.getRegionSido());
+        addIfPresent(parts, jobPosting.getRegionSigungu());
+        if (!parts.isEmpty()) {
+            return String.join(" ", parts);
         }
         if (!isBlank(jobPosting.getRegion())) {
             return jobPosting.getRegion();
@@ -146,13 +90,15 @@ public class JobPostingService {
     }
 
     private String dongLabel(JobPosting jobPosting, String location) {
-        String source = !isBlank(jobPosting.getRegion()) ? jobPosting.getRegion() : location;
+        String source = !isBlank(jobPosting.getRegionSigungu())
+                ? jobPosting.getRegionSigungu()
+                : (!isBlank(jobPosting.getRegion()) ? jobPosting.getRegion() : location);
         if (isBlank(source)) {
             return "기타";
         }
 
         for (String token : source.split("\\s+")) {
-            if (token.endsWith("동") || token.endsWith("읍") || token.endsWith("면")) {
+            if (token.endsWith("동") || token.endsWith("읍") || token.endsWith("면") || token.endsWith("구")) {
                 return token;
             }
         }
@@ -161,6 +107,16 @@ public class JobPostingService {
 
     private String deadlineLabel(String deadline) {
         return isBlank(deadline) ? "마감일 미정" : deadline;
+    }
+
+    private String salaryLabel(JobPosting jobPosting) {
+        if (!isBlank(jobPosting.getPayType()) && jobPosting.getPayAmount() != null && jobPosting.getPayAmount() > 0) {
+            return jobPosting.getPayType() + " " + String.format("%,d", jobPosting.getPayAmount()) + "원";
+        }
+        if (!isBlank(jobPosting.getPayType())) {
+            return jobPosting.getPayType();
+        }
+        return extractSalary(jobPosting.getContent());
     }
 
     private String extractSalary(String content) {
@@ -193,7 +149,7 @@ public class JobPostingService {
         }
 
         if (lines.size() < 3) {
-            addIfPresent(lines, "급여: " + extractSalary(jobPosting.getContent()));
+            addIfPresent(lines, "급여: " + salaryLabel(jobPosting));
             addIfPresent(lines, "시간: " + extractWorkTime(jobPosting.getContent()));
             addIfPresent(lines, "지역: " + locationLabel(jobPosting));
         }
@@ -261,27 +217,6 @@ public class JobPostingService {
             double longitude,
             boolean exactLocation
     ) {}
-
-    public record CoordinateUpdateResult(
-            int targetCount,
-            int updatedCount,
-            List<MissingCoordinate> stillMissing
-    ) {}
-
-    public record CoordinateStatus(
-            int missingCount,
-            List<MissingCoordinate> missing
-    ) {}
-
-    public record MissingCoordinate(
-            Long id,
-            String title,
-            String location
-    ) {
-        private static MissingCoordinate from(JobPosting jobPosting, String location) {
-            return new MissingCoordinate(jobPosting.getId(), jobPosting.getTitle(), location);
-        }
-    }
 
     private record Coordinate(double latitude, double longitude) {}
 }
