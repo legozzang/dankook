@@ -27,8 +27,12 @@
   <main class="wrap">
     <section class="card">
       <h1>내 계정 정보</h1>
-      <div class="info"><div class="label">이메일</div><div class="value" id="displayEmail">로딩 중...</div></div>
-      <div class="info"><div class="label">닉네임</div><div class="value" id="displayNickname">로딩 중...</div></div>
+      <p id="loadingText" style="margin:0 0 12px; color:#667085;">내 정보를 불러오는 중...</p>
+      <p id="errorText" style="display:none; margin:0 0 12px; color:#b42318;"></p>
+      <div id="profileBox" hidden>
+        <div class="info"><div class="label">이메일</div><div class="value" id="displayEmail"></div></div>
+        <div class="info"><div class="label">닉네임</div><div class="value" id="displayNickname"></div></div>
+      </div>
       <div class="row">
         <button class="btn btn-primary" onclick="location.href='/auth/edit-profile'">정보 수정하기</button>
         <button class="btn btn-ghost" onclick="location.href='/jobpostings'">메인으로</button>
@@ -42,51 +46,71 @@
     </section>
   </main>
 
-  <script>
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      alert('로그인이 필요합니다.');
-      location.href = '/auth/login';
+<script>
+  const token = localStorage.getItem('accessToken');
+    const profileBox = document.getElementById('profileBox');
+    const loadingText = document.getElementById('loadingText');
+    const errorText = document.getElementById('errorText');
+
+    if (!token || token === 'undefined' || token === 'null') {
+        alert('로그인이 필요합니다.');
+        localStorage.clear();
+        location.href = '/auth/login';
     }
 
-    window.onload = async function() {
-      try {
-        const response = await fetch('/auth/members/me', {
-          method: 'GET',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+  async function loadMyInfo() {
+    loadingText.style.display = 'block';
+    errorText.style.display = 'none';
+    profileBox.hidden = true;
 
-        if (response.ok) {
-          const data = await response.json();
-          document.getElementById('displayEmail').textContent = data.email;
-          document.getElementById('displayNickname').textContent = data.nickname;
-        } else if (response.status === 401) {
-          alert('세션이 만료되었습니다. 다시 로그인해주세요.');
-          localStorage.clear();
-          location.href = '/auth/login';
-        }
-      } catch (error) {
-        console.error('정보 로드 실패:', error);
-      }
-    };
-
-    async function deleteAccount() {
-      if (!confirm('정말로 탈퇴하시겠습니까? 모든 정보가 파기됩니다.')) return;
-
-      const response = await fetch('/auth/delete/me', {
-        method: 'DELETE',
+    try {
+      const response = await fetch('/auth/members/me', {
+        method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      if (response.ok || response.status === 204) {
-        alert('탈퇴 처리가 완료되었습니다.');
+    if (response.ok) {
+        const data = await response.json();
+        document.getElementById('displayEmail').textContent = data.email ?? '-';
+        document.getElementById('displayNickname').textContent = data.nickname ?? '-';
+        profileBox.hidden = false;
+    } else if (response.status === 401 || response.status === 403) {
+        alert('세션이 만료되었거나 유효하지 않습니다. 다시 로그인해주세요.');
         localStorage.clear();
-        location.href = '/jobpostings';
-      } else {
-        const errorMsg = await response.text();
-        alert('탈퇴 실패: ' + (errorMsg || '권한이 없습니다.'));
-      }
+        location.href = '/auth/login';
+        return;
+    } else {
+        const msg = await response.text();
+        errorText.textContent = msg || `내 정보를 불러오지 못했습니다. (HTTP ${response.status})`;
+        errorText.style.display = 'block';
     }
-  </script>
+    } catch (e) {
+      errorText.textContent = '네트워크 오류가 발생했습니다.';
+      errorText.style.display = 'block';
+    } finally {
+      loadingText.style.display = 'none';
+    }
+  }
+
+  async function deleteAccount() {
+    if (!confirm('정말로 탈퇴하시겠습니까? 모든 정보가 파기됩니다.')) return;
+
+    const response = await fetch('/auth/delete/me', {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (response.ok || response.status === 204) {
+      alert('탈퇴 처리가 완료되었습니다.');
+      localStorage.clear();
+      location.href = '/jobpostings';
+    } else {
+      const errorMsg = await response.text();
+      alert('탈퇴 실패: ' + (errorMsg || '권한이 없습니다.'));
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', loadMyInfo);
+</script>
 </body>
 </html>
