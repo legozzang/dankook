@@ -116,12 +116,36 @@ public class AuthService {
             }
             member.updateNickname(request.getNickname());
         }
+
+        member.updatePreferences(
+                request.getDesiredRegionSido(),
+                request.getDesiredRegionSigungu(),
+                request.getDesiredRegionDong(),
+                request.getPreferredJobTypeMajor(),
+                request.getPreferredJobTypeMid(),
+                request.getPreferredJobTypeMinor(),
+                request.getPreferredJobTypeDetail(),
+                request.getPreferredPayType(),
+                request.getMinPayAmount()
+        );
     }
 
     // 회원 정보 조회
     public MemberInfoResponse getMemberInfo(String userEmail){
         Member member = memberRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        return new MemberInfoResponse(member.getEmail(), member.getNickname());
+        return new MemberInfoResponse(
+                member.getEmail(),
+                member.getNickname(),
+                member.getDesiredRegionSido(),
+                member.getDesiredRegionSigungu(),
+                member.getDesiredRegionDong(),
+                member.getPreferredJobTypeMajor(),
+                member.getPreferredJobTypeMid(),
+                member.getPreferredJobTypeMinor(),
+                member.getPreferredJobTypeDetail(),
+                member.getPreferredPayType(),
+                member.getMinPayAmount()
+        );
     }
 }

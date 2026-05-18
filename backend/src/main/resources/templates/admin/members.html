@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>유저 관리 | Smart Recruit</title>
+    <style>
+        body { margin: 0; background: #f6f7f9; color: #1f2937; font-family: Arial, "Noto Sans KR", sans-serif; }
+        .page { max-width: 1180px; margin: 0 auto; padding: 32px 20px; }
+        nav, form { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; align-items: center; }
+        nav a, button, .reset { padding: 9px 13px; border: 1px solid #cfd6df; border-radius: 6px; background: #fff; color: #1f2937; text-decoration: none; font-weight: 700; cursor: pointer; }
+        nav a.active { border-color: #1769aa; color: #1769aa; background: #eaf3fb; }
+        button.primary { border-color: #1769aa; background: #1769aa; color: #fff; }
+        button.danger { border-color: #c2410c; background: #c2410c; color: #fff; }
+        input, select { min-height: 36px; border: 1px solid #cfd6df; border-radius: 6px; padding: 0 10px; }
+        table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #dbe2ea; }
+        th, td { padding: 11px 12px; border-bottom: 1px solid #e7ebf0; text-align: left; font-size: 14px; }
+        th { background: #eef2f6; color: #4b5563; }
+        h1 { margin: 0; }
+    </style>
+</head>
+<body>
+<main class="page">
+    <h1>유저 관리</h1>
+    <nav>
+        <a href="/admin">대시보드</a>
+        <a class="active" href="/admin/members">유저 관리</a>
+        <a href="/admin/job-postings">공고 관리</a>
+    </nav>
+
+    <form method="get" action="/admin/members">
+        <select name="role">
+            <option value="">전체</option>
+            <option th:each="role : ${roles}" th:value="${role.name()}" th:text="${role.name()}" th:selected="${currentFilters.role == role.name()}">SEEKER</option>
+        </select>
+        <input type="text" name="keyword" placeholder="이메일·닉네임" th:value="${currentFilters.keyword}">
+        <button class="primary" type="submit">검색</button>
+        <a class="reset" href="/admin/members">초기화</a>
+    </form>
+
+    <table>
+        <thead>
+        <tr>
+            <th>번호</th>
+            <th>이메일</th>
+            <th>닉네임</th>
+            <th>역할</th>
+            <th>가입일</th>
+            <th>역할변경</th>
+            <th>삭제</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="member : ${members}" th:id="|member-${member.id}|">
+            <td th:text="${member.id}">1</td>
+            <td th:text="${member.email}">user@example.com</td>
+            <td th:text="${member.nickname}">닉네임</td>
+            <td th:text="${member.role.name()}">SEEKER</td>
+            <td th:text="${member.createdAt}">2026-01-01</td>
+            <td>
+                <select th:id="|role-${member.id}|">
+                    <option th:each="role : ${roles}" th:value="${role.name()}" th:text="${role.name()}" th:selected="${member.role == role}">SEEKER</option>
+                </select>
+                <button type="button" th:onclick="|changeRole(${member.id})|">변경</button>
+            </td>
+            <td><button class="danger" type="button" th:onclick="|deleteMember(${member.id})|">삭제</button></td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+<script>
+    function authHeaders() {
+        const token = localStorage.getItem('accessToken');
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token || ''}`
+        };
+    }
+
+    async function changeRole(id) {
+        const role = document.getElementById(`role-${id}`).value;
+        const response = await fetch(`/admin/members/${id}/role`, {
+            method: 'PATCH',
+            headers: authHeaders(),
+            body: JSON.stringify({role})
+        });
+        if (response.ok) location.reload();
+        else alert('역할 변경 실패');
+    }
+
+    async function deleteMember(id) {
+        if (!confirm('삭제하시겠습니까?')) return;
+        const response = await fetch(`/admin/members/${id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+        });
+        if (response.ok) document.getElementById(`member-${id}`).remove();
+        else alert('삭제 실패');
+    }
+</script>
+</body>
+</html>
