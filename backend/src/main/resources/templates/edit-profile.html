@@ -30,44 +30,335 @@
         <input type="password" id="newPassword">
     </div>
 
+    <hr>
+    <h3>선호 조건 설정</h3>
+
+    <div class="form-group">
+        <label>희망 지역 (시/도)</label>
+        <select id="regionSido">
+            <option value="">전체</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>희망 지역 (시/군/구)</label>
+        <select id="regionSigungu" disabled>
+            <option value="">전체</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>희망 지역 (구/읍/면)</label>
+        <select id="regionDong" disabled>
+            <option value="">전체</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>희망 직종 (대분류)</label>
+        <select id="jobMajor">
+            <option value="">전체</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>희망 직종 (중분류)</label>
+        <select id="jobMid" disabled>
+            <option value="">전체</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>희망 직종 (소분류)</label>
+        <select id="jobMinor" disabled>
+            <option value="">전체</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>희망 직종 (세분류)</label>
+        <select id="jobDetail" disabled>
+            <option value="">전체</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>선호 급여 유형</label>
+        <select id="preferredPayType">
+            <option value="">선택 안 함</option>
+            <option value="시급">시급</option>
+            <option value="일급">일급</option>
+            <option value="주급">주급</option>
+            <option value="월급">월급</option>
+            <option value="연봉">연봉</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>희망 최소 급여 (원)</label>
+        <input type="number" id="minPayAmount" placeholder="예: 2000000">
+    </div>
+
     <button onclick="handleUpdate()">수정 완료</button>
     <button onclick="location.href='/auth/mypage'" style="background-color: #ccc;">취소</button>
 
-    <script>
-        async function handleUpdate() {
-            const token = localStorage.getItem('accessToken');
-            const nickname = document.getElementById('nicknameInput').value;
-            const currentPassword = document.getElementById('currentPassword').value;
-            const newPassword = document.getElementById('newPassword').value;
-
-            // 값이 있는 필드만 객체에 담기
-            const updateData = {};
-            if (nickname) updateData.nickname = nickname;
-            if (newPassword) {
-                updateData.currentPassword = currentPassword;
-                updateData.newPassword = newPassword;
+    <script th:inline="javascript">
+        const KSCO_RAW = /*[[${kscoHierarchyJson}]]*/ '{}';
+        const KSCO = typeof KSCO_RAW === 'string' ? JSON.parse(KSCO_RAW || '{}') : (KSCO_RAW || {});
+        const REGION_DATA = {
+            "서울": {
+                "종로구": ["청운효자동", "사직동", "혜화동"],
+                "강남구": ["역삼동", "삼성동", "대치동"],
+                "마포구": ["공덕동", "서교동", "상암동"]
+            },
+            "부산": {
+                "해운대구": ["우동", "중동", "좌동"],
+                "부산진구": ["부전동", "전포동", "가야동"],
+                "동래구": ["온천동", "사직동", "명륜동"]
+            },
+            "대구": {
+                "중구": ["동인동", "삼덕동", "남산동"],
+                "수성구": ["범어동", "만촌동", "지산동"],
+                "달서구": ["월성동", "상인동", "성서동"]
+            },
+            "인천": {
+                "남동구": ["구월동", "간석동", "논현동"],
+                "부평구": ["부평동", "삼산동", "청천동"],
+                "연수구": ["송도동", "연수동", "동춘동"]
+            },
+            "광주": {
+                "동구": ["충장동", "계림동", "학동"],
+                "서구": ["상무동", "화정동", "금호동"],
+                "광산구": ["수완동", "첨단동", "송정동"]
+            },
+            "대전": {
+                "서구": ["둔산동", "갈마동", "월평동"],
+                "유성구": ["온천동", "노은동", "관평동"],
+                "중구": ["은행선화동", "대흥동", "태평동"]
+            },
+            "울산": {
+                "남구": ["삼산동", "달동", "무거동"],
+                "중구": ["성안동", "태화동", "반구동"],
+                "울주군": ["범서읍", "언양읍", "온산읍"]
+            },
+            "세종": {
+                "세종시": ["조치원읍", "한솔동", "도담동"]
+            },
+            "경기": {
+                "수원시": ["장안구", "권선구", "팔달구", "영통구"],
+                "성남시": ["수정구", "중원구", "분당구"],
+                "용인시": ["처인구", "기흥구", "수지구"]
+            },
+            "강원": {
+                "춘천시": ["후평동", "석사동", "퇴계동"],
+                "원주시": ["단계동", "무실동", "반곡동"],
+                "강릉시": ["교동", "포남동", "주문진읍"]
+            },
+            "충북": {
+                "청주시": ["상당구", "서원구", "흥덕구", "청원구"],
+                "충주시": ["교현동", "연수동", "호암동"],
+                "제천시": ["중앙동", "청전동", "용두동"]
+            },
+            "충남": {
+                "천안시": ["동남구", "서북구"],
+                "아산시": ["온양동", "배방읍", "탕정면"],
+                "공주시": ["신관동", "웅진동", "유구읍"]
+            },
+            "전북": {
+                "전주시": ["완산구", "덕진구"],
+                "익산시": ["영등동", "모현동", "함열읍"],
+                "군산시": ["수송동", "나운동", "소룡동"]
+            },
+            "전남": {
+                "목포시": ["용당동", "상동", "옥암동"],
+                "여수시": ["여서동", "문수동", "소라면"],
+                "순천시": ["조례동", "연향동", "해룡면"]
+            },
+            "경북": {
+                "포항시": ["남구", "북구"],
+                "구미시": ["송정동", "인동동", "선산읍"],
+                "경산시": ["중방동", "하양읍", "진량읍"]
+            },
+            "경남": {
+                "창원시": ["의창구", "성산구", "마산합포구"],
+                "김해시": ["내외동", "장유동", "진영읍"],
+                "진주시": ["상대동", "평거동", "가좌동"]
+            },
+            "제주": {
+                "제주시": ["이도동", "연동", "애월읍"],
+                "서귀포시": ["동홍동", "대정읍", "성산읍"]
             }
+        };
 
-            if (Object.keys(updateData).length === 0) {
-                alert('수정할 정보를 입력해주세요.');
-                return;
-            }
+        document.addEventListener('DOMContentLoaded', loadMemberInfo);
 
-            const response = await fetch('/auth/update/me', {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(updateData)
+        function resetSelect(select, placeholder = '전체') {
+            select.innerHTML = `<option value="">${placeholder}</option>`;
+            select.disabled = true;
+        }
+
+        function fillSelect(select, values, selected = '') {
+            resetSelect(select);
+            values.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
+            select.disabled = values.length === 0;
+            select.value = selected || '';
+        }
+
+        function setupRegionCascade() {
+            const sido = document.getElementById('regionSido');
+            const sigungu = document.getElementById('regionSigungu');
+            const dong = document.getElementById('regionDong');
+
+            fillSelect(sido, Object.keys(REGION_DATA));
+            sido.disabled = false;
+
+            sido.addEventListener('change', () => {
+                const sigunguMap = REGION_DATA[sido.value] || {};
+                fillSelect(sigungu, Object.keys(sigunguMap));
+                resetSelect(dong);
             });
 
-            if (response.ok) {
-                alert('정보가 성공적으로 수정되었습니다.');
-                location.href = '/auth/mypage';
-            } else {
-                const errorMsg = await response.text();
-                alert('수정 실패: ' + errorMsg);
+            sigungu.addEventListener('change', () => {
+                const values = REGION_DATA[sido.value]?.[sigungu.value] || [];
+                fillSelect(dong, values);
+            });
+        }
+
+        function setupJobCascade() {
+            const major = document.getElementById('jobMajor');
+            const mid = document.getElementById('jobMid');
+            const minor = document.getElementById('jobMinor');
+            const detail = document.getElementById('jobDetail');
+
+            fillSelect(major, Object.keys(KSCO));
+            major.disabled = false;
+
+            major.addEventListener('change', () => {
+                fillSelect(mid, Object.keys(KSCO[major.value] || {}));
+                resetSelect(minor);
+                resetSelect(detail);
+            });
+
+            mid.addEventListener('change', () => {
+                fillSelect(minor, Object.keys(KSCO[major.value]?.[mid.value] || {}));
+                resetSelect(detail);
+            });
+
+            minor.addEventListener('change', () => {
+                fillSelect(detail, Object.keys(KSCO[major.value]?.[mid.value]?.[minor.value] || {}));
+            });
+        }
+
+        function setRegionValues(data) {
+            const sido = document.getElementById('regionSido');
+            const sigungu = document.getElementById('regionSigungu');
+            const dong = document.getElementById('regionDong');
+
+            sido.value = data.desiredRegionSido || '';
+            fillSelect(sigungu, Object.keys(REGION_DATA[sido.value] || {}), data.desiredRegionSigungu || '');
+            fillSelect(dong, REGION_DATA[sido.value]?.[sigungu.value] || [], data.desiredRegionDong || '');
+        }
+
+        function setJobValues(data) {
+            const major = document.getElementById('jobMajor');
+            const mid = document.getElementById('jobMid');
+            const minor = document.getElementById('jobMinor');
+            const detail = document.getElementById('jobDetail');
+
+            major.value = data.preferredJobTypeMajor || '';
+            fillSelect(mid, Object.keys(KSCO[major.value] || {}), data.preferredJobTypeMid || '');
+            fillSelect(minor, Object.keys(KSCO[major.value]?.[mid.value] || {}), data.preferredJobTypeMinor || '');
+            fillSelect(detail, Object.keys(KSCO[major.value]?.[mid.value]?.[minor.value] || {}), data.preferredJobTypeDetail || '');
+        }
+
+        async function loadMemberInfo() {
+            try {
+                setupRegionCascade();
+                setupJobCascade();
+
+                const token = localStorage.getItem('accessToken');
+                if (!token) return;
+
+                const response = await fetch('/auth/members/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                setRegionValues(data);
+                setJobValues(data);
+                document.getElementById('preferredPayType').value = data.preferredPayType || '';
+                document.getElementById('minPayAmount').value = data.minPayAmount || '';
+            } catch (error) {
+                console.error('회원 정보 조회 실패:', error);
+            }
+        }
+
+        async function handleUpdate() {
+            try {
+                const token = localStorage.getItem('accessToken');
+                const nickname = document.getElementById('nicknameInput').value;
+                const currentPassword = document.getElementById('currentPassword').value;
+                const newPassword = document.getElementById('newPassword').value;
+                const desiredRegionSido = document.getElementById('regionSido').value;
+                const desiredRegionSigungu = document.getElementById('regionSigungu').value;
+                const desiredRegionDong = document.getElementById('regionDong').value;
+                const preferredJobTypeMajor = document.getElementById('jobMajor').value;
+                const preferredJobTypeMid = document.getElementById('jobMid').value;
+                const preferredJobTypeMinor = document.getElementById('jobMinor').value;
+                const preferredJobTypeDetail = document.getElementById('jobDetail').value;
+                const preferredPayType = document.getElementById('preferredPayType').value;
+                const minPayAmount = document.getElementById('minPayAmount').value;
+
+                // 값이 있는 필드만 객체에 담기
+                const updateData = {};
+                if (nickname) updateData.nickname = nickname;
+                if (newPassword) {
+                    updateData.currentPassword = currentPassword;
+                    updateData.newPassword = newPassword;
+                }
+                updateData.desiredRegionSido = desiredRegionSido;
+                updateData.desiredRegionSigungu = desiredRegionSigungu;
+                updateData.desiredRegionDong = desiredRegionDong;
+                updateData.preferredJobTypeMajor = preferredJobTypeMajor;
+                updateData.preferredJobTypeMid = preferredJobTypeMid;
+                updateData.preferredJobTypeMinor = preferredJobTypeMinor;
+                updateData.preferredJobTypeDetail = preferredJobTypeDetail;
+                updateData.preferredPayType = preferredPayType;
+                if (minPayAmount) updateData.minPayAmount = parseInt(minPayAmount);
+
+                if (Object.keys(updateData).length === 0) {
+                    alert('수정할 정보를 입력해주세요.');
+                    return;
+                }
+
+                const response = await fetch('/auth/update/me', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (response.ok) {
+                    alert('정보가 성공적으로 수정되었습니다.');
+                    location.href = '/auth/mypage';
+                } else {
+                    const errorMsg = await response.text();
+                    alert('수정 실패: ' + errorMsg);
+                }
+            } catch (error) {
+                console.error('회원 정보 수정 실패:', error);
+                alert('수정 중 오류가 발생했습니다.');
             }
         }
     </script>
