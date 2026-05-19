@@ -37,7 +37,8 @@ public class SecurityConfig {
             // 3. 요청별 권한 설정
             .authorizeHttpRequests(auth -> auth
                 // 누구나 접근 가능한 경로 (화이트리스트)
-                .requestMatchers("/auth/signup",
+                .requestMatchers("/",
+                                "/auth/signup",
                                 "/auth/login",
                                 "/auth/mypage", 
                                 "/main", 
@@ -61,7 +62,7 @@ public class SecurityConfig {
                                 "/auth/members/me"
                                 ).authenticated()
 
-                .requestMatchers("/admin/**").hasRole("ADMIN")
+                .requestMatchers("/admin", "/admin/**").hasRole("ADMIN")
 
                 .anyRequest().authenticated() // 나머지는 인증 필요
             )
