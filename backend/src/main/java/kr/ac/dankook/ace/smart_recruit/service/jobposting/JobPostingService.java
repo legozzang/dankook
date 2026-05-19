@@ -31,13 +31,19 @@ public class JobPostingService {
     }
 
     public List<JobPostingCard> findAllCards() {
-        return jobPostingRepository.findAllByOrderByCreatedAtDesc().stream()
+        return jobPostingRepository.findTop10ByOrderByCreatedAtDesc().stream()
                 .map(this::toCard)
                 .toList();
     }
 
     public Optional<JobPostingCard> findCardById(Long id) {
         return jobPostingRepository.findById(id).map(this::toCard);
+    }
+
+    public List<JobPostingCard> findCardsByFilters(String sido, String sigungu, String jobTypeMajor, String jobTypeMid, String keyword) {
+        return jobPostingRepository.findByFilters(sido, sigungu, jobTypeMajor, jobTypeMid, keyword).stream()
+                .map(this::toCard)
+                .toList();
     }
 
     private JobPostingCard toCard(JobPosting jobPosting) {
@@ -55,6 +61,10 @@ public class JobPostingService {
                 jobPosting.getContent(),
                 location,
                 dong,
+                jobPosting.getRegionSido() != null ? jobPosting.getRegionSido() : "",
+                jobPosting.getRegionSigungu() != null ? jobPosting.getRegionSigungu() : "",
+                jobPosting.getJobTypeMajor() != null ? jobPosting.getJobTypeMajor() : "",
+                jobPosting.getJobTypeMid() != null ? jobPosting.getJobTypeMid() : "",
                 jobPosting.getJobType(),
                 jobPosting.getStatus().name(),
                 deadlineLabel(jobPosting.getDeadline()),
@@ -206,6 +216,10 @@ public class JobPostingService {
             String content,
             String location,
             String dong,
+            String sido,
+            String sigungu,
+            String jobTypeMajor,
+            String jobTypeMid,
             String jobType,
             String status,
             String deadline,
