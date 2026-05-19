@@ -48,24 +48,32 @@ public class AdminViewController {
             @RequestParam(required = false) String regionSigungu,
             @RequestParam(required = false) String jobTypeMajor,
             @RequestParam(required = false) String jobTypeMid,
+            @RequestParam(required = false) String payType,
             Model model
     ) {
         String selectedSido = nvl(regionSido);
         String selectedSigungu = nvl(regionSigungu);
         String selectedMajor = nvl(jobTypeMajor);
         String selectedMid = nvl(jobTypeMid);
+        String selectedPayType = nvl(payType);
 
         String sidoParam = nullable(selectedSido);
         String sigunguParam = nullable(selectedSigungu);
         String majorParam = nullable(selectedMajor);
         String midParam = nullable(selectedMid);
+        String payTypeParam = nullable(selectedPayType);
 
         List<Object[]> regionRaw = jobPostingRepository.countGroupByRegion();
-        List<Object[]> allJobTypeRaw = jobPostingRepository.countGroupByJobType(null, null);
-        List<Object[]> jobTypeRaw = jobPostingRepository.countGroupByJobType(sidoParam, sigunguParam);
-        List<Object[]> payRaw = jobPostingRepository.avgPayGroupByType(sidoParam, sigunguParam, majorParam, midParam);
-        List<Object[]> jobPayRaw = jobPostingRepository.avgPayByJobType(sidoParam, sigunguParam);
-        List<Object[]> regionPayRaw = jobPostingRepository.avgPayByRegion(majorParam, midParam);
+        List<Object[]> allJobTypeRaw = jobPostingRepository.countGroupByJobType(null, null, null);
+        List<Object[]> allPayRaw = jobPostingRepository.avgPayGroupByType(null, null, null, null, null);
+        List<Object[]> jobTypeRaw = jobPostingRepository.countGroupByJobType(sidoParam, sigunguParam, payTypeParam);
+        List<Object[]> payRaw = jobPostingRepository.avgPayGroupByType(sidoParam, sigunguParam, majorParam, midParam, payTypeParam);
+        List<Object[]> jobPayRaw = payTypeParam == null
+                ? List.of()
+                : jobPostingRepository.avgPayByJobType(sidoParam, sigunguParam, payTypeParam);
+        List<Object[]> regionPayRaw = payTypeParam == null
+                ? List.of()
+                : jobPostingRepository.avgPayByRegion(majorParam, midParam, payTypeParam);
 
         model.addAttribute("totalMembers", memberRepository.count());
         model.addAttribute("seekerCount", memberRepository.countByRole(Role.SEEKER));
@@ -78,12 +86,14 @@ public class AdminViewController {
         model.addAttribute("payStats", payStats(payRaw));
         model.addAttribute("jobPayStats", averagePayRanking(jobPayRaw));
         model.addAttribute("regionPayStats", averagePayRanking(regionPayRaw));
+        model.addAttribute("payTypeList", payTypeList(allPayRaw));
         addCascadeModel(model, regionRaw, allJobTypeRaw);
         model.addAttribute("selectedSido", selectedSido);
         model.addAttribute("selectedSigungu", selectedSigungu);
         model.addAttribute("selectedMajor", selectedMajor);
         model.addAttribute("selectedMid", selectedMid);
-        model.addAttribute("dashboardFilterLabel", filterLabel(selectedSido, selectedSigungu, selectedMajor, selectedMid));
+        model.addAttribute("selectedPayType", selectedPayType);
+        model.addAttribute("dashboardFilterLabel", filterLabel(selectedSido, selectedSigungu, selectedMajor, selectedMid, selectedPayType));
 
         return "admin/dashboard";
     }
@@ -178,7 +188,7 @@ public class AdminViewController {
         currentFilters.put("keyword", keyword == null ? "" : keyword);
 
         List<Object[]> regionRaw = jobPostingRepository.countGroupByRegion();
-        List<Object[]> allJobTypeRaw = jobPostingRepository.countGroupByJobType(null, null);
+        List<Object[]> allJobTypeRaw = jobPostingRepository.countGroupByJobType(null, null, null);
 
         model.addAttribute("jobPostings", result.getContent());
         model.addAttribute("currentFilters", currentFilters);
@@ -226,6 +236,15 @@ public class AdminViewController {
                         (left, right) -> left,
                         LinkedHashMap::new
                 ));
+    }
+
+    private List<String> payTypeList(List<Object[]> rows) {
+        return rows.stream()
+                .map(row -> nvl(row[0]))
+                .filter(value -> !value.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     private List<Map<String, Object>> averagePayRanking(List<Object[]> rows) {

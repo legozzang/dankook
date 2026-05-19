@@ -27,4 +27,5 @@ public class UpdateRequest {
     private String preferredJobTypeDetail;
     private String preferredPayType;
     private Integer minPayAmount;
+    private Boolean emailNotification;
 }
