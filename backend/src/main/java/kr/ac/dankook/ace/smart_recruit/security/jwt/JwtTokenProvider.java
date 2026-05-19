@@ -90,7 +90,10 @@ public class JwtTokenProvider {
     public String resolveToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
+            String token = bearerToken.substring(7);
+            if (StringUtils.hasText(token)) {
+                return token;
+            }
         }
         jakarta.servlet.http.Cookie[] cookies = request.getCookies();
         if (cookies != null) {
