@@ -44,7 +44,7 @@
 
       <div class="row" style="margin-top: 16px;">
         <button class="btn btn-primary" onclick="location.href='/auth/edit-profile'">정보 수정하기</button>
-        <button class="btn btn-ghost" onclick="location.href='/main'">메인으로</button>
+        <button class="btn btn-ghost" onclick="location.href='/jobpostings'">메인으로</button>
       </div>
     </section>
 
@@ -159,7 +159,7 @@
       if (response.ok || response.status === 204) {
         alert('탈퇴 처리가 완료되었습니다. 이용해 주셔서 감사합니다.');
         localStorage.clear();
-        window.location.href = '/main';
+        window.location.href = '/jobpostings';
       } else if (response.status === 401 || response.status === 403) {
         alert('로그인이 필요합니다.');
         location.href = '/auth/login';
