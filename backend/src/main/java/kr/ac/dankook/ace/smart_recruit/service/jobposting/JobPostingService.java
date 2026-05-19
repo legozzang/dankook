@@ -57,13 +57,18 @@ public class JobPostingService {
 
     public List<JobPostingCard> findCardsByRadius(
             double lat, double lng, double radiusKm, int limit,
-            String payType, String sort) {
+            String payType, String sido, String sigungu,
+            String jobTypeMajor, String jobTypeMid, String keyword, String sort) {
+        int sqlLimit = "salary".equals(sort) ? 5000 : limit;
         List<JobPosting> postings = new ArrayList<>(
-                jobPostingRepository.findByRadius(lat, lng, radiusKm, payType, limit));
+                jobPostingRepository.findByRadius(
+                        lat, lng, radiusKm, payType,
+                        sido, sigungu, jobTypeMajor, jobTypeMid, keyword, sqlLimit));
         if ("salary".equals(sort)) {
             postings.sort(Comparator.comparingInt(
                     (JobPosting j) -> j.getPayAmount() != null ? j.getPayAmount() : 0
             ).reversed());
+            postings = postings.subList(0, Math.min(limit, postings.size()));
         }
         return postings.stream().map(this::toCard).toList();
     }

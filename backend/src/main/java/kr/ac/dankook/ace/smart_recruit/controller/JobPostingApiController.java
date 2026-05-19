@@ -74,7 +74,7 @@ public class JobPostingApiController {
         if (lat != null && lng != null && radius != null) {
             int limitCount = "all".equals(limit) ? 1000 : parseLimit(limit);
             List<CardResponse> result = jobPostingService
-                    .findCardsByRadius(lat, lng, radius, limitCount, pt, sort)
+                    .findCardsByRadius(lat, lng, radius, limitCount, pt, s, sg, jm, jmd, kw, sort)
                     .stream().map(this::toCardResponse).toList();
             return ResponseEntity.ok(result);
         }
