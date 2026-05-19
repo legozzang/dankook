@@ -86,6 +86,11 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
                 FROM job_postings
                 WHERE latitude IS NOT NULL AND longitude IS NOT NULL
                   AND (:payType IS NULL OR pay_type = :payType)
+                  AND (:sido IS NULL OR region_sido = :sido)
+                  AND (:sigungu IS NULL OR region_sigungu = :sigungu)
+                  AND (:jobTypeMajor IS NULL OR job_type_major = :jobTypeMajor)
+                  AND (:jobTypeMid IS NULL OR job_type_mid = :jobTypeMid)
+                  AND (:keyword IS NULL OR LOWER(title) LIKE LOWER(CONCAT('%', :keyword, '%')))
             ) sub
             WHERE distance <= :radiusKm
             ORDER BY distance
@@ -96,6 +101,11 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
             @Param("lng") double lng,
             @Param("radiusKm") double radiusKm,
             @Param("payType") String payType,
+            @Param("sido") String sido,
+            @Param("sigungu") String sigungu,
+            @Param("jobTypeMajor") String jobTypeMajor,
+            @Param("jobTypeMid") String jobTypeMid,
+            @Param("keyword") String keyword,
             @Param("limitCount") int limitCount
     );
 }
