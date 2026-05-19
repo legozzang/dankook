@@ -48,7 +48,6 @@ public class AuthController {
         return "mypage"; // mypage.html
     }
 
-
     @GetMapping("/members/me")
     @ResponseBody
     public ResponseEntity<MemberInfoResponse> getMemberInfo(@AuthenticationPrincipal User user) {

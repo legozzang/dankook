@@ -1,41 +1,83 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Smart Recruit - Login</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Recruit - 로그인</title>
+  <style>
+    :root{
+      --bg:#f3f5f7; --card:#fff; --line:#d7dde4; --text:#1f2937; --muted:#667085;
+      --primary:#1f6fb2; --primary-strong:#185f99; --radius:12px;
+    }
+    *{box-sizing:border-box} body{margin:0;font-family:"Noto Sans KR",Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:28px}
+    h1{margin:0 0 20px;font-size:28px}
+    .field{margin-bottom:14px} label{display:block;margin-bottom:7px;font-weight:700}
+    input{width:100%;height:44px;border:1px solid #cfd6df;border-radius:10px;padding:0 12px;font-size:14px}
+    input:focus{outline:none;border-color:var(--primary)}
+    .btn{width:100%;height:46px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:16px;font-weight:800;cursor:pointer}
+    .btn:hover{background:var(--primary-strong)}
+    .sub{margin-top:14px;color:var(--muted);font-size:14px;text-align:center}
+    .sub a{color:var(--primary);text-decoration:none;font-weight:700}
+    .error{display:none;margin-top:10px;color:#b42318;font-size:13px}
+  </style>
 </head>
 <body>
-    <h2>로그인</h2>
-    <form id="loginForm">
-        <input type="email" id="email" name="email" placeholder="이메일" required>
-        <input type="password" id="password" name="password" placeholder="비밀번호" required>
-        <button type="button" onclick="handleLogin()">로그인</button>
-    </form>
+  <main class="wrap">
+    <section class="card">
+      <h1>로그인</h1>
+      <form id="loginForm">
+        <div class="field">
+          <label for="email">이메일</label>
+          <input type="email" id="email" required />
+        </div>
+        <div class="field">
+          <label for="password">비밀번호</label>
+          <input type="password" id="password" required />
+        </div>
+        <button type="button" class="btn" onclick="handleLogin()">로그인</button>
+        <p id="error" class="error"></p>
+      </form>
+      <p class="sub">아직 계정이 없나요? <a href="/auth/signup">회원가입</a></p>
+    </section>
+  </main>
 
-    <script>
-        async function handleLogin() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+  <script>
+    async function handleLogin() {
+      const errorEl = document.getElementById('error');
+      errorEl.style.display = 'none';
 
-            // 작성한 /auth/login API를 호출
-            const response = await fetch('/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
 
-            if (response.ok) {
-                const data = await response.json();
-                localStorage.setItem('accessToken', data.accessToken);
-                localStorage.setItem('memberId', data.memberId);
+      try {
+        const response = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
 
-                // 리다이렉트 주소가 있으면 거기로, 없으면 공고 메인으로
-                const urlParams = new URLSearchParams(window.location.search);
-                const redirectUrl = urlParams.get('redirect') || '/jobs/list'; 
-                location.href = redirectUrl;
-            } else {
-                alert('로그인 실패: 이메일 또는 비밀번호를 확인하세요.');
-            }
+        if (response.ok) {
+          const data = await response.json();
+          localStorage.setItem('accessToken', data.access_token);
+          localStorage.setItem('memberId', data.member_id);
+
+          // 로그인 성공 메시지 알림 추가
+          alert('로그인 성공! 메인 페이지로 이동합니다.');
+
+          const urlParams = new URLSearchParams(window.location.search);
+          const redirectUrl = urlParams.get('redirect') || '/jobpostings';
+          location.href = redirectUrl;
+        } else {
+          errorEl.textContent = '로그인 실패: 이메일 또는 비밀번호를 확인하세요.';
+          errorEl.style.display = 'block';
         }
-    </script>
+      } catch (e) {
+        errorEl.textContent = '네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+        errorEl.style.display = 'block';
+      }
+    }
+  </script>
 </body>
 </html>
