@@ -17,4 +17,5 @@ public class MemberInfoResponse {
     private String preferredJobTypeDetail;
     private String preferredPayType;
     private Integer minPayAmount;
+    private Boolean emailNotification;
 }

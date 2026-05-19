@@ -1,10 +1,10 @@
 """
-uploader.py
+stages/upload.py
 data/jobs_classified.csv에서 전송 가능한 공고만 백엔드로 POST하고
 성공한 external_url을 data/sent_ids.txt에 기록한다.
 
 실행 방법 (ai-server/ 루트에서):
-  python -m app.orchestrator.uploader
+  python -m app.orchestrator.stages.upload
 """
 
 import csv
@@ -17,7 +17,7 @@ import requests
 from dotenv import load_dotenv
 
 # ai-server/.env — 실행 cwd와 무관하게 로드
-_AI_SERVER_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_AI_SERVER_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 load_dotenv(os.path.join(_AI_SERVER_ROOT, ".env"))
 
 DATA_DIR = os.path.join(_AI_SERVER_ROOT, "data")
