@@ -310,9 +310,17 @@
                     headers: authHeaders()
                 });
 
+                if (response.status === 401 || response.status === 403) {
+                    alert('로그인이 필요합니다.');
+                    location.href = '/auth/login';
+                    return;
+                }
                 if (!response.ok) return;
 
                 const data = await response.json();
+                if (data.nickname) {
+                    document.getElementById('nicknameInput').value = data.nickname;
+                }
                 setRegionValues(data);
                 setJobValues(data);
                 document.getElementById('preferredPayType').value = data.preferred_pay_type || '';
@@ -353,7 +361,11 @@
                 updateData.preferred_job_type_minor = preferredJobTypeMinor;
                 updateData.preferred_job_type_detail = preferredJobTypeDetail;
                 updateData.preferred_pay_type = preferredPayType;
-                if (minPayAmount) updateData.min_pay_amount = parseInt(minPayAmount);
+                if (minPayAmount) {
+                    updateData.min_pay_amount = parseInt(minPayAmount, 10);
+                } else {
+                    updateData.min_pay_amount = 0;
+                }
                 updateData.email_notification = document.getElementById('emailNotification').checked;
 
                 if (Object.keys(updateData).length === 0) {
