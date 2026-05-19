@@ -133,11 +133,11 @@
     });
 
     function authHeaders() {
-        const token = localStorage.getItem('accessToken');
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token || ''}`
-        };
+        const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
+        const token = match ? match[1] : (localStorage.getItem('accessToken') || '');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        return headers;
     }
 
     async function changeStatus(id, status) {
