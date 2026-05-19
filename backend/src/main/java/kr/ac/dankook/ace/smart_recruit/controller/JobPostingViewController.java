@@ -57,6 +57,7 @@ public class JobPostingViewController {
             }
         }
         List<String> jobMajors = new ArrayList<>(jobTypeMidByMajor.keySet());
+        model.addAttribute("payTypes", jobPostingRepository.findDistinctPayTypes());
         model.addAttribute("jobPostings", jobPostings);
         model.addAttribute("dongs", dongs);
         model.addAttribute("sidos", sidos);

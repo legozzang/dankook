@@ -23,6 +23,7 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
               AND (:jobTypeMajor IS NULL OR j.jobTypeMajor = :jobTypeMajor)
               AND (:jobTypeMid IS NULL OR j.jobTypeMid = :jobTypeMid)
               AND (:keyword IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:payType IS NULL OR j.payType = :payType)
             ORDER BY j.createdAt DESC
             """)
     List<JobPosting> findByFilters(
@@ -30,8 +31,12 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
             @Param("sigungu") String sigungu,
             @Param("jobTypeMajor") String jobTypeMajor,
             @Param("jobTypeMid") String jobTypeMid,
-            @Param("keyword") String keyword
+            @Param("keyword") String keyword,
+            @Param("payType") String payType
     );
+
+    @Query("SELECT DISTINCT j.payType FROM JobPosting j WHERE j.payType IS NOT NULL AND j.payType <> '' ORDER BY j.payType")
+    List<String> findDistinctPayTypes();
 
     @Query("SELECT DISTINCT j.regionSido, j.regionSigungu FROM JobPosting j WHERE j.regionSido IS NOT NULL AND j.regionSido <> '' AND j.regionSigungu IS NOT NULL AND j.regionSigungu <> '' ORDER BY j.regionSido, j.regionSigungu")
     List<Object[]> findDistinctSidoSigunguPairs();
@@ -71,4 +76,26 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
     List<Object[]> avgPayByRegion(@Param("major") String major, @Param("mid") String mid, @Param("payType") String payType);
 
     long countByStatus(JobStatus status);
+
+    @Query(value = """
+            SELECT * FROM (
+                SELECT *, (6371 * acos(
+                    cos(radians(:lat)) * cos(radians(latitude)) * cos(radians(longitude) - radians(:lng))
+                    + sin(radians(:lat)) * sin(radians(latitude))
+                )) AS distance
+                FROM job_postings
+                WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+                  AND (:payType IS NULL OR pay_type = :payType)
+            ) sub
+            WHERE distance <= :radiusKm
+            ORDER BY distance
+            LIMIT :limitCount
+            """, nativeQuery = true)
+    List<JobPosting> findByRadius(
+            @Param("lat") double lat,
+            @Param("lng") double lng,
+            @Param("radiusKm") double radiusKm,
+            @Param("payType") String payType,
+            @Param("limitCount") int limitCount
+    );
 }

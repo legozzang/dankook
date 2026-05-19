@@ -57,15 +57,30 @@ public class JobPostingApiController {
             @RequestParam(required = false) String jobTypeMajor,
             @RequestParam(required = false) String jobTypeMid,
             @RequestParam(required = false, defaultValue = "10") String limit,
-            @RequestParam(required = false) String keyword
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Double radius,
+            @RequestParam(required = false) String payType,
+            @RequestParam(required = false, defaultValue = "default") String sort
     ) {
         String s = normalizeFilter(sido);
         String sg = normalizeFilter(sigungu);
         String jm = normalizeFilter(jobTypeMajor);
         String jmd = normalizeFilter(jobTypeMid);
         String kw = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+        String pt = normalizeFilter(payType);
 
-        List<CardResponse> result = jobPostingService.findCardsByFilters(s, sg, jm, jmd, kw)
+        if (lat != null && lng != null && radius != null) {
+            int limitCount = "all".equals(limit) ? 1000 : parseLimit(limit);
+            List<CardResponse> result = jobPostingService
+                    .findCardsByRadius(lat, lng, radius, limitCount, pt, sort)
+                    .stream().map(this::toCardResponse).toList();
+            return ResponseEntity.ok(result);
+        }
+
+        List<CardResponse> result = jobPostingService
+                .findCardsByFilters(s, sg, jm, jmd, kw, pt, sort)
                 .stream().map(this::toCardResponse).toList();
         if (!"all".equals(limit)) {
             result = result.stream().limit(parseLimit(limit)).toList();
