@@ -59,6 +59,36 @@ public class Member{
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "desired_region_sido", length = 50)
+    private String desiredRegionSido;
+
+    @Column(name = "desired_region_sigungu", length = 50)
+    private String desiredRegionSigungu;
+
+    @Column(name = "desired_region_dong", length = 50)
+    private String desiredRegionDong;
+
+    @Column(name = "preferred_job_type_major", length = 100)
+    private String preferredJobTypeMajor;
+
+    @Column(name = "preferred_job_type_mid", length = 100)
+    private String preferredJobTypeMid;
+
+    @Column(name = "preferred_job_type_minor", length = 100)
+    private String preferredJobTypeMinor;
+
+    @Column(name = "preferred_job_type_detail", length = 100)
+    private String preferredJobTypeDetail;
+
+    @Column(name = "preferred_pay_type", length = 20)
+    private String preferredPayType;
+
+    @Column(name = "min_pay_amount")
+    private Integer minPayAmount;
+
+    @Column(name = "email_notification", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private boolean emailNotification = false;
+
     // 아래 두 어노테이션으로 시간 자동 입력
     @PrePersist
     public void prePersist() {
@@ -90,5 +120,37 @@ public class Member{
 
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
+    }
+
+    public void updateRole(Role role) {
+        this.role = role;
+    }
+
+    public void updateEmailNotification(Boolean emailNotification) {
+        if (emailNotification != null) {
+            this.emailNotification = emailNotification;
+        }
+    }
+
+    public void updatePreferences(
+            String desiredRegionSido,
+            String desiredRegionSigungu,
+            String desiredRegionDong,
+            String preferredJobTypeMajor,
+            String preferredJobTypeMid,
+            String preferredJobTypeMinor,
+            String preferredJobTypeDetail,
+            String preferredPayType,
+            Integer minPayAmount
+    ) {
+        if (desiredRegionSido != null) this.desiredRegionSido = desiredRegionSido;
+        if (desiredRegionSigungu != null) this.desiredRegionSigungu = desiredRegionSigungu;
+        if (desiredRegionDong != null) this.desiredRegionDong = desiredRegionDong;
+        if (preferredJobTypeMajor != null) this.preferredJobTypeMajor = preferredJobTypeMajor;
+        if (preferredJobTypeMid != null) this.preferredJobTypeMid = preferredJobTypeMid;
+        if (preferredJobTypeMinor != null) this.preferredJobTypeMinor = preferredJobTypeMinor;
+        if (preferredJobTypeDetail != null) this.preferredJobTypeDetail = preferredJobTypeDetail;
+        if (preferredPayType != null) this.preferredPayType = preferredPayType;
+        if (minPayAmount != null) this.minPayAmount = minPayAmount;
     }
 }
