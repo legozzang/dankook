@@ -1,6 +1,5 @@
 # 크롤링 원본 데이터
 data/
-local_crawler/data/
 
 # Python
 __pycache__/
@@ -8,14 +7,14 @@ __pycache__/
 .env
 
 # PyInstaller
-crawler.spec
 dist/
-
-# 로컬 크롤러 데이터
-local_crawler/
 
 # 일회성 디버깅·분석 스크립트
 check_pay_type.py
 check_skip_reason.py
 migrate_region_depth.py
+
+# 로컬 모니터링
+logs/
+monitor.py
 
