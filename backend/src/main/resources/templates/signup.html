@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Smart Recruit - 회원가입</title>
+  <title>Smart Recruit - ?�원가??/title>
   <style>
     :root{
       --bg:#f3f5f7; --card:#fff; --line:#d7dde4; --text:#1f2937; --muted:#667085;
@@ -15,9 +15,6 @@
     h1{margin:0 0 20px;font-size:28px}
     .field{margin-bottom:14px} label{display:block;margin-bottom:7px;font-weight:700}
     input{width:100%;height:44px;border:1px solid #cfd6df;border-radius:10px;padding:0 12px;font-size:14px}
-    .role-group{display:flex;gap:10px}
-    .role{flex:1;border:1px solid #cfd6df;border-radius:10px;padding:10px;background:#f9fafb}
-    .role input{width:auto;height:auto;margin-right:6px}
     .btn{width:100%;height:46px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:16px;font-weight:800;cursor:pointer}
     .btn:hover{background:var(--primary-strong)}
     .error{display:none;margin:10px 0 0;color:#b42318;font-size:13px}
@@ -28,28 +25,24 @@
 <body>
   <main class="wrap">
     <section class="card">
-      <h1>회원가입</h1>
+      <h1>?�원가??/h1>
       <form id="signupForm">
         <div class="field">
-          <label for="email">이메일</label>
+          <label for="email">?�메??/label>
           <input type="email" id="email" required />
         </div>
         <div class="field">
-          <label for="password">비밀번호</label>
+          <label for="password">비�?번호</label>
           <input type="password" id="password" required />
         </div>
         <div class="field">
-          <label for="nickname">닉네임</label>
+          <label for="nickname">?�네??/label>
           <input type="text" id="nickname" required />
         </div>
-        <div class="form-group">
-            <label>가입 유형</label>
-            <input type="radio" name="role" value="SEEKER" checked> 개인 구직자
-        </div>
         <div id="errorMessage" class="error"></div>
-        <button type="submit" class="btn">가입하기</button>
+        <button type="submit" class="btn">가?�하�?/button>
       </form>
-      <p class="sub">이미 계정이 있으신가요? <a href="/auth/login">로그인</a></p>
+      <p class="sub">?��? 계정???�으?��??? <a href="/auth/login">로그??/a></p>
     </section>
   </main>
 
@@ -63,7 +56,7 @@
         email: document.getElementById('email').value,
         password: document.getElementById('password').value,
         nickname: document.getElementById('nickname').value,
-        role: document.querySelector('input[name="role"]:checked').value
+        role: 'SEEKER'
       };
 
       try {
@@ -74,14 +67,14 @@
         });
 
         if (response.ok) {
-          alert('회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.');
+          alert('?�원가?�이 ?�료?�었?�니?? 로그???�이지�??�동?�니??');
           window.location.href = '/auth/login';
         } else {
           errorDiv.textContent = await response.text();
           errorDiv.style.display = 'block';
         }
       } catch (error) {
-        errorDiv.textContent = '서버와 통신 중 오류가 발생했습니다.';
+        errorDiv.textContent = '?�버?� ?�신 �??�류가 발생?�습?�다.';
         errorDiv.style.display = 'block';
       }
     });
