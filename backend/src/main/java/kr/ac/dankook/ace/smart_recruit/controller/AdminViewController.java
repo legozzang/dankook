@@ -43,6 +43,11 @@ public class AdminViewController {
     private final JobPostingRepository jobPostingRepository;
 
     @GetMapping
+    public String redirectToDashboard() {
+        return "redirect:/admin/dashboard";
+    }
+
+    @GetMapping("/dashboard")
     public String dashboard(
             @RequestParam(required = false) String regionSido,
             @RequestParam(required = false) String regionSigungu,
@@ -79,6 +84,15 @@ public class AdminViewController {
         model.addAttribute("seekerCount", memberRepository.countByRole(Role.SEEKER));
         model.addAttribute("adminCount", memberRepository.countByRole(Role.ADMIN));
         model.addAttribute("totalJobPostings", jobPostingRepository.count());
+        boolean anyFilterActive = !selectedSido.isBlank()
+                || !selectedSigungu.isBlank()
+                || !selectedMajor.isBlank()
+                || !selectedMid.isBlank()
+                || !selectedPayType.isBlank();
+        Long filteredCount = anyFilterActive
+                ? jobPostingRepository.countByAllFilters(sidoParam, sigunguParam, majorParam, midParam, payTypeParam)
+                : null;
+        model.addAttribute("filteredCount", filteredCount);
         model.addAttribute("openCount", jobPostingRepository.countByStatus(JobStatus.OPEN));
         model.addAttribute("closedCount", jobPostingRepository.countByStatus(JobStatus.CLOSED));
         model.addAttribute("regionStats", regionStats(regionRaw, 20));

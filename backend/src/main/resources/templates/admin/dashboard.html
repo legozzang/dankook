@@ -41,12 +41,12 @@
 <main class="page">
     <h1>관리자 대시보드</h1>
     <nav>
-        <a class="active" href="/admin">대시보드</a>
-        <a href="/admin/members">유저 관리</a>
+        <a class="active" href="/admin/dashboard">대시보드</a>
+        <a href="/admin/members">회원 관리</a>
         <a href="/admin/job-postings">공고 관리</a>
     </nav>
 
-    <form class="filters" method="get" action="/admin">
+    <form class="filters" method="get" action="/admin/dashboard">
         <select name="regionSido" id="dSido" onchange="updateSigungu('dSido', 'dSigungu')">
             <option value="">전체 지역</option>
             <option th:each="sido : ${sidoList}" th:value="${sido}" th:text="${sido}" th:selected="${sido == selectedSido}">서울</option>
@@ -63,20 +63,25 @@
         </select>
         <select name="payType">
             <option value="">급여유형 선택</option>
-            <option th:each="pt : ${payTypeList}" th:value="${pt}" th:text="${pt}" th:selected="${pt == selectedPayType}">시급</option>
+            <option th:each="pt : ${payTypeList}" th:value="${pt}" th:text="${pt}" th:selected="${pt == selectedPayType}">월급</option>
         </select>
         <button type="submit">적용</button>
-        <a href="/admin">초기화</a>
+        <a href="/admin/dashboard">초기화</a>
     </form>
 
     <section class="stats">
-        <div class="card"><div class="label">총 유저</div><div class="value" th:text="${totalMembers}">0</div></div>
+        <div class="card"><div class="label">전체회원</div><div class="value" th:text="${totalMembers}">0</div></div>
         <div class="card"><div class="label">SEEKER</div><div class="value" th:text="${seekerCount}">0</div></div>
         <div class="card"><div class="label">ADMIN</div><div class="value" th:text="${adminCount}">0</div></div>
-        <div class="card"><div class="label">총 공고</div><div class="value" th:text="${totalJobPostings}">0</div></div>
+        <div class="card"><div class="label">전체공고</div><div class="value" th:text="${totalJobPostings}">0</div></div>
         <div class="card"><div class="label">OPEN</div><div class="value" th:text="${openCount}">0</div></div>
         <div class="card"><div class="label">CLOSED</div><div class="value" th:text="${closedCount}">0</div></div>
     </section>
+    <div th:if="${filteredCount != null}"
+         style="margin-bottom:12px;font-size:15px;font-weight:700;color:#1769aa;">
+        <span th:text="${dashboardFilterLabel}">선택 필터</span> 공고:
+        <span th:text="${filteredCount}">0</span>건
+    </div>
 
     <section class="tables">
         <div>
@@ -97,7 +102,7 @@
                 <thead><tr><th>직종</th><th>공고 수</th></tr></thead>
                 <tbody>
                 <tr th:each="entry : ${jobTypeStats}">
-                    <td th:text="${entry.key}">음식서비스 · 한식조리사</td>
+                    <td th:text="${entry.key}">음식서비스 · 음식조리사</td>
                     <td th:text="${entry.value}">0</td>
                 </tr>
                 </tbody>
