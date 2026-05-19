@@ -1,6 +1,7 @@
 package kr.ac.dankook.ace.smart_recruit.service.jobposting;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -40,10 +41,31 @@ public class JobPostingService {
         return jobPostingRepository.findById(id).map(this::toCard);
     }
 
-    public List<JobPostingCard> findCardsByFilters(String sido, String sigungu, String jobTypeMajor, String jobTypeMid, String keyword) {
-        return jobPostingRepository.findByFilters(sido, sigungu, jobTypeMajor, jobTypeMid, keyword).stream()
-                .map(this::toCard)
-                .toList();
+    public List<JobPostingCard> findCardsByFilters(
+            String sido, String sigungu, String jobTypeMajor, String jobTypeMid,
+            String keyword, String payType, String sort) {
+        List<JobPosting> postings = jobPostingRepository.findByFilters(
+                sido, sigungu, jobTypeMajor, jobTypeMid, keyword, payType);
+        if ("salary".equals(sort)) {
+            postings = new ArrayList<>(postings);
+            postings.sort(Comparator.comparingInt(
+                    (JobPosting j) -> j.getPayAmount() != null ? j.getPayAmount() : 0
+            ).reversed());
+        }
+        return postings.stream().map(this::toCard).toList();
+    }
+
+    public List<JobPostingCard> findCardsByRadius(
+            double lat, double lng, double radiusKm, int limit,
+            String payType, String sort) {
+        List<JobPosting> postings = new ArrayList<>(
+                jobPostingRepository.findByRadius(lat, lng, radiusKm, payType, limit));
+        if ("salary".equals(sort)) {
+            postings.sort(Comparator.comparingInt(
+                    (JobPosting j) -> j.getPayAmount() != null ? j.getPayAmount() : 0
+            ).reversed());
+        }
+        return postings.stream().map(this::toCard).toList();
     }
 
     private JobPostingCard toCard(JobPosting jobPosting) {
