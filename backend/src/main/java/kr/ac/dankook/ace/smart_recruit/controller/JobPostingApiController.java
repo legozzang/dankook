@@ -5,12 +5,15 @@ import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobPosting;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobSourceType;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
+import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService;
+import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.JobPostingCard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -24,6 +27,7 @@ public class JobPostingApiController {
     private static final double DEFAULT_LONGITUDE = 127.1267;
 
     private final JobPostingRepository jobPostingRepository;
+    private final JobPostingService jobPostingService;
 
     @GetMapping
     public ResponseEntity<List<JobPostingResponse>> list() {
@@ -43,6 +47,29 @@ public class JobPostingApiController {
                         jp.getWelfare()
                 ))
                 .toList();
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<CardResponse>> search(
+            @RequestParam(required = false) String sido,
+            @RequestParam(required = false) String sigungu,
+            @RequestParam(required = false) String jobTypeMajor,
+            @RequestParam(required = false) String jobTypeMid,
+            @RequestParam(required = false, defaultValue = "10") String limit,
+            @RequestParam(required = false) String keyword
+    ) {
+        String s = normalizeFilter(sido);
+        String sg = normalizeFilter(sigungu);
+        String jm = normalizeFilter(jobTypeMajor);
+        String jmd = normalizeFilter(jobTypeMid);
+        String kw = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+
+        List<CardResponse> result = jobPostingService.findCardsByFilters(s, sg, jm, jmd, kw)
+                .stream().map(this::toCardResponse).toList();
+        if (!"all".equals(limit)) {
+            result = result.stream().limit(parseLimit(limit)).toList();
+        }
         return ResponseEntity.ok(result);
     }
 
@@ -89,6 +116,43 @@ public class JobPostingApiController {
         }
     }
 
+    private String normalizeFilter(String value) {
+        return value != null && !value.isBlank() && !"all".equals(value) ? value : null;
+    }
+
+    private int parseLimit(String limit) {
+        try {
+            int parsed = Integer.parseInt(limit);
+            return parsed > 0 ? parsed : 10;
+        } catch (NumberFormatException e) {
+            return 10;
+        }
+    }
+
+    private CardResponse toCardResponse(JobPostingCard card) {
+        return new CardResponse(
+                card.id(),
+                card.title(),
+                card.companyName(),
+                card.location(),
+                card.dong(),
+                card.sido(),
+                card.sigungu(),
+                card.jobType(),
+                card.jobTypeMajor(),
+                card.jobTypeMid(),
+                card.status(),
+                card.deadline(),
+                card.salary(),
+                card.workTime(),
+                card.summaryLines(),
+                card.externalUrl(),
+                card.latitude(),
+                card.longitude(),
+                card.exactLocation()
+        );
+    }
+
     record JobPostingResponse(
             Long id,
             String title,
@@ -102,6 +166,29 @@ public class JobPostingApiController {
             String createdAt,
             String company,
             String welfare
+    ) {
+    }
+
+    record CardResponse(
+            Long id,
+            String title,
+            String companyName,
+            String location,
+            String dong,
+            String sido,
+            String sigungu,
+            String jobType,
+            String jobTypeMajor,
+            String jobTypeMid,
+            String status,
+            String deadline,
+            String salary,
+            String workTime,
+            List<String> summaryLines,
+            String externalUrl,
+            double latitude,
+            double longitude,
+            boolean exactLocation
     ) {
     }
 

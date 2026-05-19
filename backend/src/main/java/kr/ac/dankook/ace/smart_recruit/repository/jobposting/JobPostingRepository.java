@@ -14,8 +14,49 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
 
     List<JobPosting> findAllByOrderByCreatedAtDesc();
 
+    List<JobPosting> findTop10ByOrderByCreatedAtDesc();
+
+    @Query("""
+            SELECT j FROM JobPosting j
+            WHERE (:sido IS NULL OR j.regionSido = :sido)
+              AND (:sigungu IS NULL OR j.regionSigungu = :sigungu)
+              AND (:jobTypeMajor IS NULL OR j.jobTypeMajor = :jobTypeMajor)
+              AND (:jobTypeMid IS NULL OR j.jobTypeMid = :jobTypeMid)
+              AND (:keyword IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            ORDER BY j.createdAt DESC
+            """)
+    List<JobPosting> findByFilters(
+            @Param("sido") String sido,
+            @Param("sigungu") String sigungu,
+            @Param("jobTypeMajor") String jobTypeMajor,
+            @Param("jobTypeMid") String jobTypeMid,
+            @Param("keyword") String keyword
+    );
+
+    @Query("SELECT DISTINCT j.regionSido, j.regionSigungu FROM JobPosting j WHERE j.regionSido IS NOT NULL AND j.regionSido <> '' AND j.regionSigungu IS NOT NULL AND j.regionSigungu <> '' ORDER BY j.regionSido, j.regionSigungu")
+    List<Object[]> findDistinctSidoSigunguPairs();
+
+    @Query("SELECT DISTINCT j.jobTypeMajor, j.jobTypeMid FROM JobPosting j WHERE j.jobTypeMajor IS NOT NULL AND j.jobTypeMajor <> '' ORDER BY j.jobTypeMajor, j.jobTypeMid")
+    List<Object[]> findDistinctJobMajorMidPairs();
+
     @Query("SELECT j.regionSido, j.regionSigungu, COUNT(j) FROM JobPosting j WHERE j.regionSido IS NOT NULL AND j.regionSido <> '' GROUP BY j.regionSido, j.regionSigungu ORDER BY COUNT(j) DESC")
     List<Object[]> countGroupByRegion();
+
+    @Query("""
+            SELECT COUNT(j) FROM JobPosting j
+            WHERE (:sido IS NULL OR j.regionSido = :sido)
+              AND (:sigungu IS NULL OR j.regionSigungu = :sigungu)
+              AND (:major IS NULL OR j.jobTypeMajor = :major)
+              AND (:mid IS NULL OR j.jobTypeMid = :mid)
+              AND (:payType IS NULL OR j.payType = :payType)
+            """)
+    Long countByAllFilters(
+            @Param("sido") String sido,
+            @Param("sigungu") String sigungu,
+            @Param("major") String major,
+            @Param("mid") String mid,
+            @Param("payType") String payType
+    );
 
     @Query("SELECT j.jobTypeMajor, j.jobTypeMid, COUNT(j) FROM JobPosting j WHERE (:sido IS NULL OR j.regionSido = :sido) AND (:sigungu IS NULL OR j.regionSigungu = :sigungu) AND (:payType IS NULL OR j.payType = :payType) AND j.jobTypeMajor IS NOT NULL AND j.jobTypeMajor <> '' GROUP BY j.jobTypeMajor, j.jobTypeMid ORDER BY COUNT(j) DESC")
     List<Object[]> countGroupByJobType(@Param("sido") String sido, @Param("sigungu") String sigungu, @Param("payType") String payType);
