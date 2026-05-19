@@ -284,6 +284,10 @@
             color: #a05a00;
         }
 
+        .filters.collapsed {
+            display: none;
+        }
+
         .empty {
             padding: 48px 16px;
             color: #667085;
@@ -374,7 +378,14 @@
         <aside class="list-panel" aria-label="채용 공고 목록">
             <input id="keywordInput" type="text" placeholder="공고 제목 검색..."
                    style="width:100%;height:48px;padding:12px 20px;font-size:25px;border:1px solid #cfd6df;border-radius:6px;margin-bottom:0;box-sizing:border-box;">
-            <div class="filters">
+            <button type="button" id="filterToggle"
+                    style="width:100%;padding:10px 16px;border:none;border-bottom:1px solid #e5eaf0;
+                           background:#f6f8fb;text-align:left;font-size:13px;font-weight:700;
+                           color:#52606d;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                <span>필터</span>
+                <span id="filterToggleIcon">▲</span>
+            </button>
+            <div class="filters" id="filtersBody">
                 <div>
                     <p class="filter-title">지역 필터</p>
                     <div class="filter-row">
@@ -400,6 +411,15 @@
                     </div>
                 </div>
                 <div>
+                    <p class="filter-title">급여유형</p>
+                    <div class="filter-row">
+                        <select id="filterPayType">
+                            <option value="all">전체</option>
+                            <option th:each="pt : ${payTypes}" th:value="${pt}" th:text="${pt}">월급</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
                     <p class="filter-title">반경 필터</p>
                     <div class="filter-row" role="group" aria-label="반경 필터">
                         <button class="filter-button active" type="button" data-radius="all">전체</button>
@@ -409,6 +429,12 @@
                     </div>
                 </div>
                 <div class="filter-row" style="align-items:center;gap:8px;margin-top:8px;">
+                    <span class="filter-title" style="margin:0;">정렬</span>
+                    <button class="filter-button active" type="button" id="sortDistanceBtn">거리순</button>
+                    <button class="filter-button" type="button" id="sortSalaryBtn"
+                            disabled style="opacity:0.4;cursor:not-allowed;" title="급여유형을 선택하세요">급여순</button>
+                </div>
+                <div class="filter-row" style="align-items:center;gap:8px;margin-top:4px;">
                     <label for="resultLimit">결과 수</label>
                     <select id="resultLimit">
                         <option value="10" selected>10개</option>
@@ -417,6 +443,7 @@
                         <option value="all">전체</option>
                     </select>
                     <button id="searchBtn" type="button" class="filter-button active" style="padding:6px 16px;">검색</button>
+                    <button id="resetBtn" type="button" class="filter-button" style="padding:6px 16px;">초기화</button>
                 </div>
                 <!--
                 <div>
@@ -573,12 +600,21 @@
     const filterSigungu = document.getElementById("filterSigungu");
     const filterJobMajor = document.getElementById("filterJobMajor");
     const filterJobMid = document.getElementById("filterJobMid");
+    const filterPayType = document.getElementById("filterPayType");
+    const sortDistanceBtn = document.getElementById("sortDistanceBtn");
+    const sortSalaryBtn = document.getElementById("sortSalaryBtn");
+    const filterToggle = document.getElementById("filterToggle");
+    const filtersBody = document.getElementById("filtersBody");
+    const filterToggleIcon = document.getElementById("filterToggleIcon");
     const resultLimit = document.getElementById("resultLimit");
     const searchBtn = document.getElementById("searchBtn");
+    const resetBtn = document.getElementById("resetBtn");
     let selectedRadius = "all";
     let selectedSido = "all";
     let selectedSigungu = "all";
     let selectedJobMajor = "all";
+    let selectedPayType = "all";
+    let selectedSort = "distance";
     let selectedJobMid = "all";
     let selectedDong = "all";
     let customCenter = null;
@@ -654,22 +690,33 @@
     }
 
     function hasServerFilter() {
-        return selectedSido !== "all" ||
+        return selectedRadius !== "all" ||
+            selectedSido !== "all" ||
             selectedSigungu !== "all" ||
             selectedJobMajor !== "all" ||
             selectedJobMid !== "all" ||
+            selectedPayType !== "all" ||
             document.getElementById("keywordInput").value.trim() !== "";
     }
 
     function serverFilterParams() {
-        return {
+        const params = {
             sido: selectedSido,
             sigungu: selectedSigungu,
             jobTypeMajor: selectedJobMajor,
             jobTypeMid: selectedJobMid,
             limit: resultLimit.value,
-            keyword: document.getElementById("keywordInput").value.trim()
+            keyword: document.getElementById("keywordInput").value.trim(),
+            payType: selectedPayType,
+            sort: selectedSort
         };
+        if (selectedRadius !== "all") {
+            const center = searchCenter();
+            params.lat = center.lat;
+            params.lng = center.lng;
+            params.radius = selectedRadius;
+        }
+        return params;
     }
 
     function cardDataset(job) {
@@ -948,7 +995,7 @@ function applyFilters() {
             attribution: "&copy; OpenStreetMap"
         }).addTo(map);
 
-        map.on("click", (e) => {
+        map.on("click", async (e) => {
             customCenter = {lat: e.latlng.lat, lng: e.latlng.lng};
             if (customMarker) {
                 customMarker.remove();
@@ -967,7 +1014,7 @@ function applyFilters() {
                 }
             }
             updateRadiusCircle();
-            applyFilters();
+            await runSearch();
         });
 
         syncCardsFromDom();
@@ -975,7 +1022,7 @@ function applyFilters() {
     }
 
     radiusButtons.forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", async () => {
             selectedRadius = button.dataset.radius;
             setActive(radiusButtons, button);
             if (selectedRadius !== "all") {
@@ -986,7 +1033,7 @@ function applyFilters() {
                 filterSigungu.disabled = true;
             }
             updateRadiusCircle();
-            applyFilters();
+            await runSearch();
         });
     });
 
@@ -1010,6 +1057,77 @@ function applyFilters() {
 
     filterJobMid.addEventListener("change", (event) => {
         selectedJobMid = event.target.value;
+    });
+
+    filterPayType.addEventListener("change", (event) => {
+        selectedPayType = event.target.value;
+        const enabled = selectedPayType !== "all";
+        sortSalaryBtn.disabled = !enabled;
+        sortSalaryBtn.style.opacity = enabled ? "1" : "0.4";
+        sortSalaryBtn.style.cursor = enabled ? "pointer" : "not-allowed";
+        sortSalaryBtn.title = enabled ? "" : "급여유형을 선택하세요";
+        if (!enabled && selectedSort === "salary") {
+            selectedSort = "distance";
+            sortDistanceBtn.classList.add("active");
+            sortSalaryBtn.classList.remove("active");
+        }
+    });
+
+    sortDistanceBtn.addEventListener("click", () => {
+        selectedSort = "distance";
+        sortDistanceBtn.classList.add("active");
+        sortSalaryBtn.classList.remove("active");
+    });
+
+    sortSalaryBtn.addEventListener("click", () => {
+        if (sortSalaryBtn.disabled) return;
+        selectedSort = "salary";
+        sortSalaryBtn.classList.add("active");
+        sortDistanceBtn.classList.remove("active");
+    });
+
+    filterToggle.addEventListener("click", () => {
+        const collapsed = filtersBody.classList.toggle("collapsed");
+        filterToggleIcon.textContent = collapsed ? "▼" : "▲";
+    });
+
+    resetBtn.addEventListener("click", async () => {
+        filterSido.value = "all";
+        fillSelect(filterSigungu, "시/군/구 전체", []);
+        filterSigungu.disabled = true;
+        filterJobMajor.value = "all";
+        fillSelect(filterJobMid, "중분류 전체", []);
+        filterJobMid.disabled = true;
+        filterPayType.value = "all";
+        resultLimit.value = "10";
+        document.getElementById("keywordInput").value = "";
+
+        selectedSido = "all";
+        selectedSigungu = "all";
+        selectedJobMajor = "all";
+        selectedJobMid = "all";
+        selectedPayType = "all";
+        selectedSort = "distance";
+        selectedRadius = "all";
+        selectedDong = "all";
+
+        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === "all"));
+        setActive(dongButtons, dongButtons.find(b => b.dataset.dong === "all"));
+        updateRadiusCircle();
+
+        sortDistanceBtn.classList.add("active");
+        sortSalaryBtn.classList.remove("active");
+        sortSalaryBtn.disabled = true;
+        sortSalaryBtn.style.opacity = "0.4";
+        sortSalaryBtn.style.cursor = "not-allowed";
+        sortSalaryBtn.title = "급여유형을 선택하세요";
+
+        if (customMarker) { customMarker.remove(); customMarker = null; }
+        customCenter = null;
+        if (resetCenterButton) resetCenterButton.style.display = "none";
+
+        resetToInitialCards();
+        applyFilters();
     });
 
     dongButtons.forEach((button) => {
