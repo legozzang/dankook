@@ -1,9 +1,9 @@
 """
-classifier.py
+stages/classify.py
 data/jobs_geocoded.csv를 AI 직종 분류로 보강해 data/jobs_classified.csv를 출력한다.
 
 실행 방법 (ai-server/ 루트에서):
-  python -m app.orchestrator.classifier
+  python -m app.orchestrator.stages.classify
 """
 
 import csv
@@ -17,10 +17,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 
 # ai-server/.env — 실행 cwd와 무관하게 로드
-_AI_SERVER_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_AI_SERVER_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 load_dotenv(os.path.join(_AI_SERVER_ROOT, ".env"))
 
 from google import genai
+from app.orchestrator.shared import csv_io, retry
 
 DATA_DIR = os.path.join(_AI_SERVER_ROOT, "data")
 INPUT_CSV = os.path.join(DATA_DIR, "jobs_geocoded.csv")
@@ -46,19 +47,6 @@ NEW_COLS = ["job_type_major", "job_type_mid", "job_type_minor", "job_type_detail
 def _load_ksco() -> dict:
     with open(KSCO_JSON, encoding="utf-8") as f:
         return json.load(f)
-
-
-def _load_input() -> tuple[list[str], list[dict]]:
-    with open(SNAPSHOT_CSV, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        fieldnames = list(reader.fieldnames or [])
-        rows = []
-        for row in reader:
-            try:
-                rows.append(dict(row))
-            except Exception:
-                pass
-    return fieldnames, rows
 
 
 def _is_classified(row: dict) -> bool:
@@ -92,6 +80,14 @@ def _empty_classification() -> dict:
     }
 
 
+def _call_gemini(client, model_name: str, prompt: str) -> str:
+    def _do():
+        response = client.models.generate_content(model=model_name, contents=prompt)
+        return response.text.strip()
+
+    return retry.call_with_retry(_do, attempts=5, base_wait=60)
+
+
 def _classify_batch(client, ksco: dict, batch: list[dict], model_name: str, batch_idx: int) -> tuple[int, list[dict]]:
     names_str = json.dumps(list(ksco.keys()), ensure_ascii=False)
     items = "\n".join(
@@ -113,29 +109,16 @@ def _classify_batch(client, ksco: dict, batch: list[dict], model_name: str, batc
 
     empty_results = [_empty_classification() for _ in batch]
 
-    for attempt in range(5):
-        try:
-            response = client.models.generate_content(model=model_name, contents=prompt)
-            text = response.text.strip()
-            if "```" in text:
-                text = text.split("```")[1]
-                if text.startswith("json"):
-                    text = text[4:]
-            result_map = json.loads(text.strip())
-            break
-        except Exception as e:
-            err = str(e)
-            if "429" in err or "rate_limit" in err.lower() or "quota" in err.lower():
-                wait = 60 * (attempt + 1)
-                print(f"  [RateLimit:{model_name}] {wait}초 대기 ({attempt + 1}/5)...")
-                time.sleep(wait)
-            else:
-                print(f"  [오류:{model_name}] batch={batch_idx} {e} — 건너뜀")
-                return batch_idx, empty_results
-    else:
-        print(f"  [오류:{model_name}] batch={batch_idx} 최대 재시도 초과 — 건너뜀")
+    try:
+        text = _call_gemini(client, model_name, prompt)
+        if "```" in text:
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        result_map = json.loads(text.strip())
+    except Exception as e:
+        print(f"  [오류:{model_name}] batch={batch_idx} {e} -> 건너뜀")
         return batch_idx, empty_results
-
     results = []
     for i in range(len(batch)):
         detail = result_map.get(str(i + 1), "").strip()
@@ -158,14 +141,6 @@ def _classify_batch(client, ksco: dict, batch: list[dict], model_name: str, batc
     return batch_idx, results
 
 
-def _write_output(fieldnames: list[str], rows: list[dict]) -> None:
-    os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
-    with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def main() -> str | None:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -185,7 +160,7 @@ def main() -> str | None:
     ksco = _load_ksco()
 
     print("입력 CSV 로딩 중...")
-    fieldnames_in, input_rows = _load_input()
+    fieldnames_in, input_rows = csv_io.load_rows_deduped(SNAPSHOT_CSV)
     fieldnames = fieldnames_in + [col for col in REGION_COLS + NEW_COLS if col not in fieldnames_in]
     total_rows = len(input_rows)
 
@@ -212,7 +187,8 @@ def main() -> str | None:
     print(f"전체: {total_rows}행 / 완료: {done_count}행 / 미완료: {len(pending_indices)}행")
 
     if not pending_indices:
-        print("모든 행 분류 완료.")
+        print("모든 행 KSCO 분류 완료.")
+        print(f"출력: {OUTPUT_CSV}")
         return "no_work"
 
     batches = [
@@ -245,11 +221,11 @@ def main() -> str | None:
 
             completed += 1
             if completed % 5 == 0 or completed == len(batches):
-                _write_output(fieldnames, rows)
+                csv_io.write_rows(OUTPUT_CSV, fieldnames, rows)
             print(f"  batch={batch_idx:4d} 완료 ({completed}/{len(batches)}) 누적성공={success_total}")
 
-    _write_output(fieldnames, rows)
-    print(f"\n완료: {total_rows}행, 분류 성공 {sum(1 for row in rows if _is_classified(row))}건")
+    csv_io.write_rows(OUTPUT_CSV, fieldnames, rows)
+    print(f"\nKSCO 분류 완료: {total_rows}행, 성공 {sum(1 for row in rows if _is_classified(row))}건")
     print(f"출력: {OUTPUT_CSV}")
     return None
 

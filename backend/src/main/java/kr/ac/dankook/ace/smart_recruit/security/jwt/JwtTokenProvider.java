@@ -46,7 +46,7 @@ public class JwtTokenProvider {
     public String createToken(Long memberId, String email, String role) {
         Claims claims = Jwts.claims().setSubject(email);
         claims.put("memberId", memberId);
-        claims.put("role", role); // DB의 Role(SEEKER, EMPLOYER 등)을 주입
+        claims.put("role", role); // DB의 Role(SEEKER, ADMIN 등)을 주입
 
         Date now = new Date();
         Date validity = new Date(now.getTime() + tokenValidityInMilliseconds);
@@ -90,7 +90,18 @@ public class JwtTokenProvider {
     public String resolveToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
+            String token = bearerToken.substring(7);
+            if (StringUtils.hasText(token)) {
+                return token;
+            }
+        }
+        jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
         }
         return null;
     }

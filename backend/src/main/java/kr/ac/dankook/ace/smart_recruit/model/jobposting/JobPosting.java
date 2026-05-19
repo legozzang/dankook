@@ -166,4 +166,8 @@ public class JobPosting {
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void updateStatus(JobStatus status) {
+        this.status = status;
+    }
 }
