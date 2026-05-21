@@ -1,6 +1,7 @@
 package kr.ac.dankook.ace.smart_recruit.service.jobposting;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -31,13 +32,45 @@ public class JobPostingService {
     }
 
     public List<JobPostingCard> findAllCards() {
-        return jobPostingRepository.findAllByOrderByCreatedAtDesc().stream()
+        return jobPostingRepository.findTop10ByOrderByCreatedAtDesc().stream()
                 .map(this::toCard)
                 .toList();
     }
 
     public Optional<JobPostingCard> findCardById(Long id) {
         return jobPostingRepository.findById(id).map(this::toCard);
+    }
+
+    public List<JobPostingCard> findCardsByFilters(
+            String sido, String sigungu, String jobTypeMajor, String jobTypeMid,
+            String keyword, String payType, String sort) {
+        List<JobPosting> postings = jobPostingRepository.findByFilters(
+                sido, sigungu, jobTypeMajor, jobTypeMid, keyword, payType);
+        if ("salary".equals(sort)) {
+            postings = new ArrayList<>(postings);
+            postings.sort(Comparator.comparingInt(
+                    (JobPosting j) -> j.getPayAmount() != null ? j.getPayAmount() : 0
+            ).reversed());
+        }
+        return postings.stream().map(this::toCard).toList();
+    }
+
+    public List<JobPostingCard> findCardsByRadius(
+            double lat, double lng, double radiusKm, int limit,
+            String payType, String sido, String sigungu,
+            String jobTypeMajor, String jobTypeMid, String keyword, String sort) {
+        int sqlLimit = "salary".equals(sort) ? 5000 : limit;
+        List<JobPosting> postings = new ArrayList<>(
+                jobPostingRepository.findByRadius(
+                        lat, lng, radiusKm, payType,
+                        sido, sigungu, jobTypeMajor, jobTypeMid, keyword, sqlLimit));
+        if ("salary".equals(sort)) {
+            postings.sort(Comparator.comparingInt(
+                    (JobPosting j) -> j.getPayAmount() != null ? j.getPayAmount() : 0
+            ).reversed());
+            postings = postings.subList(0, Math.min(limit, postings.size()));
+        }
+        return postings.stream().map(this::toCard).toList();
     }
 
     private JobPostingCard toCard(JobPosting jobPosting) {
@@ -55,6 +88,10 @@ public class JobPostingService {
                 jobPosting.getContent(),
                 location,
                 dong,
+                jobPosting.getRegionSido() != null ? jobPosting.getRegionSido() : "",
+                jobPosting.getRegionSigungu() != null ? jobPosting.getRegionSigungu() : "",
+                jobPosting.getJobTypeMajor() != null ? jobPosting.getJobTypeMajor() : "",
+                jobPosting.getJobTypeMid() != null ? jobPosting.getJobTypeMid() : "",
                 jobPosting.getJobType(),
                 jobPosting.getStatus().name(),
                 deadlineLabel(jobPosting.getDeadline()),
@@ -206,6 +243,10 @@ public class JobPostingService {
             String content,
             String location,
             String dong,
+            String sido,
+            String sigungu,
+            String jobTypeMajor,
+            String jobTypeMid,
             String jobType,
             String status,
             String deadline,
