@@ -33,6 +33,13 @@
             const preferredMajor = profile.preferredJobTypeMajor ?? profile.preferred_job_type_major;
             const preferredMid = profile.preferredJobTypeMid ?? profile.preferred_job_type_mid;
 
+            userPreferences = {
+                sido: desiredSido || "",
+                sigungu: desiredSigungu || "",
+                jobMajor: preferredMajor || "",
+                jobMid: preferredMid || ""
+            };
+
             if (desiredSido) {
                 selectedSido = desiredSido;
                 filterSido.value = desiredSido;
@@ -98,11 +105,29 @@
     let selectedSort = "distance";
     let selectedJobMid = "all";
     let selectedDong = "all";
+    let userPreferences = {
+        sido: "",
+        sigungu: "",
+        jobMajor: "",
+        jobMid: ""
+    };
     let customCenter = null;
     let customMarker = null;
     let map;
     let radiusCircle = null;
     const markers = new Map();
+    const MARKER_STATUS = {
+        INFERRED_LOCATION: "inferred-location",
+        CLOSING_SOON: "closing-soon",
+        RECOMMENDED: "recommended",
+        DEFAULT: "default"
+    };
+    const MARKER_COLORS = {
+        [MARKER_STATUS.INFERRED_LOCATION]: "#6b7280",
+        [MARKER_STATUS.CLOSING_SOON]: "#dc2626",
+        [MARKER_STATUS.RECOMMENDED]: "#16a34a",
+        [MARKER_STATUS.DEFAULT]: "#2563eb"
+    };
 
     function searchCenter() {
         return customCenter || campus;
@@ -213,6 +238,7 @@
             sigungu: field(job, "sigungu", "sigungu"),
             jobMajor: field(job, "jobTypeMajor", "job_type_major"),
             jobMid: field(job, "jobTypeMid", "job_type_mid"),
+            status: field(job, "status", "status"),
             lat: field(job, "latitude", "latitude", 0),
             lng: field(job, "longitude", "longitude", 0),
             exactLocation: field(job, "exactLocation", "exact_location", false)
@@ -242,6 +268,7 @@
                      data-sigungu="${escapeHtml(data.sigungu)}"
                      data-job-major="${escapeHtml(data.jobMajor)}"
                      data-job-mid="${escapeHtml(data.jobMid)}"
+                     data-status="${escapeHtml(data.status)}"
                      data-lat="${escapeHtml(data.lat)}"
                      data-lng="${escapeHtml(data.lng)}"
                      data-exact-location="${exactLocation}">
@@ -311,6 +338,82 @@
         return `${distanceKm(searchCenter(), {lat, lng}).toFixed(1)}km`;
     }
 
+    function parseDeadlineDate(value) {
+        const text = String(value ?? "").trim();
+        if (!text || text === "마감일 미정") {
+            return null;
+        }
+
+        const numericMatch = text.match(/(\d{4})[.\-/년\s]+(\d{1,2})[.\-/월\s]+(\d{1,2})/);
+        if (!numericMatch) {
+            // TODO: API/DTO에서 deadline을 ISO 날짜로 내려주면 문자열 추정 대신 해당 필드로 판정한다.
+            return null;
+        }
+
+        const [, year, month, day] = numericMatch;
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function isClosingSoon(card) {
+        const deadlineDate = parseDeadlineDate(card.dataset.deadline);
+        if (!deadlineDate) {
+            return false;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        deadlineDate.setHours(0, 0, 0, 0);
+
+        const daysLeft = (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+        return daysLeft >= 0 && daysLeft <= 3;
+    }
+
+    function matchesPreference(value, preference) {
+        return Boolean(preference) && value === preference;
+    }
+
+    function isRecommendedJob(card) {
+        const matchesRegion = matchesPreference(card.dataset.sido, userPreferences.sido) &&
+            (!userPreferences.sigungu || card.dataset.sigungu === userPreferences.sigungu);
+        const matchesJobType = matchesPreference(card.dataset.jobMajor, userPreferences.jobMajor) &&
+            (!userPreferences.jobMid || card.dataset.jobMid === userPreferences.jobMid);
+
+        // TODO: 추천 여부 전용 필드(recommended, recommendationScore 등)가 API/DTO에 노출되면 이 조건보다 우선 사용한다.
+        return matchesRegion || matchesJobType;
+    }
+
+    function getMarkerStatus(card, lat, lng) {
+        const isExactLocation = card.dataset.exactLocation === "true";
+        if (!isExactLocation || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return MARKER_STATUS.INFERRED_LOCATION;
+        }
+
+        if (isClosingSoon(card)) {
+            return MARKER_STATUS.CLOSING_SOON;
+        }
+
+        if (isRecommendedJob(card)) {
+            return MARKER_STATUS.RECOMMENDED;
+        }
+
+        return MARKER_STATUS.DEFAULT;
+    }
+
+    function getMarkerColor(status) {
+        return MARKER_COLORS[status] || MARKER_COLORS[MARKER_STATUS.DEFAULT];
+    }
+
+    function createColoredMarkerIcon(status) {
+        return L.divIcon({
+            className: `job-marker-icon job-marker-icon--${status}`,
+            html: `<span style="background:${getMarkerColor(status)}"></span>`,
+            iconSize: [24, 32],
+            iconAnchor: [12, 28],
+            popupAnchor: [0, -28]
+        });
+    }
+
     function markerPopupHtml(card, lat, lng) {
         const rows = [
             popupRow("회사명", card.dataset.company),
@@ -330,15 +433,17 @@
     }
 
     function createMarker(card) {
-        const isExactLocation = card.dataset.exactLocation === "true";
         const lat = Number(card.dataset.lat);
         const lng = Number(card.dataset.lng);
 
-        if (!isExactLocation || Number.isNaN(lat) || Number.isNaN(lng)) {
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
             return null;
         }
 
-        const marker = L.marker([lat, lng]);
+        const status = getMarkerStatus(card, lat, lng);
+        const marker = L.marker([lat, lng], {
+            icon: createColoredMarkerIcon(status)
+        });
         marker.bindPopup(markerPopupHtml(card, lat, lng));
         marker.on("click", () => selectCard(card));
         return marker;
@@ -504,12 +609,28 @@ function applyFilters() {
     }
 }
 
+    function addMarkerLegend() {
+        const legend = L.control({position: "bottomleft"});
+        legend.onAdd = () => {
+            const container = L.DomUtil.create("div", "marker-legend");
+            container.innerHTML = `
+                <div><span class="marker-legend-dot marker-legend-dot--closing"></span>마감 임박</div>
+                <div><span class="marker-legend-dot marker-legend-dot--recommended"></span>추천 공고</div>
+                <div><span class="marker-legend-dot marker-legend-dot--default"></span>일반 공고</div>
+                <div><span class="marker-legend-dot marker-legend-dot--inferred"></span>위치 정보 부족</div>
+            `;
+            return container;
+        };
+        legend.addTo(map);
+    }
+
     function initMap() {
         map = L.map("jobMap", {scrollWheelZoom: true}).setView([campus.lat, campus.lng], 14);
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: 19,
             attribution: "&copy; OpenStreetMap"
         }).addTo(map);
+        addMarkerLegend();
 
         map.on("click", async (e) => {
             customCenter = {lat: e.latlng.lat, lng: e.latlng.lng};
