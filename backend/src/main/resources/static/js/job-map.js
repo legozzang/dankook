@@ -285,6 +285,50 @@
         markers.clear();
     }
 
+    function popupRow(label, value) {
+        const text = String(value ?? "").trim();
+        if (!text) {
+            return "";
+        }
+
+        return `<span class="popup-label">${escapeHtml(label)}: </span><span class="popup-value">${escapeHtml(text)}</span><br>`;
+    }
+
+    function summaryText(card) {
+        const lines = Array.from(card.querySelectorAll(".summary li"))
+            .map((item) => item.textContent.trim())
+            .filter(Boolean);
+
+        // TODO: AI 추천 사유(recommendation_reason 등)가 API/DTO에 노출되면 summaryLines보다 우선 표시한다.
+        return lines.length > 0 ? lines.join(" / ") : "";
+    }
+
+    function distanceLabel(lat, lng) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return "";
+        }
+
+        return `${distanceKm(searchCenter(), {lat, lng}).toFixed(1)}km`;
+    }
+
+    function markerPopupHtml(card, lat, lng) {
+        const rows = [
+            popupRow("회사명", card.dataset.company),
+            popupRow("지역", card.dataset.location),
+            popupRow("급여", card.dataset.salary),
+            popupRow("마감일", card.dataset.deadline),
+            popupRow("AI 요약", summaryText(card)),
+            popupRow("거리", distanceLabel(lat, lng))
+        ].join("");
+
+        return `
+            <div class="popup-job">
+                <p class="popup-title">${escapeHtml(card.dataset.title)}</p>
+                <p class="popup-meta">${rows}</p>
+            </div>
+        `;
+    }
+
     function createMarker(card) {
         const isExactLocation = card.dataset.exactLocation === "true";
         const lat = Number(card.dataset.lat);
@@ -295,16 +339,7 @@
         }
 
         const marker = L.marker([lat, lng]);
-        marker.bindPopup(`
-            <p class="popup-title">${escapeHtml(card.dataset.title)}</p>
-            <p class="popup-meta">
-                ${escapeHtml(card.dataset.company)}<br>
-                ${escapeHtml(card.dataset.location)}<br>
-                ${escapeHtml(card.dataset.salary)}<br>
-                ${escapeHtml(card.dataset.deadline)}<br>
-                실제 위치
-            </p>
-        `);
+        marker.bindPopup(markerPopupHtml(card, lat, lng));
         marker.on("click", () => selectCard(card));
         return marker;
     }
