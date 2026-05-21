@@ -1,4 +1,4 @@
-<!--
+﻿<!--
     최초 작성자 : 유지훈
     최초 작성일 : 2026.04.18
     목적 : /jobpostings 를 위한 지도형 채용 공고 화면
@@ -83,6 +83,45 @@
             height: 100%;
         }
 
+        .map-help {
+            position: absolute;
+            z-index: 500;
+            top: 12px;
+            left: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+        }
+
+        .map-help p {
+            margin: 0;
+            color: #52606d;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .reset-center-button {
+            min-height: 28px;
+            padding: 0 9px;
+            border: 1px solid #ccd5df;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #1769aa;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .custom-center-icon {
+            font-size: 24px;
+            line-height: 24px;
+            text-align: center;
+        }
+
         .list-panel {
             display: flex;
             flex-direction: column;
@@ -125,6 +164,23 @@
             border-color: #1769aa;
             background: #e8f1fa;
             color: #1769aa;
+        }
+
+        .filter-row select {
+            min-width: 150px;
+            min-height: 36px;
+            padding: 0 10px;
+            border: 1px solid #ccd5df;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #344054;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .filter-row select:disabled {
+            background: #f6f8fb;
+            color: #98a2b3;
         }
 
         .result-count {
@@ -228,6 +284,10 @@
             color: #a05a00;
         }
 
+        .filters.collapsed {
+            display: none;
+        }
+
         .empty {
             padding: 48px 16px;
             color: #667085;
@@ -297,16 +357,68 @@
 <main class="page">
     <div class="header">
         <h1>채용 공고</h1>
-        <a class="write-button" href="#">공고 등록</a>
+        <div id="guestMenu">
+            <a class="write-button" href="/auth/login">로그인</a>
+        </div>
+        <div id="userMenu" style="display:none;gap:8px;">
+            <a class="write-button" href="/auth/mypage">내 정보</a>
+            <button class="write-button" type="button" onclick="handleLogout()">로그아웃</button>
+        </div>
     </div>
 
     <section class="layout" th:with="jobCount=${#lists.size(jobPostings)}">
         <div class="map-panel" aria-label="채용 공고 지도">
+            <div class="map-help">
+                <p>지도를 클릭하면 해당 위치 기준으로 반경 검색</p>
+                <button id="resetCenter" class="reset-center-button" type="button" style="display:none">중심 초기화</button>
+            </div>
             <div id="jobMap"></div>
         </div>
 
         <aside class="list-panel" aria-label="채용 공고 목록">
-            <div class="filters">
+            <input id="keywordInput" type="text" placeholder="공고 제목 검색..."
+                   style="width:100%;height:48px;padding:12px 20px;font-size:25px;border:1px solid #cfd6df;border-radius:6px;margin-bottom:0;box-sizing:border-box;">
+            <button type="button" id="filterToggle"
+                    style="width:100%;padding:10px 16px;border:none;border-bottom:1px solid #e5eaf0;
+                           background:#f6f8fb;text-align:left;font-size:13px;font-weight:700;
+                           color:#52606d;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                <span>필터</span>
+                <span id="filterToggleIcon">▲</span>
+            </button>
+            <div class="filters" id="filtersBody">
+                <div>
+                    <p class="filter-title">지역 필터</p>
+                    <div class="filter-row">
+                        <select id="filterSido">
+                            <option value="all">시/도 전체</option>
+                            <option th:each="sido : ${sidos}" th:value="${sido}" th:text="${sido}">서울</option>
+                        </select>
+                        <select id="filterSigungu" disabled>
+                            <option value="all">시/군/구 전체</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <p class="filter-title">직업 필터</p>
+                    <div class="filter-row">
+                        <select id="filterJobMajor">
+                            <option value="all">대분류 전체</option>
+                            <option th:each="major : ${jobMajors}" th:value="${major}" th:text="${major}">대분류</option>
+                        </select>
+                        <select id="filterJobMid" disabled>
+                            <option value="all">중분류 전체</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <p class="filter-title">급여유형</p>
+                    <div class="filter-row">
+                        <select id="filterPayType">
+                            <option value="all">전체</option>
+                            <option th:each="pt : ${payTypes}" th:value="${pt}" th:text="${pt}">월급</option>
+                        </select>
+                    </div>
+                </div>
                 <div>
                     <p class="filter-title">반경 필터</p>
                     <div class="filter-row" role="group" aria-label="반경 필터">
@@ -315,6 +427,23 @@
                         <button class="filter-button" type="button" data-radius="3">3km</button>
                         <button class="filter-button" type="button" data-radius="5">5km</button>
                     </div>
+                </div>
+                <div class="filter-row" style="align-items:center;gap:8px;margin-top:8px;">
+                    <span class="filter-title" style="margin:0;">정렬</span>
+                    <button class="filter-button active" type="button" id="sortDistanceBtn">거리순</button>
+                    <button class="filter-button" type="button" id="sortSalaryBtn"
+                            disabled style="opacity:0.4;cursor:not-allowed;" title="급여유형을 선택하세요">급여순</button>
+                </div>
+                <div class="filter-row" style="align-items:center;gap:8px;margin-top:4px;">
+                    <label for="resultLimit">결과 수</label>
+                    <select id="resultLimit">
+                        <option value="10" selected>10개</option>
+                        <option value="50">50개</option>
+                        <option value="100">100개</option>
+                        <option value="all">전체</option>
+                    </select>
+                    <button id="searchBtn" type="button" class="filter-button active" style="padding:6px 16px;">검색</button>
+                    <button id="resetBtn" type="button" class="filter-button" style="padding:6px 16px;">초기화</button>
                 </div>
                 <!--
                 <div>
@@ -341,6 +470,10 @@
                          th:data-salary="${jobPosting.salary}"
                          th:data-deadline="${jobPosting.deadline}"
                          th:data-dong="${jobPosting.dong}"
+                         th:data-sido="${jobPosting.sido}"
+                         th:data-sigungu="${jobPosting.sigungu}"
+                         th:data-job-major="${jobPosting.jobTypeMajor}"
+                         th:data-job-mid="${jobPosting.jobTypeMid}"
                          th:data-lat="${jobPosting.latitude}"
                          th:data-lng="${jobPosting.longitude}"
                          th:data-exact-location="${jobPosting.exactLocation}">
@@ -384,17 +517,115 @@
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
+<script th:inline="javascript">
+    function updateAuthNav() {
+        const token = localStorage.getItem("accessToken");
+        document.getElementById("guestMenu").style.display = token ? "none" : "";
+        document.getElementById("userMenu").style.display = token ? "flex" : "none";
+    }
+
+    function handleLogout() {
+        if (confirm("로그아웃 하시겠습니까?")) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("memberId");
+            document.cookie = "accessToken=; path=/; max-age=0";
+            location.href = "/auth/login";
+        }
+    }
+
+    async function applyUserPreferences() {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            return;
+        }
+
+        try {
+            const response = await fetch("/auth/members/me", {
+                headers: {"Authorization": "Bearer " + token}
+            });
+            if (!response.ok) {
+                return;
+            }
+
+            const profile = await response.json();
+            const desiredSido = profile.desiredRegionSido ?? profile.desired_region_sido;
+            const desiredSigungu = profile.desiredRegionSigungu ?? profile.desired_region_sigungu;
+            const preferredMajor = profile.preferredJobTypeMajor ?? profile.preferred_job_type_major;
+            const preferredMid = profile.preferredJobTypeMid ?? profile.preferred_job_type_mid;
+
+            if (desiredSido) {
+                selectedSido = desiredSido;
+                filterSido.value = desiredSido;
+                fillSelect(filterSigungu, "시/군/구 전체", SIGUNGU_BY_SIDO[selectedSido] || []);
+                filterSigungu.disabled = false;
+                if (desiredSigungu) {
+                    selectedSigungu = desiredSigungu;
+                    filterSigungu.value = desiredSigungu;
+                }
+            }
+
+            if (preferredMajor) {
+                selectedJobMajor = preferredMajor;
+                filterJobMajor.value = preferredMajor;
+                fillSelect(filterJobMid, "중분류 전체", JOB_MID_BY_MAJOR[selectedJobMajor] || []);
+                filterJobMid.disabled = false;
+                if (preferredMid) {
+                    selectedJobMid = preferredMid;
+                    filterJobMid.value = preferredMid;
+                }
+            }
+
+            if (desiredSido || preferredMajor) {
+                await runSearch();
+            }
+        } catch (error) {
+            // 프로필을 불러오지 못하면 기본 목록을 그대로 보여준다.
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", updateAuthNav);
+    document.addEventListener("DOMContentLoaded", applyUserPreferences);
+
+    const SIGUNGU_BY_SIDO = JSON.parse(/*[[${sigunguBySidoJson}]]*/ '{}');
+    const JOB_MID_BY_MAJOR = JSON.parse(/*[[${jobTypeMidByMajorJson}]]*/ '{}');
     const campus = {lat: 37.3216, lng: 127.1267};
-    const cards = Array.from(document.querySelectorAll(".job-card"));
+    const cardsContainer = document.querySelector(".cards");
+    const initialCardsHtml = cardsContainer.innerHTML;
+    let cards = Array.from(document.querySelectorAll(".job-card"));
     const radiusButtons = Array.from(document.querySelectorAll("[data-radius]"));
     const dongButtons = Array.from(document.querySelectorAll("[data-dong]"));
     const visibleCount = document.getElementById("visibleCount");
+    const resetCenterButton = document.getElementById("resetCenter");
+    const filterSido = document.getElementById("filterSido");
+    const filterSigungu = document.getElementById("filterSigungu");
+    const filterJobMajor = document.getElementById("filterJobMajor");
+    const filterJobMid = document.getElementById("filterJobMid");
+    const filterPayType = document.getElementById("filterPayType");
+    const sortDistanceBtn = document.getElementById("sortDistanceBtn");
+    const sortSalaryBtn = document.getElementById("sortSalaryBtn");
+    const filterToggle = document.getElementById("filterToggle");
+    const filtersBody = document.getElementById("filtersBody");
+    const filterToggleIcon = document.getElementById("filterToggleIcon");
+    const resultLimit = document.getElementById("resultLimit");
+    const searchBtn = document.getElementById("searchBtn");
+    const resetBtn = document.getElementById("resetBtn");
     let selectedRadius = "all";
+    let selectedSido = "all";
+    let selectedSigungu = "all";
+    let selectedJobMajor = "all";
+    let selectedPayType = "all";
+    let selectedSort = "distance";
+    let selectedJobMid = "all";
     let selectedDong = "all";
+    let customCenter = null;
+    let customMarker = null;
     let map;
     let radiusCircle = null;
     const markers = new Map();
+
+    function searchCenter() {
+        return customCenter || campus;
+    }
 
     function distanceKm(a, b) {
         const earthRadius = 6371;
@@ -416,6 +647,25 @@
         card.scrollIntoView({block: "nearest"});
     }
 
+    function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            "\"": "&quot;",
+            "'": "&#39;"
+        }[char]));
+    }
+
+    function field(source, camelName, snakeName, fallback = "") {
+        return source[camelName] ?? source[snakeName] ?? fallback;
+    }
+
+    function fillSelect(select, placeholder, values) {
+        select.innerHTML = `<option value="all">${placeholder}</option>` +
+            values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+    }
+
     function updateRadiusCircle() {
         if (!map) {
             return;
@@ -430,13 +680,255 @@
             return;
         }
 
-        radiusCircle = L.circle([campus.lat, campus.lng], {
+        radiusCircle = L.circle([searchCenter().lat, searchCenter().lng], {
             radius: Number(selectedRadius) * 1000,
             color: "#1769aa",
             fillColor: "#1769aa",
             fillOpacity: 0.12,
             weight: 1
         }).addTo(map);
+    }
+
+    function hasServerFilter() {
+        return selectedRadius !== "all" ||
+            selectedSido !== "all" ||
+            selectedSigungu !== "all" ||
+            selectedJobMajor !== "all" ||
+            selectedJobMid !== "all" ||
+            selectedPayType !== "all" ||
+            document.getElementById("keywordInput").value.trim() !== "";
+    }
+
+    function serverFilterParams() {
+        const params = {
+            sido: selectedSido,
+            sigungu: selectedSigungu,
+            jobTypeMajor: selectedJobMajor,
+            jobTypeMid: selectedJobMid,
+            limit: resultLimit.value,
+            keyword: document.getElementById("keywordInput").value.trim(),
+            payType: selectedPayType,
+            sort: selectedSort
+        };
+        if (selectedRadius !== "all") {
+            const center = searchCenter();
+            params.lat = center.lat;
+            params.lng = center.lng;
+            params.radius = selectedRadius;
+        }
+        return params;
+    }
+
+    function cardDataset(job) {
+        return {
+            id: field(job, "id", "id"),
+            title: field(job, "title", "title"),
+            company: field(job, "companyName", "company_name"),
+            location: field(job, "location", "location"),
+            salary: field(job, "salary", "salary"),
+            deadline: field(job, "deadline", "deadline"),
+            dong: field(job, "dong", "dong"),
+            sido: field(job, "sido", "sido"),
+            sigungu: field(job, "sigungu", "sigungu"),
+            jobMajor: field(job, "jobTypeMajor", "job_type_major"),
+            jobMid: field(job, "jobTypeMid", "job_type_mid"),
+            lat: field(job, "latitude", "latitude", 0),
+            lng: field(job, "longitude", "longitude", 0),
+            exactLocation: field(job, "exactLocation", "exact_location", false)
+        };
+    }
+
+    function cardHtml(job) {
+        const data = cardDataset(job);
+        const workTime = field(job, "workTime", "work_time", "근무시간 협의");
+        const summaryLines = field(job, "summaryLines", "summary_lines", []);
+        const exactLocation = data.exactLocation === true || data.exactLocation === "true";
+        const summaryHtml = Array.isArray(summaryLines)
+            ? summaryLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")
+            : "";
+
+        return `
+            <article class="job-card"
+                     id="job-${escapeHtml(data.id)}"
+                     data-id="${escapeHtml(data.id)}"
+                     data-title="${escapeHtml(data.title)}"
+                     data-company="${escapeHtml(data.company)}"
+                     data-location="${escapeHtml(data.location)}"
+                     data-salary="${escapeHtml(data.salary)}"
+                     data-deadline="${escapeHtml(data.deadline)}"
+                     data-dong="${escapeHtml(data.dong)}"
+                     data-sido="${escapeHtml(data.sido)}"
+                     data-sigungu="${escapeHtml(data.sigungu)}"
+                     data-job-major="${escapeHtml(data.jobMajor)}"
+                     data-job-mid="${escapeHtml(data.jobMid)}"
+                     data-lat="${escapeHtml(data.lat)}"
+                     data-lng="${escapeHtml(data.lng)}"
+                     data-exact-location="${exactLocation}">
+                <div>
+                    <p class="company">${escapeHtml(data.company)}</p>
+                    <h2 class="job-title">${escapeHtml(data.title)}</h2>
+                </div>
+
+                <div class="meta-grid">
+                    <div class="meta-item">
+                        <span class="meta-label">위치</span>
+                        <span class="meta-value">${escapeHtml(data.location)}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">시급/급여</span>
+                        <span class="meta-value">${escapeHtml(data.salary)}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">근무시간</span>
+                        <span class="meta-value">${escapeHtml(workTime)}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">마감일</span>
+                        <span class="meta-value">${escapeHtml(data.deadline)}</span>
+                    </div>
+                </div>
+
+                <ul class="summary" aria-label="AI 요약">${summaryHtml}</ul>
+
+                <span class="location-badge${exactLocation ? "" : " pending"}">
+                    ${exactLocation ? "실제 위치" : "좌표 미등록 - 임시 위치"}
+                </span>
+
+                <a class="detail-link" href="/jobpostings/${escapeHtml(data.id)}">상세 보기</a>
+            </article>
+        `;
+    }
+
+    function clearMarkers() {
+        markers.forEach((marker) => marker.remove());
+        markers.clear();
+    }
+
+    function createMarker(card) {
+        const isExactLocation = card.dataset.exactLocation === "true";
+        const lat = Number(card.dataset.lat);
+        const lng = Number(card.dataset.lng);
+
+        if (!isExactLocation || Number.isNaN(lat) || Number.isNaN(lng)) {
+            return null;
+        }
+
+        const marker = L.marker([lat, lng]);
+        marker.bindPopup(`
+            <p class="popup-title">${escapeHtml(card.dataset.title)}</p>
+            <p class="popup-meta">
+                ${escapeHtml(card.dataset.company)}<br>
+                ${escapeHtml(card.dataset.location)}<br>
+                ${escapeHtml(card.dataset.salary)}<br>
+                ${escapeHtml(card.dataset.deadline)}<br>
+                실제 위치
+            </p>
+        `);
+        marker.on("click", () => selectCard(card));
+        return marker;
+    }
+
+    function renderMarkers() {
+        if (!map) {
+            return;
+        }
+
+        clearMarkers();
+        cards.forEach((card) => {
+            const marker = createMarker(card);
+            if (marker) {
+                markers.set(card.dataset.id, marker);
+            }
+        });
+    }
+
+    function bindCardEvents() {
+        cards.forEach((card) => {
+            card.addEventListener("click", (event) => {
+                if (event.target.closest("a")) {
+                    return;
+                }
+                selectCard(card);
+                const marker = markers.get(card.dataset.id);
+                if (marker) {
+                    marker.openPopup();
+                    map.setView(marker.getLatLng(), 15);
+                }
+            });
+        });
+    }
+
+    function syncCardsFromDom() {
+        cards = Array.from(document.querySelectorAll(".job-card"));
+        bindCardEvents();
+        renderMarkers();
+    }
+
+    function renderCards(jobs) {
+        if (jobs.length === 0) {
+            cardsContainer.innerHTML = `<p class="empty">조건에 맞는 채용 공고가 없습니다.</p>`;
+        } else {
+            cardsContainer.innerHTML = jobs.map(cardHtml).join("");
+        }
+        syncCardsFromDom();
+    }
+
+    function resetToInitialCards() {
+        cardsContainer.innerHTML = initialCardsHtml;
+        syncCardsFromDom();
+    }
+
+    async function fetchAndRender(params) {
+        try {
+            const query = new URLSearchParams(params);
+            const response = await fetch(`/api/job-postings/search?${query.toString()}`);
+
+            if (!response.ok) {
+                throw new Error(`채용 공고 검색 실패: ${response.status}`);
+            }
+
+            const jobs = await response.json();
+            renderCards(jobs);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async function refreshServerResults() {
+        try {
+            if (hasServerFilter()) {
+                await fetchAndRender(serverFilterParams());
+            } else {
+                resetToInitialCards();
+            }
+            applyFilters();
+        } catch (error) {
+            console.error(error);
+            visibleCount.textContent = "0";
+        }
+    }
+
+    async function runSearch() {
+        try {
+            const allFiltersDefault = !hasServerFilter();
+
+            if (allFiltersDefault && resultLimit.value === "10") {
+                resetToInitialCards();
+                applyFilters();
+                return;
+            }
+
+            if (allFiltersDefault) {
+                await fetchAndRender(serverFilterParams());
+                applyFilters();
+                return;
+            }
+
+            await refreshServerResults();
+        } catch (error) {
+            console.error(error);
+            visibleCount.textContent = "0";
+        }
     }
     
 function applyFilters() {
@@ -453,12 +945,24 @@ function applyFilters() {
 
         const inRadius =
             selectedRadius === "all" ||
-            (hasValidPoint && distanceKm(campus, point) <= Number(selectedRadius));
+            (hasValidPoint && distanceKm(searchCenter(), point) <= Number(selectedRadius));
+
+        const inSido =
+            selectedSido === "all" || card.dataset.sido === selectedSido;
+
+        const inSigungu =
+            selectedSigungu === "all" || card.dataset.sigungu === selectedSigungu;
 
         const inDong =
             selectedDong === "all" || card.dataset.dong === selectedDong;
 
-        const visible = inRadius && inDong;
+        const inJobMajor =
+            selectedJobMajor === "all" || card.dataset.jobMajor === selectedJobMajor;
+
+        const inJobMid =
+            selectedJobMid === "all" || card.dataset.jobMid === selectedJobMid;
+
+        const visible = inRadius && inSido && inSigungu && inDong && inJobMajor && inJobMid;
         const marker = markers.get(card.dataset.id);
 
         card.hidden = !visible;
@@ -490,45 +994,140 @@ function applyFilters() {
             maxZoom: 19,
             attribution: "&copy; OpenStreetMap"
         }).addTo(map);
-        
 
-        cards.forEach((card) => {
-            const isExactLocation = card.dataset.exactLocation === "true";
-            const lat = Number(card.dataset.lat);
-            const lng = Number(card.dataset.lng);
-
-            // 정확한 좌표가 없거나 좌표값이 이상하면 지도에 마커를 찍지 않음
-            if (!isExactLocation || Number.isNaN(lat) || Number.isNaN(lng)) {
-                return;
+        map.on("click", async (e) => {
+            customCenter = {lat: e.latlng.lat, lng: e.latlng.lng};
+            if (customMarker) {
+                customMarker.remove();
             }
-
-            const marker = L.marker([lat, lng]);
-            const locationState = "실제 위치";
-
-            marker.bindPopup(`
-                <p class="popup-title">${card.dataset.title}</p>
-                <p class="popup-meta">
-                    ${card.dataset.company}<br>
-                    ${card.dataset.location}<br>
-                    ${card.dataset.salary}<br>
-                    ${card.dataset.deadline}<br>
-                    ${locationState}
-                </p>
-            `);
-
-            marker.on("click", () => selectCard(card));
-            markers.set(card.dataset.id, marker);
-            marker.addTo(map);
+            customMarker = L.marker([e.latlng.lat, e.latlng.lng], {
+                icon: L.divIcon({className: "custom-center-icon", html: "📍", iconSize: [24, 24]})
+            }).addTo(map).bindPopup("검색 중심").openPopup();
+            if (resetCenterButton) {
+                resetCenterButton.style.display = "";
+            }
+            if (selectedRadius === "all") {
+                const btn = radiusButtons.find((button) => button.dataset.radius === "1");
+                if (btn) {
+                    selectedRadius = "1";
+                    setActive(radiusButtons, btn);
+                }
+            }
+            updateRadiusCircle();
+            await runSearch();
         });
+
+        syncCardsFromDom();
+        applyFilters();
     }
 
     radiusButtons.forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", async () => {
             selectedRadius = button.dataset.radius;
             setActive(radiusButtons, button);
+            if (selectedRadius !== "all") {
+                selectedSido = "all";
+                selectedSigungu = "all";
+                filterSido.value = "all";
+                fillSelect(filterSigungu, "시/군/구 전체", []);
+                filterSigungu.disabled = true;
+            }
             updateRadiusCircle();
-            applyFilters();
+            await runSearch();
         });
+    });
+
+    filterSido.addEventListener("change", (event) => {
+        selectedSido = event.target.value;
+        fillSelect(filterSigungu, "시/군/구 전체", SIGUNGU_BY_SIDO[selectedSido] || []);
+        filterSigungu.disabled = selectedSido === "all";
+        selectedSigungu = "all";
+    });
+
+    filterSigungu.addEventListener("change", (event) => {
+        selectedSigungu = event.target.value;
+    });
+
+    filterJobMajor.addEventListener("change", (event) => {
+        selectedJobMajor = event.target.value;
+        fillSelect(filterJobMid, "중분류 전체", JOB_MID_BY_MAJOR[selectedJobMajor] || []);
+        filterJobMid.disabled = selectedJobMajor === "all";
+        selectedJobMid = "all";
+    });
+
+    filterJobMid.addEventListener("change", (event) => {
+        selectedJobMid = event.target.value;
+    });
+
+    filterPayType.addEventListener("change", (event) => {
+        selectedPayType = event.target.value;
+        const enabled = selectedPayType !== "all";
+        sortSalaryBtn.disabled = !enabled;
+        sortSalaryBtn.style.opacity = enabled ? "1" : "0.4";
+        sortSalaryBtn.style.cursor = enabled ? "pointer" : "not-allowed";
+        sortSalaryBtn.title = enabled ? "" : "급여유형을 선택하세요";
+        if (!enabled && selectedSort === "salary") {
+            selectedSort = "distance";
+            sortDistanceBtn.classList.add("active");
+            sortSalaryBtn.classList.remove("active");
+        }
+    });
+
+    sortDistanceBtn.addEventListener("click", () => {
+        selectedSort = "distance";
+        sortDistanceBtn.classList.add("active");
+        sortSalaryBtn.classList.remove("active");
+    });
+
+    sortSalaryBtn.addEventListener("click", () => {
+        if (sortSalaryBtn.disabled) return;
+        selectedSort = "salary";
+        sortSalaryBtn.classList.add("active");
+        sortDistanceBtn.classList.remove("active");
+    });
+
+    filterToggle.addEventListener("click", () => {
+        const collapsed = filtersBody.classList.toggle("collapsed");
+        filterToggleIcon.textContent = collapsed ? "▼" : "▲";
+    });
+
+    resetBtn.addEventListener("click", async () => {
+        filterSido.value = "all";
+        fillSelect(filterSigungu, "시/군/구 전체", []);
+        filterSigungu.disabled = true;
+        filterJobMajor.value = "all";
+        fillSelect(filterJobMid, "중분류 전체", []);
+        filterJobMid.disabled = true;
+        filterPayType.value = "all";
+        resultLimit.value = "10";
+        document.getElementById("keywordInput").value = "";
+
+        selectedSido = "all";
+        selectedSigungu = "all";
+        selectedJobMajor = "all";
+        selectedJobMid = "all";
+        selectedPayType = "all";
+        selectedSort = "distance";
+        selectedRadius = "all";
+        selectedDong = "all";
+
+        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === "all"));
+        setActive(dongButtons, dongButtons.find(b => b.dataset.dong === "all"));
+        updateRadiusCircle();
+
+        sortDistanceBtn.classList.add("active");
+        sortSalaryBtn.classList.remove("active");
+        sortSalaryBtn.disabled = true;
+        sortSalaryBtn.style.opacity = "0.4";
+        sortSalaryBtn.style.cursor = "not-allowed";
+        sortSalaryBtn.title = "급여유형을 선택하세요";
+
+        if (customMarker) { customMarker.remove(); customMarker = null; }
+        customCenter = null;
+        if (resetCenterButton) resetCenterButton.style.display = "none";
+
+        resetToInitialCards();
+        applyFilters();
     });
 
     dongButtons.forEach((button) => {
@@ -539,18 +1138,21 @@ function applyFilters() {
         });
     });
 
-    cards.forEach((card) => {
-        card.addEventListener("click", (event) => {
-            if (event.target.closest("a")) {
-                return;
+    if (resetCenterButton) {
+        resetCenterButton.addEventListener("click", () => {
+            customCenter = null;
+            if (customMarker) {
+                customMarker.remove();
+                customMarker = null;
             }
-            selectCard(card);
-            const marker = markers.get(card.dataset.id);
-            if (marker) {
-                marker.openPopup();
-                map.setView(marker.getLatLng(), 15);
-            }
+            resetCenterButton.style.display = "none";
+            updateRadiusCircle();
+            applyFilters();
         });
+    }
+
+    searchBtn.addEventListener("click", async () => {
+        await runSearch();
     });
 
     if (window.L) {
@@ -559,3 +1161,5 @@ function applyFilters() {
 </script>
 </body>
 </html>
+
+
