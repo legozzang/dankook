@@ -2,7 +2,8 @@
     최초 작성자 : 유지훈
     최초 작성일 : 2026.04.18
     목적 : /jobpostings 를 위한 지도형 채용 공고 화면
-    수정 이력 : 2026.05.18 (1, 3, 5km 거리별 필터 업데이트) 
+    수정 이력 : 2026.05.18 (1, 3, 5km 거리별 필터 업데이트)
+              2026.05.21 (지도 화면 CSS/JS 분리, 추천 표시 개선)
 -->
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
@@ -11,288 +12,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>채용 공고 | Smart Recruit</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            background: #f4f6f8;
-            color: #1f2933;
-            font-family: Arial, "Noto Sans KR", sans-serif;
-        }
-
-        .page {
-            min-height: 100vh;
-            padding: 24px;
-        }
-
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            margin: 0 auto 18px;
-            max-width: 1280px;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 28px;
-            letter-spacing: 0;
-        }
-
-        .write-button,
-        .detail-link {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 38px;
-            padding: 0 14px;
-            border-radius: 6px;
-            background: #1769aa;
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: 700;
-            text-decoration: none;
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 410px;
-            gap: 18px;
-            max-width: 1280px;
-            margin: 0 auto;
-        }
-
-        .map-panel,
-        .list-panel {
-            min-height: 0;
-            border: 1px solid #dbe2ea;
-            background: #ffffff;
-        }
-
-        .map-panel {
-            position: sticky;
-            top: 20px;
-            height: calc(100vh - 110px);
-        }
-
-        #jobMap {
-            width: 100%;
-            height: 100%;
-        }
-
-        .list-panel {
-            display: flex;
-            flex-direction: column;
-            max-height: calc(100vh - 110px);
-        }
-
-        .filters {
-            display: grid;
-            gap: 12px;
-            padding: 16px;
-            border-bottom: 1px solid #e5eaf0;
-        }
-
-        .filter-title {
-            margin: 0;
-            color: #52606d;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .filter-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .filter-button {
-            min-height: 34px;
-            padding: 0 12px;
-            border: 1px solid #ccd5df;
-            border-radius: 6px;
-            background: #ffffff;
-            color: #344054;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .filter-button.active {
-            border-color: #1769aa;
-            background: #e8f1fa;
-            color: #1769aa;
-        }
-
-        .result-count {
-            color: #52606d;
-            font-size: 13px;
-        }
-
-        .cards {
-            display: grid;
-            gap: 12px;
-            overflow: auto;
-            padding: 16px;
-        }
-
-        .job-card {
-            display: grid;
-            gap: 12px;
-            padding: 16px;
-            border: 1px solid #dde3ea;
-            border-radius: 8px;
-            background: #ffffff;
-            cursor: pointer;
-        }
-
-        .job-card.active {
-            border-color: #1769aa;
-            box-shadow: 0 0 0 2px rgba(23, 105, 170, 0.12);
-        }
-
-        .job-title {
-            margin: 0;
-            font-size: 18px;
-            letter-spacing: 0;
-        }
-
-        .company {
-            margin: 0;
-            color: #52606d;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .meta-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 8px;
-        }
-
-        .meta-item {
-            min-width: 0;
-            padding: 10px;
-            border-radius: 6px;
-            background: #f6f8fb;
-        }
-
-        .meta-label {
-            display: block;
-            margin-bottom: 4px;
-            color: #697586;
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .meta-value {
-            display: block;
-            overflow-wrap: anywhere;
-            color: #202939;
-            font-size: 13px;
-            line-height: 1.35;
-        }
-
-        .summary {
-            display: grid;
-            gap: 6px;
-            margin: 0;
-            padding: 0;
-            list-style: none;
-        }
-
-        .summary li {
-            color: #364152;
-            font-size: 13px;
-            line-height: 1.45;
-        }
-
-        .location-badge {
-            display: inline-flex;
-            align-items: center;
-            width: fit-content;
-            min-height: 28px;
-            padding: 0 9px;
-            border-radius: 6px;
-            background: #e8f1fa;
-            color: #1769aa;
-            font-size: 12px;
-            font-weight: 800;
-        }
-
-        .location-badge.pending {
-            background: #fff4e5;
-            color: #a05a00;
-        }
-
-        .empty {
-            padding: 48px 16px;
-            color: #667085;
-            text-align: center;
-        }
-
-        .leaflet-popup-content {
-            min-width: 180px;
-            margin: 12px;
-            font-family: Arial, "Noto Sans KR", sans-serif;
-        }
-
-        .popup-title {
-            margin: 0 0 6px;
-            font-size: 14px;
-            font-weight: 800;
-        }
-
-        .popup-meta {
-            margin: 0;
-            color: #52606d;
-            font-size: 12px;
-            line-height: 1.4;
-        }
-
-        @media (max-width: 980px) {
-            .page {
-                padding: 16px;
-            }
-
-            .layout {
-                grid-template-columns: 1fr;
-            }
-
-            .map-panel {
-                position: relative;
-                top: 0;
-                height: 420px;
-            }
-
-            .list-panel {
-                max-height: none;
-            }
-        }
-
-        @media (max-width: 560px) {
-            .header {
-                align-items: flex-start;
-                flex-direction: column;
-            }
-
-            h1 {
-                font-size: 24px;
-            }
-
-            .map-panel {
-                height: 340px;
-            }
-
-            .meta-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/job-map.css}">
 </head>
 <body>
 <main class="page">
@@ -308,6 +28,12 @@
 
         <aside class="list-panel" aria-label="채용 공고 목록">
             <div class="filters">
+                <div class="recommendation-summary" role="status" aria-live="polite">
+                    <strong id="recommendationMessage"
+                            th:text="|등록된 공고 ${jobCount}개를 확인할 수 있어요.|">등록된 공고 0개를 확인할 수 있어요.</strong>
+                    <span id="locationModeLabel">기본 지역: 단국대학교 죽전캠퍼스</span>
+                </div>
+
                 <div>
                     <p class="filter-title">반경 필터</p>
                     <div class="filter-row" role="group" aria-label="반경 필터">
@@ -317,20 +43,13 @@
                         <button class="filter-button" type="button" data-radius="5">5km</button>
                     </div>
                 </div>
-                <!--
-                <div>
-                    <p class="filter-title">행정동 기준</p>
-                    <div class="filter-row" role="group" aria-label="행정동 필터">
-                        <button class="filter-button active" type="button" data-dong="all">전체</button>
-                        <button class="filter-button" type="button" th:each="dong : ${dongs}" th:data-dong="${dong}" th:text="${dong}">죽전동</button>
-                    </div>
-                </div>
-                -->
+
                 <span class="result-count"><strong id="visibleCount" th:text="${jobCount}">0</strong>개의 공고</span>
             </div>
 
-            <div class="cards">
+            <div class="cards" id="jobCards">
                 <p class="empty" th:if="${#lists.isEmpty(jobPostings)}">아직 등록된 채용 공고가 없습니다.</p>
+                <p class="empty" id="filteredEmpty" hidden>조건에 맞는 채용 공고가 없습니다.</p>
 
                 <article class="job-card"
                          th:each="jobPosting : ${jobPostings}"
@@ -339,21 +58,48 @@
                          th:data-title="${jobPosting.title}"
                          th:data-company="${jobPosting.companyName}"
                          th:data-location="${jobPosting.location}"
+                         th:data-region-sido="${jobPosting.regionSido}"
+                         th:data-region-sigungu="${jobPosting.regionSigungu}"
                          th:data-salary="${jobPosting.salary}"
                          th:data-deadline="${jobPosting.deadline}"
                          th:data-dong="${jobPosting.dong}"
+                         th:data-job-type="${jobPosting.jobType}"
+                         th:data-status="${jobPosting.status}"
+                         th:data-ai-reason="${jobPosting.aiReason}"
+                         th:data-base-score="${jobPosting.recommendationScore}"
+                         th:data-recommendation-score="${jobPosting.recommendationScore}"
+                         th:data-recommendation-level="${jobPosting.recommendationLevel}"
                          th:data-lat="${jobPosting.latitude}"
                          th:data-lng="${jobPosting.longitude}"
                          th:data-exact-location="${jobPosting.exactLocation}">
-                    <div>
-                        <p class="company" th:text="${jobPosting.companyName}">회사명</p>
-                        <h2 class="job-title" th:text="${jobPosting.title}">공고 제목</h2>
+                    <div class="card-head">
+                        <div>
+                            <p class="company" th:text="${jobPosting.companyName}">회사명</p>
+                            <h2 class="job-title" th:text="${jobPosting.title}">공고 제목</h2>
+                        </div>
+
+                        <div class="job-tags" aria-label="공고 추천 정보">
+                            <span class="job-tag recommendation-tag"
+                                  th:classappend="${jobPosting.recommendationLevel}"
+                                  title="추천도">
+                                추천도 <strong class="recommendation-score" th:text="${jobPosting.recommendationScore}">70</strong>
+                            </span>
+                            <span class="job-tag"
+                                  th:text="${#strings.isEmpty(jobPosting.jobType) ? '직종 미등록' : jobPosting.jobType}">직종</span>
+                            <span class="job-tag status-tag"
+                                  th:classappend="${jobPosting.status == 'CLOSED' ? ' closed' : ' open'}"
+                                  th:text="${jobPosting.status == 'CLOSED' ? '마감' : '진행중'}">진행중</span>
+                        </div>
                     </div>
 
                     <div class="meta-grid">
                         <div class="meta-item">
                             <span class="meta-label">위치</span>
                             <span class="meta-value" th:text="${jobPosting.location}">죽전동</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">거리</span>
+                            <span class="meta-value distance-value">거리 계산 중</span>
                         </div>
                         <div class="meta-item">
                             <span class="meta-label">시급/급여</span>
@@ -368,6 +114,11 @@
                             <span class="meta-value" th:text="${jobPosting.deadline}">마감일 미정</span>
                         </div>
                     </div>
+
+                    <p class="recommendation-reason">
+                        <span>AI 추천 사유</span>
+                        <strong class="recommendation-reason-text" th:text="${jobPosting.aiReason}">근무 조건이 명확한 공고입니다.</strong>
+                    </p>
 
                     <ul class="summary" aria-label="AI 요약">
                         <li th:each="line : ${jobPosting.summaryLines}" th:text="${line}">핵심 조건 요약</li>
@@ -384,179 +135,16 @@
     </section>
 </main>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const campus = {lat: 37.3216, lng: 127.1267};
-    const cards = Array.from(document.querySelectorAll(".job-card"));
-    const radiusButtons = Array.from(document.querySelectorAll("[data-radius]"));
-    const dongButtons = Array.from(document.querySelectorAll("[data-dong]"));
-    const visibleCount = document.getElementById("visibleCount");
-    let selectedRadius = "all";
-    let selectedDong = "all";
-    let map;
-    let radiusCircle = null;
-    const markers = new Map();
-
-    function distanceKm(a, b) {
-        const earthRadius = 6371;
-        const dLat = (b.lat - a.lat) * Math.PI / 180;
-        const dLng = (b.lng - a.lng) * Math.PI / 180;
-        const lat1 = a.lat * Math.PI / 180;
-        const lat2 = b.lat * Math.PI / 180;
-        const value = Math.sin(dLat / 2) ** 2 +
-            Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-        return earthRadius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
-    }
-
-    function setActive(buttons, activeButton) {
-        buttons.forEach((button) => button.classList.toggle("active", button === activeButton));
-    }
-
-    function selectCard(card) {
-        cards.forEach((item) => item.classList.toggle("active", item === card));
-        card.scrollIntoView({block: "nearest"});
-    }
-
-    function updateRadiusCircle() {
-        if (!map) {
-            return;
-        }
-
-        if (radiusCircle) {
-            radiusCircle.remove();
-            radiusCircle = null;
-        }
-
-        if (selectedRadius === "all") {
-            return;
-        }
-
-        radiusCircle = L.circle([campus.lat, campus.lng], {
-            radius: Number(selectedRadius) * 1000,
-            color: "#1769aa",
-            fillColor: "#1769aa",
-            fillOpacity: 0.12,
-            weight: 1
-        }).addTo(map);
-    }
-    
-function applyFilters() {
-    let count = 0;
-    const visibleMarkers = [];
-
-    cards.forEach((card) => {
-        const isExactLocation = card.dataset.exactLocation === "true";
-        const lat = Number(card.dataset.lat);
-        const lng = Number(card.dataset.lng);
-        const hasValidPoint = isExactLocation && !Number.isNaN(lat) && !Number.isNaN(lng);
-
-        const point = {lat, lng};
-
-        const inRadius =
-            selectedRadius === "all" ||
-            (hasValidPoint && distanceKm(campus, point) <= Number(selectedRadius));
-
-        const inDong =
-            selectedDong === "all" || card.dataset.dong === selectedDong;
-
-        const visible = inRadius && inDong;
-        const marker = markers.get(card.dataset.id);
-
-        card.hidden = !visible;
-
-        if (marker) {
-            if (visible) {
-                marker.addTo(map);
-                visibleMarkers.push(marker);
-            } else {
-                marker.remove();
-            }
-        }
-
-        if (visible) {
-            count += 1;
-        }
-    });
-
-    visibleCount.textContent = count;
-
-    if (visibleMarkers.length > 0) {
-        map.fitBounds(L.featureGroup(visibleMarkers).getBounds().pad(0.22), {maxZoom: 15});
-    }
-}
-
-    function initMap() {
-        map = L.map("jobMap", {scrollWheelZoom: true}).setView([campus.lat, campus.lng], 14);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            maxZoom: 19,
-            attribution: "&copy; OpenStreetMap"
-        }).addTo(map);
-        
-
-        cards.forEach((card) => {
-            const isExactLocation = card.dataset.exactLocation === "true";
-            const lat = Number(card.dataset.lat);
-            const lng = Number(card.dataset.lng);
-
-            // 정확한 좌표가 없거나 좌표값이 이상하면 지도에 마커를 찍지 않음
-            if (!isExactLocation || Number.isNaN(lat) || Number.isNaN(lng)) {
-                return;
-            }
-
-            const marker = L.marker([lat, lng]);
-            const locationState = "실제 위치";
-
-            marker.bindPopup(`
-                <p class="popup-title">${card.dataset.title}</p>
-                <p class="popup-meta">
-                    ${card.dataset.company}<br>
-                    ${card.dataset.location}<br>
-                    ${card.dataset.salary}<br>
-                    ${card.dataset.deadline}<br>
-                    ${locationState}
-                </p>
-            `);
-
-            marker.on("click", () => selectCard(card));
-            markers.set(card.dataset.id, marker);
-            marker.addTo(map);
-        });
-    }
-
-    radiusButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-            selectedRadius = button.dataset.radius;
-            setActive(radiusButtons, button);
-            updateRadiusCircle();
-            applyFilters();
-        });
-    });
-
-    dongButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-            selectedDong = button.dataset.dong;
-            setActive(dongButtons, button);
-            applyFilters();
-        });
-    });
-
-    cards.forEach((card) => {
-        card.addEventListener("click", (event) => {
-            if (event.target.closest("a")) {
-                return;
-            }
-            selectCard(card);
-            const marker = markers.get(card.dataset.id);
-            if (marker) {
-                marker.openPopup();
-                map.setView(marker.getLatLng(), 15);
-            }
-        });
-    });
-
-    if (window.L) {
-        initMap();
-    }
+    window.JobMapConfig = {
+        defaultOrigin: {lat: 37.3216, lng: 127.1267},
+        defaultRegionLabel: "단국대학교 죽전캠퍼스"
+    };
 </script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script th:src="@{/js/job-list.js}"></script>
+<script th:src="@{/js/filters.js}"></script>
+<script th:src="@{/js/user-location.js}"></script>
+<script th:src="@{/js/map.js}"></script>
 </body>
 </html>

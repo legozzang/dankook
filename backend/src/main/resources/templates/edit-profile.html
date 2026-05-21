@@ -63,6 +63,21 @@
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+        .region-preferences { display: grid; gap: 12px; }
+        .preference-region-row {
+            display: grid;
+            gap: 8px;
+            padding: 12px;
+            border: 1px solid #eef2f6;
+            border-radius: 8px;
+            background: #fbfcfe;
+        }
+        .region-row-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #374151;
+        }
+        .required-mark { color: #b42318; font-size: 12px; }
         .pay-row { display: grid; grid-template-columns: 160px 1fr; gap: 12px; align-items: end; }
         .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
         .btn {
@@ -159,11 +174,35 @@
     <div class="card">
         <div class="section-title">선호 조건</div>
         <div class="form-group">
-            <label>희망 지역</label>
-            <div class="grid-3">
-                <select id="regionSido"><option value="">시/도</option></select>
-                <select id="regionSigungu" disabled><option value="">시/군/구</option></select>
-                <select id="regionDong" disabled><option value="">구/읍/면</option></select>
+            <label>선호 지역</label>
+            <p class="hint" style="margin-bottom:10px">선호 지역 1은 로그인 후 채용 공고 첫 화면 추천에 필수로 사용됩니다.</p>
+            <div class="region-preferences">
+                <div class="preference-region-row">
+                    <div class="region-row-title">선호 지역 1 <span class="required-mark">필수</span></div>
+                    <div class="grid-3">
+                        <select id="region1Sido"><option value="">시/도</option></select>
+                        <select id="region1Sigungu" disabled><option value="">시/군/구</option></select>
+                        <input type="text" id="region1Dong" placeholder="동/읍/면 (선택)">
+                    </div>
+                </div>
+
+                <div class="preference-region-row">
+                    <div class="region-row-title">선호 지역 2 <span class="hint">선택</span></div>
+                    <div class="grid-3">
+                        <select id="region2Sido"><option value="">시/도</option></select>
+                        <select id="region2Sigungu" disabled><option value="">시/군/구</option></select>
+                        <input type="text" id="region2Dong" placeholder="동/읍/면 (선택)">
+                    </div>
+                </div>
+
+                <div class="preference-region-row">
+                    <div class="region-row-title">선호 지역 3 <span class="hint">선택</span></div>
+                    <div class="grid-3">
+                        <select id="region3Sido"><option value="">시/도</option></select>
+                        <select id="region3Sigungu" disabled><option value="">시/군/구</option></select>
+                        <input type="text" id="region3Dong" placeholder="동/읍/면 (선택)">
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -205,6 +244,26 @@
         const KSCO_RAW = /*[[${kscoHierarchyJson}]]*/ '{}';
         const KSCO = typeof KSCO_RAW === 'string' ? JSON.parse(KSCO_RAW || '{}') : (KSCO_RAW || {});
         const SIGUNGU_BY_SIDO = JSON.parse(/*[[${sigunguBySidoJson}]]*/ '{}');
+        const REGION_GROUPS = [
+            {
+                sido: 'region1Sido',
+                sigungu: 'region1Sigungu',
+                dong: 'region1Dong',
+                fields: ['desired_region_sido', 'desired_region_sigungu', 'desired_region_dong']
+            },
+            {
+                sido: 'region2Sido',
+                sigungu: 'region2Sigungu',
+                dong: 'region2Dong',
+                fields: ['desired_region2_sido', 'desired_region2_sigungu', 'desired_region2_dong']
+            },
+            {
+                sido: 'region3Sido',
+                sigungu: 'region3Sigungu',
+                dong: 'region3Dong',
+                fields: ['desired_region3_sido', 'desired_region3_sigungu', 'desired_region3_dong']
+            }
+        ];
         document.addEventListener('DOMContentLoaded', loadMemberInfo);
 
         function getToken() {
@@ -236,22 +295,20 @@
             select.value = selected || '';
         }
 
-        function setupRegionCascade() {
-            const sido = document.getElementById('regionSido');
-            const sigungu = document.getElementById('regionSigungu');
-            const dong = document.getElementById('regionDong');
+        function setupRegionCascade(group) {
+            const sido = document.getElementById(group.sido);
+            const sigungu = document.getElementById(group.sigungu);
 
             fillSelect(sido, Object.keys(SIGUNGU_BY_SIDO));
             sido.disabled = false;
 
             sido.addEventListener('change', () => {
                 fillSelect(sigungu, SIGUNGU_BY_SIDO[sido.value] || []);
-                resetSelect(dong);
             });
+        }
 
-            sigungu.addEventListener('change', () => {
-                resetSelect(dong);
-            });
+        function setupRegionCascades() {
+            REGION_GROUPS.forEach(setupRegionCascade);
         }
 
         function setupJobCascade() {
@@ -280,13 +337,16 @@
         }
 
         function setRegionValues(data) {
-            const sido = document.getElementById('regionSido');
-            const sigungu = document.getElementById('regionSigungu');
-            const dong = document.getElementById('regionDong');
+            REGION_GROUPS.forEach(group => {
+                const sido = document.getElementById(group.sido);
+                const sigungu = document.getElementById(group.sigungu);
+                const dong = document.getElementById(group.dong);
+                const [sidoField, sigunguField, dongField] = group.fields;
 
-            sido.value = data.desired_region_sido || '';
-            fillSelect(sigungu, SIGUNGU_BY_SIDO[sido.value] || [], data.desired_region_sigungu || '');
-            resetSelect(dong);
+                sido.value = data[sidoField] || '';
+                fillSelect(sigungu, SIGUNGU_BY_SIDO[sido.value] || [], data[sigunguField] || '');
+                dong.value = data[dongField] || '';
+            });
         }
 
         function setJobValues(data) {
@@ -303,7 +363,7 @@
 
         async function loadMemberInfo() {
             try {
-                setupRegionCascade();
+                setupRegionCascades();
                 setupJobCascade();
 
                 const response = await fetch('/auth/members/me', {
@@ -336,15 +396,26 @@
                 const nickname = document.getElementById('nicknameInput').value;
                 const currentPassword = document.getElementById('currentPassword').value;
                 const newPassword = document.getElementById('newPassword').value;
-                const desiredRegionSido = document.getElementById('regionSido').value;
-                const desiredRegionSigungu = document.getElementById('regionSigungu').value;
-                const desiredRegionDong = document.getElementById('regionDong').value;
+                const desiredRegionSido = document.getElementById('region1Sido').value;
+                const desiredRegionSigungu = document.getElementById('region1Sigungu').value;
+                const desiredRegionDong = document.getElementById('region1Dong').value;
+                const desiredRegion2Sido = document.getElementById('region2Sido').value;
+                const desiredRegion2Sigungu = document.getElementById('region2Sigungu').value;
+                const desiredRegion2Dong = document.getElementById('region2Dong').value;
+                const desiredRegion3Sido = document.getElementById('region3Sido').value;
+                const desiredRegion3Sigungu = document.getElementById('region3Sigungu').value;
+                const desiredRegion3Dong = document.getElementById('region3Dong').value;
                 const preferredJobTypeMajor = document.getElementById('jobMajor').value;
                 const preferredJobTypeMid = document.getElementById('jobMid').value;
                 const preferredJobTypeMinor = document.getElementById('jobMinor').value;
                 const preferredJobTypeDetail = document.getElementById('jobDetail').value;
                 const preferredPayType = document.getElementById('preferredPayType').value;
                 const minPayAmount = document.getElementById('minPayAmount').value;
+
+                if (!desiredRegionSido) {
+                    alert('선호 지역 1의 시/도를 선택해주세요.');
+                    return;
+                }
 
                 // 값이 있는 필드만 객체에 담기
                 const updateData = {};
@@ -356,6 +427,12 @@
                 updateData.desired_region_sido = desiredRegionSido;
                 updateData.desired_region_sigungu = desiredRegionSigungu;
                 updateData.desired_region_dong = desiredRegionDong;
+                updateData.desired_region2_sido = desiredRegion2Sido;
+                updateData.desired_region2_sigungu = desiredRegion2Sigungu;
+                updateData.desired_region2_dong = desiredRegion2Dong;
+                updateData.desired_region3_sido = desiredRegion3Sido;
+                updateData.desired_region3_sigungu = desiredRegion3Sigungu;
+                updateData.desired_region3_dong = desiredRegion3Dong;
                 updateData.preferred_job_type_major = preferredJobTypeMajor;
                 updateData.preferred_job_type_mid = preferredJobTypeMid;
                 updateData.preferred_job_type_minor = preferredJobTypeMinor;

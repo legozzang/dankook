@@ -11,6 +11,12 @@ public class MemberInfoResponse {
     private String desiredRegionSido;
     private String desiredRegionSigungu;
     private String desiredRegionDong;
+    private String desiredRegion2Sido;
+    private String desiredRegion2Sigungu;
+    private String desiredRegion2Dong;
+    private String desiredRegion3Sido;
+    private String desiredRegion3Sigungu;
+    private String desiredRegion3Dong;
     private String preferredJobTypeMajor;
     private String preferredJobTypeMid;
     private String preferredJobTypeMinor;

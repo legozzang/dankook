@@ -80,6 +80,20 @@
     return parts.length ? parts.join(' · ') : '미설정';
   }
 
+  function formatPreferredRegions(data) {
+    const regions = [
+      [data.desired_region_sido, data.desired_region_sigungu, data.desired_region_dong],
+      [data.desired_region2_sido, data.desired_region2_sigungu, data.desired_region2_dong],
+      [data.desired_region3_sido, data.desired_region3_sigungu, data.desired_region3_dong]
+    ]
+      .map(values => values.filter(value => value && value.trim()).join(' '))
+      .filter(Boolean);
+
+    return regions.length
+      ? regions.map((region, index) => `${index + 1}. ${region}`).join(' / ')
+      : '미설정';
+  }
+
   async function loadMyInfo() {
     const token = getToken();
     const profileBox = document.getElementById('profileBox');
@@ -108,11 +122,7 @@
 
         setText('displayEmail', data.email);
         setText('displayNickname', data.nickname);
-        setText('displayRegion', joinConfigured([
-          data.desired_region_sido,
-          data.desired_region_sigungu,
-          data.desired_region_dong
-        ]));
+        setText('displayRegion', formatPreferredRegions(data));
         setText('displayJobType', joinConfigured([
           data.preferred_job_type_major,
           data.preferred_job_type_mid,

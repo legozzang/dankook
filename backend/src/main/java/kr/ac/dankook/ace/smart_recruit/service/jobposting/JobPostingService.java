@@ -47,6 +47,9 @@ public class JobPostingService {
         Coordinate coordinate = hasExactLocation
                 ? new Coordinate(jobPosting.getLatitude(), jobPosting.getLongitude())
                 : fallbackCoordinateFor(jobPosting.getId(), dong);
+        List<String> summaryLines = summaryLines(jobPosting);
+        String aiReason = aiReason(summaryLines, jobPosting);
+        int recommendationScore = recommendationScore(jobPosting, hasExactLocation, summaryLines);
 
         return new JobPostingCard(
                 jobPosting.getId(),
@@ -54,13 +57,18 @@ public class JobPostingService {
                 companyName(jobPosting.getCompany()),
                 jobPosting.getContent(),
                 location,
+                safeText(jobPosting.getRegionSido()),
+                safeText(jobPosting.getRegionSigungu()),
                 dong,
                 jobPosting.getJobType(),
                 jobPosting.getStatus().name(),
                 deadlineLabel(jobPosting.getDeadline()),
                 salaryLabel(jobPosting),
                 extractWorkTime(jobPosting.getContent()),
-                summaryLines(jobPosting),
+                summaryLines,
+                aiReason,
+                recommendationScore,
+                recommendationLevel(recommendationScore),
                 jobPosting.getExternalUrl(),
                 coordinate.latitude(),
                 coordinate.longitude(),
@@ -157,6 +165,52 @@ public class JobPostingService {
         return lines.stream().limit(3).toList();
     }
 
+    private String aiReason(List<String> summaryLines, JobPosting jobPosting) {
+        if (!summaryLines.isEmpty()) {
+            return summaryLines.get(0);
+        }
+        if (!isBlank(jobPosting.getWelfare())) {
+            return "복지 정보가 확인된 공고입니다.";
+        }
+        if (!isBlank(jobPosting.getJobType())) {
+            return jobPosting.getJobType() + " 직종 조건이 확인된 공고입니다.";
+        }
+        return "근무 조건과 지역 정보가 확인되어 추천합니다.";
+    }
+
+    private int recommendationScore(JobPosting jobPosting, boolean hasExactLocation, List<String> summaryLines) {
+        int score = 45;
+
+        if (jobPosting.getStatus() != null && "OPEN".equals(jobPosting.getStatus().name())) {
+            score += 25;
+        }
+        if (hasExactLocation) {
+            score += 12;
+        }
+        if (!summaryLines.isEmpty()) {
+            score += 10;
+        }
+        if (!isBlank(jobPosting.getPayType()) || jobPosting.getPayAmount() != null) {
+            score += 8;
+        }
+
+        if (jobPosting.getStatus() != null && "CLOSED".equals(jobPosting.getStatus().name())) {
+            score = Math.min(score, 38);
+        }
+
+        return Math.max(20, Math.min(95, score));
+    }
+
+    private String recommendationLevel(int score) {
+        if (score >= 80) {
+            return "high";
+        }
+        if (score >= 60) {
+            return "medium";
+        }
+        return "low";
+    }
+
     private void addSummaryLine(List<String> lines, String label, String value) {
         String cleaned = cleanJsonText(value);
         if (!isBlank(cleaned)) {
@@ -195,6 +249,10 @@ public class JobPostingService {
         }
     }
 
+    private String safeText(String value) {
+        return value == null ? "" : value;
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
@@ -205,6 +263,8 @@ public class JobPostingService {
             String companyName,
             String content,
             String location,
+            String regionSido,
+            String regionSigungu,
             String dong,
             String jobType,
             String status,
@@ -212,6 +272,9 @@ public class JobPostingService {
             String salary,
             String workTime,
             List<String> summaryLines,
+            String aiReason,
+            int recommendationScore,
+            String recommendationLevel,
             String externalUrl,
             double latitude,
             double longitude,
