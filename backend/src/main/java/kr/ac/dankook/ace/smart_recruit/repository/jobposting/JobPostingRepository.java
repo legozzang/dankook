@@ -94,7 +94,7 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
             ) sub
             WHERE distance <= :radiusKm
             ORDER BY distance
-            LIMIT :limitCount
+            LIMIT limitCount
             """, nativeQuery = true)
     List<JobPosting> findByRadius(
             @Param("lat") double lat,
