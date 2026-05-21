@@ -43,6 +43,7 @@
         function handleLogout() {
             if (confirm('로그아웃 하시겠습니까?')) {
                 localStorage.removeItem('accessToken');
+                document.cookie = 'accessToken=; path=/; max-age=0';
                 localStorage.removeItem('memberId');
                 alert('로그아웃 되었습니다.');
                 location.reload(); // 현재 페이지 새로고침하여 navBar 갱신

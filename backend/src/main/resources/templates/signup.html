@@ -15,9 +15,6 @@
     h1{margin:0 0 20px;font-size:28px}
     .field{margin-bottom:14px} label{display:block;margin-bottom:7px;font-weight:700}
     input{width:100%;height:44px;border:1px solid #cfd6df;border-radius:10px;padding:0 12px;font-size:14px}
-    .role-group{display:flex;gap:10px}
-    .role{flex:1;border:1px solid #cfd6df;border-radius:10px;padding:10px;background:#f9fafb}
-    .role input{width:auto;height:auto;margin-right:6px}
     .btn{width:100%;height:46px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:16px;font-weight:800;cursor:pointer}
     .btn:hover{background:var(--primary-strong)}
     .error{display:none;margin:10px 0 0;color:#b42318;font-size:13px}
@@ -42,10 +39,6 @@
           <label for="nickname">닉네임</label>
           <input type="text" id="nickname" required />
         </div>
-        <div class="form-group">
-            <label>가입 유형</label>
-            <input type="radio" name="role" value="SEEKER" checked> 개인 구직자
-        </div>
         <div id="errorMessage" class="error"></div>
         <button type="submit" class="btn">가입하기</button>
       </form>
@@ -63,7 +56,7 @@
         email: document.getElementById('email').value,
         password: document.getElementById('password').value,
         nickname: document.getElementById('nickname').value,
-        role: document.querySelector('input[name="role"]:checked').value
+        role: 'SEEKER'
       };
 
       try {
@@ -74,7 +67,7 @@
         });
 
         if (response.ok) {
-          alert('회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.');
+          alert('회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.');
           window.location.href = '/auth/login';
         } else {
           errorDiv.textContent = await response.text();

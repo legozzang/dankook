@@ -62,6 +62,7 @@
           const data = await response.json();
           localStorage.setItem('accessToken', data.access_token);
           localStorage.setItem('memberId', data.member_id);
+          document.cookie = `accessToken=${data.access_token}; path=/; SameSite=Strict`;
 
           // 로그인 성공 메시지 알림 추가
           alert('로그인 성공! 메인 페이지로 이동합니다.');
