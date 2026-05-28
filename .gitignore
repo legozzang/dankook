@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### AI Agents ###
+/.agents
+cursorrules
+AGENTS.md
+CLAUDE.md
+ai-server/local_crawler/validate_classified.py
