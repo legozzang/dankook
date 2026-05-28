@@ -1,8 +1,7 @@
-﻿<!--
+<!-- 
     최초 작성자 : 유지훈
     최초 작성일 : 2026.04.18
-    목적 : /jobpostings 를 위한 지도형 채용 공고 화면
-    수정 이력 : 2026.05.18 (1, 3, 5km 거리별 필터 업데이트) 
+    목적 : /jobpostings 를 위한 프론트
 -->
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
@@ -10,183 +9,159 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>채용 공고 | Smart Recruit</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="/css/job-map.css">
+    <style>
+        body {
+            margin: 0;
+            background: #f5f6f8;
+            color: #222831;
+            font-family: Arial, "Noto Sans KR", sans-serif;
+        }
+
+        .page {
+            max-width: 1040px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 30px;
+            letter-spacing: 0;
+        }
+
+        .write-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 0 16px;
+            border-radius: 6px;
+            background: #1769aa;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .tab {
+            padding: 9px 13px;
+            border: 1px solid #d7dde4;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #344054;
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .tab.active {
+            border-color: #1769aa;
+            background: #e8f1fa;
+            color: #1769aa;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #ffffff;
+            border: 1px solid #dde3ea;
+        }
+
+        th,
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e7ebf0;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #eef2f6;
+            color: #4b5563;
+            font-size: 13px;
+        }
+
+        .empty {
+            padding: 52px 16px;
+            color: #667085;
+            text-align: center;
+        }
+
+        @media (max-width: 720px) {
+            .page {
+                padding: 28px 14px;
+            }
+
+            .header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .hide-mobile {
+                display: none;
+            }
+
+            th,
+            td {
+                padding: 12px 10px;
+            }
+        }
+    </style>
 </head>
 <body>
 <main class="page">
     <div class="header">
         <h1>채용 공고</h1>
-        <div id="guestMenu">
-            <a class="write-button" href="/auth/login">로그인</a>
-        </div>
-        <div id="userMenu" style="display:none;gap:8px;">
-            <a class="write-button" href="/auth/mypage">내 정보</a>
-            <button class="write-button" type="button" onclick="handleLogout()">로그아웃</button>
-        </div>
+        <a class="write-button" href="#">공고 등록</a>
     </div>
 
-    <section class="layout" th:with="jobCount=${#lists.size(jobPostings)}">
-        <div class="map-panel" aria-label="채용 공고 지도">
-            <div class="map-help">
-                <p>지도를 클릭하면 해당 위치 기준으로 반경 검색</p>
-                <button id="resetCenter" class="reset-center-button" type="button" style="display:none">중심 초기화</button>
-            </div>
-            <div id="jobMap"></div>
-        </div>
+    <nav class="tabs" aria-label="채용 공고 상태">
+        <a class="tab active" href="#">전체</a>
+        <a class="tab" href="#">모집중</a>
+        <a class="tab" href="#">마감</a>
+    </nav>
 
-        <aside class="list-panel" aria-label="채용 공고 목록">
-            <input id="keywordInput" type="text" placeholder="공고 제목 검색..."
-                   style="width:100%;height:48px;padding:12px 20px;font-size:25px;border:1px solid #cfd6df;border-radius:6px;margin-bottom:0;box-sizing:border-box;">
-            <button type="button" id="filterToggle"
-                    style="width:100%;padding:10px 16px;border:none;border-bottom:1px solid #e5eaf0;
-                           background:#f6f8fb;text-align:left;font-size:13px;font-weight:700;
-                           color:#52606d;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-                <span>필터</span>
-                <span id="filterToggleIcon">▲</span>
-            </button>
-            <div class="filters" id="filtersBody">
-                <div>
-                    <p class="filter-title">지역 필터</p>
-                    <div class="filter-row">
-                        <select id="filterSido">
-                            <option value="all">시/도 전체</option>
-                            <option th:each="sido : ${sidos}" th:value="${sido}" th:text="${sido}">서울</option>
-                        </select>
-                        <select id="filterSigungu" disabled>
-                            <option value="all">시/군/구 전체</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <p class="filter-title">직업 필터</p>
-                    <div class="filter-row">
-                        <select id="filterJobMajor">
-                            <option value="all">대분류 전체</option>
-                            <option th:each="major : ${jobMajors}" th:value="${major}" th:text="${major}">대분류</option>
-                        </select>
-                        <select id="filterJobMid" disabled>
-                            <option value="all">중분류 전체</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <p class="filter-title">급여유형</p>
-                    <div class="filter-row">
-                        <select id="filterPayType">
-                            <option value="all">전체</option>
-                            <option th:each="pt : ${payTypes}" th:value="${pt}" th:text="${pt}">월급</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <p class="filter-title">반경 필터</p>
-                    <div class="filter-row" role="group" aria-label="반경 필터">
-                        <button class="filter-button active" type="button" data-radius="all">전체</button>
-                        <button class="filter-button" type="button" data-radius="1">1km</button>
-                        <button class="filter-button" type="button" data-radius="3">3km</button>
-                        <button class="filter-button" type="button" data-radius="5">5km</button>
-                    </div>
-                </div>
-                <div class="filter-row" style="align-items:center;gap:8px;margin-top:8px;">
-                    <span class="filter-title" style="margin:0;">정렬</span>
-                    <button class="filter-button active" type="button" id="sortDistanceBtn">거리순</button>
-                    <button class="filter-button" type="button" id="sortSalaryBtn"
-                            disabled style="opacity:0.4;cursor:not-allowed;" title="급여유형을 선택하세요">급여순</button>
-                </div>
-                <div class="filter-row" style="align-items:center;gap:8px;margin-top:4px;">
-                    <label for="resultLimit">결과 수</label>
-                    <select id="resultLimit">
-                        <option value="10" selected>10개</option>
-                        <option value="50">50개</option>
-                        <option value="100">100개</option>
-                        <option value="all">전체</option>
-                    </select>
-                    <button id="searchBtn" type="button" class="filter-button active" style="padding:6px 16px;">검색</button>
-                    <button id="resetBtn" type="button" class="filter-button" style="padding:6px 16px;">초기화</button>
-                </div>
-                <!--
-                <div>
-                    <p class="filter-title">행정동 기준</p>
-                    <div class="filter-row" role="group" aria-label="행정동 필터">
-                        <button class="filter-button active" type="button" data-dong="all">전체</button>
-                        <button class="filter-button" type="button" th:each="dong : ${dongs}" th:data-dong="${dong}" th:text="${dong}">죽전동</button>
-                    </div>
-                </div>
-                -->
-                <span class="result-count"><strong id="visibleCount" th:text="${jobCount}">0</strong>개의 공고</span>
-            </div>
-
-            <div class="cards">
-                <p class="empty" th:if="${#lists.isEmpty(jobPostings)}">아직 등록된 채용 공고가 없습니다.</p>
-
-                <article class="job-card"
-                         th:each="jobPosting : ${jobPostings}"
-                         th:id="|job-${jobPosting.id}|"
-                         th:data-id="${jobPosting.id}"
-                         th:data-title="${jobPosting.title}"
-                         th:data-company="${jobPosting.companyName}"
-                         th:data-location="${jobPosting.location}"
-                         th:data-salary="${jobPosting.salary}"
-                         th:data-deadline="${jobPosting.deadline}"
-                         th:data-dong="${jobPosting.dong}"
-                         th:data-sido="${jobPosting.sido}"
-                         th:data-sigungu="${jobPosting.sigungu}"
-                         th:data-job-major="${jobPosting.jobTypeMajor}"
-                         th:data-job-mid="${jobPosting.jobTypeMid}"
-                         th:data-lat="${jobPosting.latitude}"
-                         th:data-lng="${jobPosting.longitude}"
-                         th:data-exact-location="${jobPosting.exactLocation}">
-                    <div>
-                        <p class="company" th:text="${jobPosting.companyName}">회사명</p>
-                        <h2 class="job-title" th:text="${jobPosting.title}">공고 제목</h2>
-                    </div>
-
-                    <div class="meta-grid">
-                        <div class="meta-item">
-                            <span class="meta-label">위치</span>
-                            <span class="meta-value" th:text="${jobPosting.location}">죽전동</span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">시급/급여</span>
-                            <span class="meta-value" th:text="${jobPosting.salary}">급여 협의</span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">근무시간</span>
-                            <span class="meta-value" th:text="${jobPosting.workTime}">근무시간 협의</span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">마감일</span>
-                            <span class="meta-value" th:text="${jobPosting.deadline}">마감일 미정</span>
-                        </div>
-                    </div>
-
-                    <ul class="summary" aria-label="AI 요약">
-                        <li th:each="line : ${jobPosting.summaryLines}" th:text="${line}">핵심 조건 요약</li>
-                    </ul>
-
-                    <span class="location-badge"
-                          th:classappend="${jobPosting.exactLocation} ? '' : ' pending'"
-                          th:text="${jobPosting.exactLocation} ? '실제 위치' : '좌표 미등록 - 임시 위치'">실제 위치</span>
-
-                    <a class="detail-link" th:href="@{/jobpostings/{id}(id=${jobPosting.id})}">상세 보기</a>
-                </article>
-            </div>
-        </aside>
-    </section>
+    <table>
+        <thead>
+        <tr>
+            <th>번호</th>
+            <th>제목</th>
+            <th class="hide-mobile">회사명</th>
+            <th>지역</th>
+            <th class="hide-mobile">직무</th>
+            <th>상태</th>
+            <th class="hide-mobile">마감일</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:if="${#lists.isEmpty(jobPostings)}">
+            <td class="empty" colspan="7">아직 등록된 채용 공고가 없습니다.</td>
+        </tr>
+        <tr th:each="jobPosting : ${jobPostings}">
+            <td th:text="${jobPosting.id}">1</td>
+            <td th:text="${jobPosting.title}">채용 공고 제목</td>
+            <td class="hide-mobile" th:text="${jobPosting.employer.companyName}">회사명</td>
+            <td th:text="${jobPosting.region}">지역</td>
+            <td class="hide-mobile" th:text="${jobPosting.jobType}">직무</td>
+            <td th:text="${jobPosting.status}">OPEN</td>
+            <td class="hide-mobile" th:text="${jobPosting.deadline}">마감일</td>
+        </tr>
+        </tbody>
+    </table>
 </main>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script th:inline="javascript">
-    window.JobMapConfig = {
-        sigunguBySido: JSON.parse(/*[[${sigunguBySidoJson}]]*/ '{}'),
-        jobMidByMajor: JSON.parse(/*[[${jobTypeMidByMajorJson}]]*/ '{}'),
-        defaultCenter: {lat: 37.3216, lng: 127.1267}
-    };
-</script>
-<script src="/js/job-map.js"></script>
 </body>
 </html>
-
-
-

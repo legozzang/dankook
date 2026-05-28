@@ -3,17 +3,14 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Optional
 
 
 class SourceType(Enum):
     """채용공고 출처 구분"""
-    INTERNAL   = ("INTERNAL",   "내부")
-    ALBAMON    = ("ALBAMON",    "알바몬")
-    ALBAHEAVEN = ("ALBAHEAVEN", "알바천국")
-
-    def __init__(self, value, label):
-        self._value_ = value
-        self.label   = label
+    INTERNAL    = "INTERNAL"     # 내부 공고
+    ALBAMON     = "ALBAMON"      # 알바몬
+    ALBAHEAVEN  = "ALBAHEAVEN"   # 알바천국
 
 
 class JobStatus(Enum):
@@ -51,11 +48,6 @@ class CrawlJob:
     deadline:     str  = ""         # 모집마감
     headcount:    str  = ""         # 모집인원
 
-    latitude:       float | None = None   # 위도 (카카오 Geocoding y값)
-    longitude:      float | None = None   # 경도 (카카오 Geocoding x값)
-    region_sido:    str = ""              # 카카오 region_1depth_name (시/도)
-    region_sigungu: str = ""              # 카카오 region_2depth_name (시/군/구)
-
     status: JobStatus = field(default=JobStatus.OPEN)  # 수집 시점엔 항상 모집중
 
     def __post_init__(self):
@@ -66,7 +58,7 @@ class CrawlJob:
 class BaseCollector(ABC):
     """
     모든 수집기의 최상위 추상 클래스.
-    크롤러(BaseCrawler)와 API 클라이언트(Work24Client, 구현 예정)가 이를 상속받는다.
+    크롤러(BaseCrawler)와 API 클라이언트(Work24Client 등)가 이를 상속받는다.
     수집 결과는 항상 CrawlJob으로 반환한다.
     """
 
