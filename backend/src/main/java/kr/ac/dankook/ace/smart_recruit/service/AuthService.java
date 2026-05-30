@@ -76,6 +76,12 @@ public class AuthService {
                 .password(encodedPassword)
                 .nickname(request.getNickname())
                 .role(role)
+                .desiredRegionSido(request.getDesiredRegionSido())
+                .desiredRegionSigungu(request.getDesiredRegionSigungu())
+                .desiredRegion2Sido(request.getDesiredRegion2Sido())
+                .desiredRegion2Sigungu(request.getDesiredRegion2Sigungu())
+                .desiredRegion3Sido(request.getDesiredRegion3Sido())
+                .desiredRegion3Sigungu(request.getDesiredRegion3Sigungu())
                 .build();
 
         // 데이터베이스에 저장 후 해당 member의 id를 리턴
@@ -121,6 +127,10 @@ public class AuthService {
                 request.getDesiredRegionSido(),
                 request.getDesiredRegionSigungu(),
                 request.getDesiredRegionDong(),
+                request.getDesiredRegion2Sido(),
+                request.getDesiredRegion2Sigungu(),
+                request.getDesiredRegion3Sido(),
+                request.getDesiredRegion3Sigungu(),
                 request.getPreferredJobTypeMajor(),
                 request.getPreferredJobTypeMid(),
                 request.getPreferredJobTypeMinor(),
@@ -141,6 +151,10 @@ public class AuthService {
                 member.getDesiredRegionSido(),
                 member.getDesiredRegionSigungu(),
                 member.getDesiredRegionDong(),
+                member.getDesiredRegion2Sido(),
+                member.getDesiredRegion2Sigungu(),
+                member.getDesiredRegion3Sido(),
+                member.getDesiredRegion3Sigungu(),
                 member.getPreferredJobTypeMajor(),
                 member.getPreferredJobTypeMid(),
                 member.getPreferredJobTypeMinor(),
