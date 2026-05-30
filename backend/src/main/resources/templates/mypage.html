@@ -36,7 +36,9 @@
       <div id="profileBox" hidden>
         <div class="info"><div class="label">이메일</div><div class="value" id="displayEmail"></div></div>
         <div class="info"><div class="label">닉네임</div><div class="value" id="displayNickname"></div></div>
-        <div class="info"><div class="label">선호 지역</div><div class="value" id="displayRegion"></div></div>
+        <div class="info"><div class="label">선호 지역 1순위</div><div class="value" id="displayRegion1"></div></div>
+        <div class="info"><div class="label">선호 지역 2순위</div><div class="value" id="displayRegion2"></div></div>
+        <div class="info"><div class="label">선호 지역 3순위</div><div class="value" id="displayRegion3"></div></div>
         <div class="info"><div class="label">선호 직종</div><div class="value" id="displayJobType"></div></div>
         <div class="info"><div class="label">선호 급여 유형</div><div class="value" id="displayPayType"></div></div>
         <div class="info"><div class="label">최소 희망 급여</div><div class="value" id="displayMinPay"></div></div>
@@ -108,10 +110,17 @@
 
         setText('displayEmail', data.email);
         setText('displayNickname', data.nickname);
-        setText('displayRegion', joinConfigured([
+        setText('displayRegion1', joinConfigured([
           data.desired_region_sido,
-          data.desired_region_sigungu,
-          data.desired_region_dong
+          data.desired_region_sigungu
+        ]));
+        setText('displayRegion2', joinConfigured([
+          data.desired_region2_sido,
+          data.desired_region2_sigungu
+        ]));
+        setText('displayRegion3', joinConfigured([
+          data.desired_region3_sido,
+          data.desired_region3_sigungu
         ]));
         setText('displayJobType', joinConfigured([
           data.preferred_job_type_major,
