@@ -38,10 +38,10 @@ public class SignUpRequest {
     )
     private String role; // "SEEKER"
 
-    @NotBlank(message = "1순위 선호 시/도를 선택해주세요.")
+    @NotBlank(message = "관심 지역 1의 시/도를 선택해주세요.")
     private String desiredRegionSido;
 
-    @NotBlank(message = "1순위 선호 시/군/구를 선택해주세요.")
+    @NotBlank(message = "관심 지역 1의 시/군/구를 선택해주세요.")
     private String desiredRegionSigungu;
 
     private String desiredRegion2Sido;

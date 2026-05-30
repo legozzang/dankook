@@ -159,24 +159,24 @@
     <div class="card">
         <div class="section-title">선호 조건</div>
         <div class="form-group">
-            <label>희망 지역</label>
-            <p class="hint" style="margin-bottom:10px">1순위는 기본 선호 지역이며, 2·3순위는 선택 입력입니다.</p>
+            <label>관심 지역</label>
+            <p class="hint" style="margin-bottom:10px">관심 지역 1은 기본 지역이며, 관심 지역 2·3은 선택 입력입니다.</p>
             <div class="form-group">
-                <label>1순위</label>
+                <label>관심 지역 1</label>
                 <div class="grid-2">
                     <select id="region1Sido"><option value="">시/도</option></select>
                     <select id="region1Sigungu" disabled><option value="">시/군/구</option></select>
                 </div>
             </div>
             <div class="form-group">
-                <label>2순위</label>
+                <label>관심 지역 2</label>
                 <div class="grid-2">
                     <select id="region2Sido"><option value="">시/도</option></select>
                     <select id="region2Sigungu" disabled><option value="">시/군/구</option></select>
                 </div>
             </div>
             <div class="form-group">
-                <label>3순위</label>
+                <label>관심 지역 3</label>
                 <div class="grid-2">
                     <select id="region3Sido"><option value="">시/도</option></select>
                     <select id="region3Sigungu" disabled><option value="">시/군/구</option></select>
@@ -316,14 +316,14 @@
                 return (region.sido && !region.sigungu) || (!region.sido && region.sigungu);
             });
             if (incompleteRegion) {
-                return '선호 지역은 입력하려면 시/도와 시/군/구를 모두 선택해주세요.';
+                return '관심 지역은 입력하려면 시/도와 시/군/구를 모두 선택해주세요.';
             }
 
             const keys = regions
                 .filter(region => region.sido && region.sigungu)
                 .map(region => `${region.sido} ${region.sigungu}`);
             if (new Set(keys).size !== keys.length) {
-                return '입력한 선호 지역 순위는 서로 다르게 선택해주세요.';
+                return '입력한 관심 지역은 서로 다르게 선택해주세요.';
             }
 
             return '';

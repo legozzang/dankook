@@ -46,11 +46,11 @@
           <input type="text" id="nickname" required />
         </div>
         <div class="field">
-          <label>선호 지역</label>
-          <p class="hint">1순위는 필수이며, 2·3순위는 선택 입력입니다.</p>
+          <label>관심 지역</label>
+          <p class="hint">관심 지역 1은 필수이며, 관심 지역 2·3은 선택 입력입니다.</p>
 
           <div class="region-group">
-            <strong>1순위</strong>
+            <strong>관심 지역 1</strong>
             <div class="region-row">
               <select id="region1Sido" required><option value="">시/도</option></select>
               <select id="region1Sigungu" required disabled><option value="">시/군/구</option></select>
@@ -58,7 +58,7 @@
           </div>
 
           <div class="region-group">
-            <strong>2순위</strong>
+            <strong>관심 지역 2</strong>
             <div class="region-row">
               <select id="region2Sido"><option value="">시/도</option></select>
               <select id="region2Sigungu" disabled><option value="">시/군/구</option></select>
@@ -66,7 +66,7 @@
           </div>
 
           <div class="region-group">
-            <strong>3순위</strong>
+            <strong>관심 지역 3</strong>
             <div class="region-row">
               <select id="region3Sido"><option value="">시/도</option></select>
               <select id="region3Sigungu" disabled><option value="">시/군/구</option></select>
@@ -125,21 +125,21 @@
     function validateRegions(regions) {
       const primaryRegion = regions[0];
       if (!primaryRegion.sido || !primaryRegion.sigungu) {
-        return '1순위 선호 지역은 시/도와 시/군/구를 모두 선택해주세요.';
+        return '관심 지역 1은 시/도와 시/군/구를 모두 선택해주세요.';
       }
 
       const incompleteOptionalRegion = regions.slice(1).some(region => {
         return (region.sido && !region.sigungu) || (!region.sido && region.sigungu);
       });
       if (incompleteOptionalRegion) {
-        return '2·3순위 선호 지역은 입력하려면 시/도와 시/군/구를 모두 선택해주세요.';
+        return '관심 지역 2·3은 입력하려면 시/도와 시/군/구를 모두 선택해주세요.';
       }
 
       const keys = regions
         .filter(region => region.sido && region.sigungu)
         .map(region => `${region.sido} ${region.sigungu}`);
       if (new Set(keys).size !== keys.length) {
-        return '입력한 선호 지역 순위는 서로 다르게 선택해주세요.';
+        return '입력한 관심 지역은 서로 다르게 선택해주세요.';
       }
 
       return '';
