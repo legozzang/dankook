@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,13 +33,13 @@ public class JobPostingService {
     }
 
     public List<JobPostingCard> findAllCards() {
-        return jobPostingRepository.findTop10ByOrderByCreatedAtDesc().stream()
+        return jobPostingRepository.findRecentWithAiSummary(PageRequest.of(0, 10)).stream()
                 .map(this::toCard)
                 .toList();
     }
 
     public Optional<JobPostingCard> findCardById(Long id) {
-        return jobPostingRepository.findById(id).map(this::toCard);
+        return jobPostingRepository.findByIdWithAiSummary(id).map(this::toCard);
     }
 
     public List<JobPostingCard> findCardsByFilters(
@@ -64,6 +65,7 @@ public class JobPostingService {
                 jobPostingRepository.findByRadius(
                         lat, lng, radiusKm, payType,
                         sido, sigungu, jobTypeMajor, jobTypeMid, keyword, sqlLimit));
+        loadAiSummaries(postings);
         if ("salary".equals(sort)) {
             postings.sort(Comparator.comparingInt(
                     (JobPosting j) -> j.getPayAmount() != null ? j.getPayAmount() : 0
@@ -71,6 +73,15 @@ public class JobPostingService {
             postings = postings.subList(0, Math.min(limit, postings.size()));
         }
         return postings.stream().map(this::toCard).toList();
+    }
+
+    private void loadAiSummaries(List<JobPosting> postings) {
+        List<Long> ids = postings.stream()
+                .map(JobPosting::getId)
+                .toList();
+        if (!ids.isEmpty()) {
+            jobPostingRepository.findWithAiSummaryByIdIn(ids);
+        }
     }
 
     private JobPostingCard toCard(JobPosting jobPosting) {

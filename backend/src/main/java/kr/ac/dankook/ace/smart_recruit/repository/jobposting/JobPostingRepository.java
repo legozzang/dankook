@@ -1,8 +1,10 @@
 package kr.ac.dankook.ace.smart_recruit.repository.jobposting;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,6 +20,21 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
 
     @Query("""
             SELECT j FROM JobPosting j
+            LEFT JOIN FETCH j.jobPostingAiSummary
+            ORDER BY j.createdAt DESC
+            """)
+    List<JobPosting> findRecentWithAiSummary(Pageable pageable);
+
+    @Query("""
+            SELECT j FROM JobPosting j
+            LEFT JOIN FETCH j.jobPostingAiSummary
+            WHERE j.id = :id
+            """)
+    Optional<JobPosting> findByIdWithAiSummary(@Param("id") Long id);
+
+    @Query("""
+            SELECT j FROM JobPosting j
+            LEFT JOIN FETCH j.jobPostingAiSummary
             WHERE (:sido IS NULL OR j.regionSido = :sido)
               AND (:sigungu IS NULL OR j.regionSigungu = :sigungu)
               AND (:jobTypeMajor IS NULL OR j.jobTypeMajor = :jobTypeMajor)
@@ -34,6 +51,13 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
             @Param("keyword") String keyword,
             @Param("payType") String payType
     );
+
+    @Query("""
+            SELECT j FROM JobPosting j
+            LEFT JOIN FETCH j.jobPostingAiSummary
+            WHERE j.id IN :ids
+            """)
+    List<JobPosting> findWithAiSummaryByIdIn(@Param("ids") List<Long> ids);
 
     @Query("SELECT DISTINCT j.payType FROM JobPosting j WHERE j.payType IS NOT NULL AND j.payType <> '' ORDER BY j.payType")
     List<String> findDistinctPayTypes();
