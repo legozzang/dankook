@@ -70,21 +70,19 @@ public class JobPostingApiController {
         String jmd = normalizeFilter(jobTypeMid);
         String kw = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
         String pt = normalizeFilter(payType);
+        int limitCount = "all".equals(limit) ? Integer.MAX_VALUE : parseLimit(limit);
 
         if (lat != null && lng != null && radius != null) {
-            int limitCount = "all".equals(limit) ? 1000 : parseLimit(limit);
+            int radiusLimitCount = "all".equals(limit) ? 1000 : limitCount;
             List<CardResponse> result = jobPostingService
-                    .findCardsByRadius(lat, lng, radius, limitCount, pt, s, sg, jm, jmd, kw, sort)
+                    .findCardsByRadius(lat, lng, radius, radiusLimitCount, pt, s, sg, jm, jmd, kw, sort)
                     .stream().map(this::toCardResponse).toList();
             return ResponseEntity.ok(result);
         }
 
         List<CardResponse> result = jobPostingService
-                .findCardsByFilters(s, sg, jm, jmd, kw, pt, sort)
+                .findCardsByFilters(s, sg, jm, jmd, kw, pt, sort, lat, lng, limitCount)
                 .stream().map(this::toCardResponse).toList();
-        if (!"all".equals(limit)) {
-            result = result.stream().limit(parseLimit(limit)).toList();
-        }
         return ResponseEntity.ok(result);
     }
 

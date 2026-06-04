@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -44,7 +45,7 @@ public class JobPostingService {
 
     public List<JobPostingCard> findCardsByFilters(
             String sido, String sigungu, String jobTypeMajor, String jobTypeMid,
-            String keyword, String payType, String sort) {
+            String keyword, String payType, String sort, Double lat, Double lng, int limit) {
         List<JobPosting> postings = jobPostingRepository.findByFilters(
                 sido, sigungu, jobTypeMajor, jobTypeMid, keyword, payType);
         if ("salary".equals(sort)) {
@@ -52,8 +53,17 @@ public class JobPostingService {
             postings.sort(Comparator.comparingInt(
                     (JobPosting j) -> j.getPayAmount() != null ? j.getPayAmount() : 0
             ).reversed());
+        } else if ("distance".equals(sort) && lat != null && lng != null) {
+            postings = new ArrayList<>(postings);
+            Coordinate center = new Coordinate(lat, lng);
+            postings.sort(Comparator.comparingDouble((JobPosting j) -> distanceKm(center, coordinateFor(j))));
         }
-        return postings.stream().map(this::toCard).toList();
+
+        Stream<JobPosting> stream = postings.stream();
+        if (limit != Integer.MAX_VALUE) {
+            stream = stream.limit(limit);
+        }
+        return stream.map(this::toCard).toList();
     }
 
     public List<JobPostingCard> findCardsByRadius(
@@ -88,9 +98,7 @@ public class JobPostingService {
         String location = locationLabel(jobPosting);
         String dong = dongLabel(jobPosting, location);
         boolean hasExactLocation = hasCoordinate(jobPosting);
-        Coordinate coordinate = hasExactLocation
-                ? new Coordinate(jobPosting.getLatitude(), jobPosting.getLongitude())
-                : fallbackCoordinateFor(jobPosting.getId(), dong);
+        Coordinate coordinate = coordinateFor(jobPosting, dong);
 
         return new JobPostingCard(
                 jobPosting.getId(),
@@ -118,6 +126,28 @@ public class JobPostingService {
 
     private boolean hasCoordinate(JobPosting jobPosting) {
         return jobPosting.getLatitude() != null && jobPosting.getLongitude() != null;
+    }
+
+    private Coordinate coordinateFor(JobPosting jobPosting) {
+        return coordinateFor(jobPosting, dongLabel(jobPosting, locationLabel(jobPosting)));
+    }
+
+    private Coordinate coordinateFor(JobPosting jobPosting, String dong) {
+        return hasCoordinate(jobPosting)
+                ? new Coordinate(jobPosting.getLatitude(), jobPosting.getLongitude())
+                : fallbackCoordinateFor(jobPosting.getId(), dong);
+    }
+
+    private double distanceKm(Coordinate a, Coordinate b) {
+        double earthRadius = 6371.0;
+        double dLat = Math.toRadians(b.latitude() - a.latitude());
+        double dLng = Math.toRadians(b.longitude() - a.longitude());
+        double lat1 = Math.toRadians(a.latitude());
+        double lat2 = Math.toRadians(b.latitude());
+        double value = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        value = Math.min(1.0, Math.max(0.0, value));
+        return earthRadius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
     }
 
     private String companyName(String company) {

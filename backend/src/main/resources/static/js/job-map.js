@@ -40,30 +40,9 @@
                 jobMid: preferredMid || ""
             };
 
-            if (desiredSido) {
-                selectedSido = desiredSido;
-                filterSido.value = desiredSido;
-                fillSelect(filterSigungu, "시/군/구 전체", SIGUNGU_BY_SIDO[selectedSido] || []);
-                filterSigungu.disabled = false;
-                if (desiredSigungu) {
-                    selectedSigungu = desiredSigungu;
-                    filterSigungu.value = desiredSigungu;
-                }
-            }
-
-            if (preferredMajor) {
-                selectedJobMajor = preferredMajor;
-                filterJobMajor.value = preferredMajor;
-                fillSelect(filterJobMid, "중분류 전체", JOB_MID_BY_MAJOR[selectedJobMajor] || []);
-                filterJobMid.disabled = false;
-                if (preferredMid) {
-                    selectedJobMid = preferredMid;
-                    filterJobMid.value = preferredMid;
-                }
-            }
-
-            if (desiredSido || preferredMajor) {
-                await runSearch();
+            if (map) {
+                renderMarkers();
+                applyFilters();
             }
         } catch (error) {
             // 프로필을 불러오지 못하면 기본 목록을 그대로 보여준다.
@@ -216,10 +195,12 @@
             payType: selectedPayType,
             sort: selectedSort
         };
-        if (selectedRadius !== "all") {
+        if (selectedRadius !== "all" || selectedSort === "distance") {
             const center = searchCenter();
             params.lat = center.lat;
             params.lng = center.lng;
+        }
+        if (selectedRadius !== "all") {
             params.radius = selectedRadius;
         }
         return params;
@@ -533,7 +514,7 @@
         try {
             const allFiltersDefault = !hasServerFilter();
 
-            if (allFiltersDefault && resultLimit.value === "10") {
+            if (allFiltersDefault && resultLimit.value === "10" && selectedSort !== "distance") {
                 resetToInitialCards();
                 applyFilters();
                 return;
