@@ -14,20 +14,44 @@
     <link rel="stylesheet" href="/css/job-map.css">
 </head>
 <body>
+<header class="site-header">
+    <div class="site-header__inner">
+        <a class="brand" href="/jobpostings" aria-label="Smart Recruit 홈">
+            <span class="brand-mark">SR</span>
+            <span class="brand-text">Smart Recruit</span>
+        </a>
+
+        <nav class="site-nav" aria-label="주요 메뉴">
+            <a class="site-nav__link active" href="/jobpostings">채용 공고</a>
+            <a class="site-nav__link" href="/communities">커뮤니티</a>
+            <a class="site-nav__link" href="/admin/dashboard">관리자</a>
+        </nav>
+
+        <div class="auth-actions">
+            <div id="guestMenu">
+                <a class="write-button" href="/auth/login">로그인</a>
+            </div>
+            <div id="userMenu" style="display:none;gap:8px;">
+                <a class="write-button write-button--ghost" href="/auth/mypage">내 정보</a>
+                <button class="write-button" type="button" onclick="handleLogout()">로그아웃</button>
+            </div>
+        </div>
+    </div>
+</header>
+
 <main class="page">
-    <div class="header">
+    <section class="page-header">
         <div>
             <p class="eyebrow">Smart Recruit Map</p>
             <h1>채용 공고</h1>
+            <p class="page-description">지도에서 위치를 확인하고, 조건에 맞는 공고를 빠르게 찾아보세요.</p>
         </div>
-        <div id="guestMenu">
-            <a class="write-button" href="/auth/login">로그인</a>
+        <div class="page-header__meta">
+            <span>지도형 탐색</span>
+            <span>거리순 정렬</span>
+            <span>추천 마커</span>
         </div>
-        <div id="userMenu" style="display:none;gap:8px;">
-            <a class="write-button" href="/auth/mypage">내 정보</a>
-            <button class="write-button" type="button" onclick="handleLogout()">로그아웃</button>
-        </div>
-    </div>
+    </section>
 
     <section class="layout" th:with="jobCount=${#lists.size(jobPostings)}">
         <div class="map-panel" aria-label="채용 공고 지도">
