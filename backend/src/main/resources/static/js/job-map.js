@@ -125,7 +125,7 @@
     const MARKER_COLORS = {
         [MARKER_STATUS.INFERRED_LOCATION]: "#6b7280",
         [MARKER_STATUS.CLOSING_SOON]: "#dc2626",
-        [MARKER_STATUS.RECOMMENDED]: "#16a34a",
+        [MARKER_STATUS.RECOMMENDED]: "#7c3aed",
         [MARKER_STATUS.DEFAULT]: "#2563eb"
     };
 
@@ -408,9 +408,9 @@
         return L.divIcon({
             className: `job-marker-icon job-marker-icon--${status}`,
             html: `<span style="background:${getMarkerColor(status)}"></span>`,
-            iconSize: [24, 32],
-            iconAnchor: [12, 28],
-            popupAnchor: [0, -28]
+            iconSize: [36, 44],
+            iconAnchor: [18, 40],
+            popupAnchor: [0, -40]
         });
     }
 
