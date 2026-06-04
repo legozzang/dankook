@@ -8,6 +8,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,7 @@ public class JobPostingService {
     private static final Pattern WORK_TIME_PATTERN = Pattern.compile("((근무\\s*시간|근무시간|시간)\\s*[:：]?\\s*)?([0-2]?\\d\\s*[:시]\\s*\\d{0,2}\\s*~\\s*[0-2]?\\d\\s*[:시]\\s*\\d{0,2}|오전\\s*\\d+\\s*시\\s*~\\s*오후\\s*\\d+\\s*시|주\\s*\\d+\\s*일|요일\\s*협의)");
 
     private final JobPostingRepository jobPostingRepository;
+    private final EntityManager entityManager;
 
     public List<JobPosting> findAll() {
         return jobPostingRepository.findAllByOrderByCreatedAtDesc();
@@ -72,7 +76,7 @@ public class JobPostingService {
             String jobTypeMajor, String jobTypeMid, String keyword, String sort) {
         int sqlLimit = "salary".equals(sort) ? 5000 : limit;
         List<JobPosting> postings = new ArrayList<>(
-                jobPostingRepository.findByRadius(
+                findByRadius(
                         lat, lng, radiusKm, payType,
                         sido, sigungu, jobTypeMajor, jobTypeMid, keyword, sqlLimit));
         loadAiSummaries(postings);
@@ -83,6 +87,46 @@ public class JobPostingService {
             postings = postings.subList(0, Math.min(limit, postings.size()));
         }
         return postings.stream().map(this::toCard).toList();
+    }
+
+    private List<JobPosting> findByRadius(
+            double lat, double lng, double radiusKm, String payType,
+            String sido, String sigungu, String jobTypeMajor, String jobTypeMid,
+            String keyword, int limit) {
+        Query query = entityManager.createNativeQuery("""
+                SELECT * FROM (
+                    SELECT *, (6371 * acos(
+                        cos(radians(:lat)) * cos(radians(latitude)) * cos(radians(longitude) - radians(:lng))
+                        + sin(radians(:lat)) * sin(radians(latitude))
+                    )) AS distance
+                    FROM job_postings
+                    WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+                      AND (:payType IS NULL OR pay_type = :payType)
+                      AND (:sido IS NULL OR region_sido = :sido)
+                      AND (:sigungu IS NULL OR region_sigungu = :sigungu)
+                      AND (:jobTypeMajor IS NULL OR job_type_major = :jobTypeMajor)
+                      AND (:jobTypeMid IS NULL OR job_type_mid = :jobTypeMid)
+                      AND (:keyword IS NULL OR LOWER(title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+                ) sub
+                WHERE distance <= :radiusKm
+                ORDER BY distance
+                """, JobPosting.class);
+
+        query.setParameter("lat", lat);
+        query.setParameter("lng", lng);
+        query.setParameter("radiusKm", radiusKm);
+        query.setParameter("payType", payType);
+        query.setParameter("sido", sido);
+        query.setParameter("sigungu", sigungu);
+        query.setParameter("jobTypeMajor", jobTypeMajor);
+        query.setParameter("jobTypeMid", jobTypeMid);
+        query.setParameter("keyword", keyword);
+        query.setMaxResults(limit);
+
+        List<?> result = query.getResultList();
+        return result.stream()
+                .map(JobPosting.class::cast)
+                .toList();
     }
 
     private void loadAiSummaries(List<JobPosting> postings) {

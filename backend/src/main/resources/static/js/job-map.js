@@ -40,6 +40,13 @@
                 jobMid: preferredMid || ""
             };
 
+            if (shouldApplyInitialPreferences()) {
+                applyInitialPreferenceFilters();
+                await runSearch();
+                initialPreferenceFiltersApplied = true;
+                return;
+            }
+
             if (map) {
                 renderMarkers();
                 applyFilters();
@@ -84,6 +91,7 @@
     let selectedSort = "distance";
     let selectedJobMid = "all";
     let selectedDong = "all";
+    let initialPreferenceFiltersApplied = false;
     let userPreferences = {
         sido: "",
         sigungu: "",
@@ -149,6 +157,31 @@
     function fillSelect(select, placeholder, values) {
         select.innerHTML = `<option value="all">${placeholder}</option>` +
             values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+    }
+
+    function shouldApplyInitialPreferences() {
+        return !initialPreferenceFiltersApplied &&
+            Boolean(userPreferences.sido) &&
+            selectedRadius === "all" &&
+            selectedSido === "all" &&
+            selectedSigungu === "all" &&
+            selectedJobMajor === "all" &&
+            selectedJobMid === "all" &&
+            selectedPayType === "all" &&
+            selectedDong === "all" &&
+            document.getElementById("keywordInput").value.trim() === "";
+    }
+
+    function applyInitialPreferenceFilters() {
+        selectedSido = userPreferences.sido;
+        filterSido.value = userPreferences.sido;
+        fillSelect(filterSigungu, "시/군/구 전체", SIGUNGU_BY_SIDO[selectedSido] || []);
+        filterSigungu.disabled = false;
+
+        if (userPreferences.sigungu) {
+            selectedSigungu = userPreferences.sigungu;
+            filterSigungu.value = userPreferences.sigungu;
+        }
     }
 
     function updateRadiusCircle() {
