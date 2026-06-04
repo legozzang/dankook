@@ -30,16 +30,26 @@
             const profile = await response.json();
             const desiredSido = profile.desiredRegionSido ?? profile.desired_region_sido;
             const desiredSigungu = profile.desiredRegionSigungu ?? profile.desired_region_sigungu;
+            const desiredRegion2Sido = profile.desiredRegion2Sido ?? profile.desired_region2_sido;
+            const desiredRegion2Sigungu = profile.desiredRegion2Sigungu ?? profile.desired_region2_sigungu;
+            const desiredRegion3Sido = profile.desiredRegion3Sido ?? profile.desired_region3_sido;
+            const desiredRegion3Sigungu = profile.desiredRegion3Sigungu ?? profile.desired_region3_sigungu;
             const preferredMajor = profile.preferredJobTypeMajor ?? profile.preferred_job_type_major;
             const preferredMid = profile.preferredJobTypeMid ?? profile.preferred_job_type_mid;
+            const preferredPayType = profile.preferredPayType ?? profile.preferred_pay_type;
 
             userPreferences = {
-                sido: desiredSido || "",
-                sigungu: desiredSigungu || "",
+                regions: [
+                    {sido: desiredSido || "", sigungu: desiredSigungu || ""},
+                    {sido: desiredRegion2Sido || "", sigungu: desiredRegion2Sigungu || ""},
+                    {sido: desiredRegion3Sido || "", sigungu: desiredRegion3Sigungu || ""}
+                ],
                 jobMajor: preferredMajor || "",
-                jobMid: preferredMid || ""
+                jobMid: preferredMid || "",
+                payType: preferredPayType || ""
             };
 
+            let hasAppliedFilter = false;
             if (desiredSido) {
                 selectedSido = desiredSido;
                 filterSido.value = desiredSido;
@@ -49,6 +59,7 @@
                     selectedSigungu = desiredSigungu;
                     filterSigungu.value = desiredSigungu;
                 }
+                hasAppliedFilter = true;
             }
 
             if (preferredMajor) {
@@ -60,10 +71,23 @@
                     selectedJobMid = preferredMid;
                     filterJobMid.value = preferredMid;
                 }
+                hasAppliedFilter = true;
             }
 
-            if (desiredSido || preferredMajor) {
+            if (preferredPayType) {
+                selectedPayType = preferredPayType;
+                filterPayType.value = preferredPayType;
+                sortSalaryBtn.disabled = false;
+                sortSalaryBtn.style.opacity = "1";
+                sortSalaryBtn.style.cursor = "pointer";
+                sortSalaryBtn.title = "";
+                hasAppliedFilter = true;
+            }
+
+            if (hasAppliedFilter) {
                 await runSearch();
+            } else {
+                renderMarkers();
             }
         } catch (error) {
             // 프로필을 불러오지 못하면 기본 목록을 그대로 보여준다.
@@ -106,10 +130,10 @@
     let selectedJobMid = "all";
     let selectedDong = "all";
     let userPreferences = {
-        sido: "",
-        sigungu: "",
+        regions: [],
         jobMajor: "",
-        jobMid: ""
+        jobMid: "",
+        payType: ""
     };
     let customCenter = null;
     let customMarker = null;
@@ -373,9 +397,15 @@
         return Boolean(preference) && value === preference;
     }
 
+    function matchesPreferredRegion(card) {
+        return userPreferences.regions.some((region) => {
+            return matchesPreference(card.dataset.sido, region.sido) &&
+                (!region.sigungu || card.dataset.sigungu === region.sigungu);
+        });
+    }
+
     function isRecommendedJob(card) {
-        const matchesRegion = matchesPreference(card.dataset.sido, userPreferences.sido) &&
-            (!userPreferences.sigungu || card.dataset.sigungu === userPreferences.sigungu);
+        const matchesRegion = matchesPreferredRegion(card);
         const matchesJobType = matchesPreference(card.dataset.jobMajor, userPreferences.jobMajor) &&
             (!userPreferences.jobMid || card.dataset.jobMid === userPreferences.jobMid);
 
