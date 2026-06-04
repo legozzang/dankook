@@ -16,7 +16,10 @@
 <body>
 <main class="page">
     <div class="header">
-        <h1>채용 공고</h1>
+        <div>
+            <p class="eyebrow">Smart Recruit Map</p>
+            <h1>채용 공고</h1>
+        </div>
         <div id="guestMenu">
             <a class="write-button" href="/auth/login">로그인</a>
         </div>
@@ -36,17 +39,16 @@
         </div>
 
         <aside class="list-panel" aria-label="채용 공고 목록">
-            <input id="keywordInput" type="text" placeholder="공고 제목 검색..."
-                   style="width:100%;height:48px;padding:12px 20px;font-size:25px;border:1px solid #cfd6df;border-radius:6px;margin-bottom:0;box-sizing:border-box;">
-            <button type="button" id="filterToggle"
-                    style="width:100%;padding:10px 16px;border:none;border-bottom:1px solid #e5eaf0;
-                           background:#f6f8fb;text-align:left;font-size:13px;font-weight:700;
-                           color:#52606d;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-                <span>필터</span>
+            <div class="list-toolbar">
+                <label class="search-label" for="keywordInput">공고 검색</label>
+                <input id="keywordInput" class="keyword-input" type="text" placeholder="공고 제목으로 검색">
+            </div>
+            <button class="filter-toggle" type="button" id="filterToggle">
+                <span>필터와 정렬</span>
                 <span id="filterToggleIcon">▲</span>
             </button>
             <div class="filters" id="filtersBody">
-                <div>
+                <div class="filter-group">
                     <p class="filter-title">지역 필터</p>
                     <div class="filter-row">
                         <select id="filterSido">
@@ -58,7 +60,7 @@
                         </select>
                     </div>
                 </div>
-                <div>
+                <div class="filter-group">
                     <p class="filter-title">직업 필터</p>
                     <div class="filter-row">
                         <select id="filterJobMajor">
@@ -70,7 +72,7 @@
                         </select>
                     </div>
                 </div>
-                <div>
+                <div class="filter-group">
                     <p class="filter-title">급여유형</p>
                     <div class="filter-row">
                         <select id="filterPayType">
@@ -79,7 +81,7 @@
                         </select>
                     </div>
                 </div>
-                <div>
+                <div class="filter-group">
                     <p class="filter-title">반경 필터</p>
                     <div class="filter-row" role="group" aria-label="반경 필터">
                         <button class="filter-button active" type="button" data-radius="all">전체</button>
@@ -88,22 +90,24 @@
                         <button class="filter-button" type="button" data-radius="5">5km</button>
                     </div>
                 </div>
-                <div class="filter-row" style="align-items:center;gap:8px;margin-top:8px;">
-                    <span class="filter-title" style="margin:0;">정렬</span>
-                    <button class="filter-button active" type="button" id="sortDistanceBtn">거리순</button>
-                    <button class="filter-button" type="button" id="sortSalaryBtn"
-                            disabled style="opacity:0.4;cursor:not-allowed;" title="급여유형을 선택하세요">급여순</button>
+                <div class="filter-group filter-group--wide">
+                    <p class="filter-title">정렬</p>
+                    <div class="filter-row">
+                        <button class="filter-button active" type="button" id="sortDistanceBtn">거리순</button>
+                        <button class="filter-button" type="button" id="sortSalaryBtn"
+                                disabled title="급여유형을 선택하세요">급여순</button>
+                    </div>
                 </div>
-                <div class="filter-row" style="align-items:center;gap:8px;margin-top:4px;">
-                    <label for="resultLimit">결과 수</label>
+                <div class="filter-actions">
+                    <label class="result-limit-label" for="resultLimit">결과 수</label>
                     <select id="resultLimit">
                         <option value="10" selected>10개</option>
                         <option value="50">50개</option>
                         <option value="100">100개</option>
                         <option value="all">전체</option>
                     </select>
-                    <button id="searchBtn" type="button" class="filter-button active" style="padding:6px 16px;">검색</button>
-                    <button id="resetBtn" type="button" class="filter-button" style="padding:6px 16px;">초기화</button>
+                    <button id="searchBtn" type="button" class="filter-button filter-button--primary">검색</button>
+                    <button id="resetBtn" type="button" class="filter-button">초기화</button>
                 </div>
                 <!--
                 <div>
@@ -114,7 +118,10 @@
                     </div>
                 </div>
                 -->
-                <span class="result-count"><strong id="visibleCount" th:text="${jobCount}">0</strong>개의 공고</span>
+                <div class="result-summary">
+                    <span class="result-count"><strong id="visibleCount" th:text="${jobCount}">0</strong>개의 공고</span>
+                    <span>지도 마커를 선택하면 목록 위치가 함께 표시됩니다.</span>
+                </div>
             </div>
 
             <div class="cards">
