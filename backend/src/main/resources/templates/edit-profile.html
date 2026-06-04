@@ -159,11 +159,28 @@
     <div class="card">
         <div class="section-title">선호 조건</div>
         <div class="form-group">
-            <label>희망 지역</label>
-            <div class="grid-3">
-                <select id="regionSido"><option value="">시/도</option></select>
-                <select id="regionSigungu" disabled><option value="">시/군/구</option></select>
-                <select id="regionDong" disabled><option value="">구/읍/면</option></select>
+            <label>관심 지역</label>
+            <p class="hint" style="margin-bottom:10px">관심 지역 1은 기본 지역이며, 관심 지역 2·3은 선택 입력입니다.</p>
+            <div class="form-group">
+                <label>관심 지역 1</label>
+                <div class="grid-2">
+                    <select id="region1Sido"><option value="">시/도</option></select>
+                    <select id="region1Sigungu" disabled><option value="">시/군/구</option></select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>관심 지역 2</label>
+                <div class="grid-2">
+                    <select id="region2Sido"><option value="">시/도</option></select>
+                    <select id="region2Sigungu" disabled><option value="">시/군/구</option></select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>관심 지역 3</label>
+                <div class="grid-2">
+                    <select id="region3Sido"><option value="">시/도</option></select>
+                    <select id="region3Sigungu" disabled><option value="">시/군/구</option></select>
+                </div>
             </div>
         </div>
 
@@ -236,21 +253,15 @@
             select.value = selected || '';
         }
 
-        function setupRegionCascade() {
-            const sido = document.getElementById('regionSido');
-            const sigungu = document.getElementById('regionSigungu');
-            const dong = document.getElementById('regionDong');
+        function setupRegionCascade(rank) {
+            const sido = document.getElementById(`region${rank}Sido`);
+            const sigungu = document.getElementById(`region${rank}Sigungu`);
 
             fillSelect(sido, Object.keys(SIGUNGU_BY_SIDO));
             sido.disabled = false;
 
             sido.addEventListener('change', () => {
                 fillSelect(sigungu, SIGUNGU_BY_SIDO[sido.value] || []);
-                resetSelect(dong);
-            });
-
-            sigungu.addEventListener('change', () => {
-                resetSelect(dong);
             });
         }
 
@@ -279,14 +290,43 @@
             });
         }
 
-        function setRegionValues(data) {
-            const sido = document.getElementById('regionSido');
-            const sigungu = document.getElementById('regionSigungu');
-            const dong = document.getElementById('regionDong');
+        function setRegionValue(rank, sidoValue, sigunguValue) {
+            const sido = document.getElementById(`region${rank}Sido`);
+            const sigungu = document.getElementById(`region${rank}Sigungu`);
 
-            sido.value = data.desired_region_sido || '';
-            fillSelect(sigungu, SIGUNGU_BY_SIDO[sido.value] || [], data.desired_region_sigungu || '');
-            resetSelect(dong);
+            sido.value = sidoValue || '';
+            fillSelect(sigungu, SIGUNGU_BY_SIDO[sido.value] || [], sigunguValue || '');
+        }
+
+        function setRegionValues(data) {
+            setRegionValue(1, data.desired_region_sido, data.desired_region_sigungu);
+            setRegionValue(2, data.desired_region2_sido, data.desired_region2_sigungu);
+            setRegionValue(3, data.desired_region3_sido, data.desired_region3_sigungu);
+        }
+
+        function readRegion(rank) {
+            return {
+                sido: document.getElementById(`region${rank}Sido`).value,
+                sigungu: document.getElementById(`region${rank}Sigungu`).value
+            };
+        }
+
+        function validateRegions(regions) {
+            const incompleteRegion = regions.some(region => {
+                return (region.sido && !region.sigungu) || (!region.sido && region.sigungu);
+            });
+            if (incompleteRegion) {
+                return '관심 지역은 입력하려면 시/도와 시/군/구를 모두 선택해주세요.';
+            }
+
+            const keys = regions
+                .filter(region => region.sido && region.sigungu)
+                .map(region => `${region.sido} ${region.sigungu}`);
+            if (new Set(keys).size !== keys.length) {
+                return '입력한 관심 지역은 서로 다르게 선택해주세요.';
+            }
+
+            return '';
         }
 
         function setJobValues(data) {
@@ -303,7 +343,7 @@
 
         async function loadMemberInfo() {
             try {
-                setupRegionCascade();
+                [1, 2, 3].forEach(setupRegionCascade);
                 setupJobCascade();
 
                 const response = await fetch('/auth/members/me', {
@@ -336,9 +376,12 @@
                 const nickname = document.getElementById('nicknameInput').value;
                 const currentPassword = document.getElementById('currentPassword').value;
                 const newPassword = document.getElementById('newPassword').value;
-                const desiredRegionSido = document.getElementById('regionSido').value;
-                const desiredRegionSigungu = document.getElementById('regionSigungu').value;
-                const desiredRegionDong = document.getElementById('regionDong').value;
+                const regions = [readRegion(1), readRegion(2), readRegion(3)];
+                const regionError = validateRegions(regions);
+                if (regionError) {
+                    alert(regionError);
+                    return;
+                }
                 const preferredJobTypeMajor = document.getElementById('jobMajor').value;
                 const preferredJobTypeMid = document.getElementById('jobMid').value;
                 const preferredJobTypeMinor = document.getElementById('jobMinor').value;
@@ -353,9 +396,13 @@
                     updateData.currentPassword = currentPassword;
                     updateData.newPassword = newPassword;
                 }
-                updateData.desired_region_sido = desiredRegionSido;
-                updateData.desired_region_sigungu = desiredRegionSigungu;
-                updateData.desired_region_dong = desiredRegionDong;
+                updateData.desired_region_sido = regions[0].sido;
+                updateData.desired_region_sigungu = regions[0].sigungu;
+                updateData.desired_region_dong = '';
+                updateData.desired_region2_sido = regions[1].sido;
+                updateData.desired_region2_sigungu = regions[1].sigungu;
+                updateData.desired_region3_sido = regions[2].sido;
+                updateData.desired_region3_sigungu = regions[2].sigungu;
                 updateData.preferred_job_type_major = preferredJobTypeMajor;
                 updateData.preferred_job_type_mid = preferredJobTypeMid;
                 updateData.preferred_job_type_minor = preferredJobTypeMinor;

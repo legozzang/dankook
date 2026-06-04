@@ -68,6 +68,18 @@ public class Member{
     @Column(name = "desired_region_dong", length = 50)
     private String desiredRegionDong;
 
+    @Column(name = "desired_region2_sido", length = 50)
+    private String desiredRegion2Sido;
+
+    @Column(name = "desired_region2_sigungu", length = 50)
+    private String desiredRegion2Sigungu;
+
+    @Column(name = "desired_region3_sido", length = 50)
+    private String desiredRegion3Sido;
+
+    @Column(name = "desired_region3_sigungu", length = 50)
+    private String desiredRegion3Sigungu;
+
     @Column(name = "preferred_job_type_major", length = 100)
     private String preferredJobTypeMajor;
 
@@ -136,6 +148,10 @@ public class Member{
             String desiredRegionSido,
             String desiredRegionSigungu,
             String desiredRegionDong,
+            String desiredRegion2Sido,
+            String desiredRegion2Sigungu,
+            String desiredRegion3Sido,
+            String desiredRegion3Sigungu,
             String preferredJobTypeMajor,
             String preferredJobTypeMid,
             String preferredJobTypeMinor,
@@ -146,6 +162,10 @@ public class Member{
         if (desiredRegionSido != null) this.desiredRegionSido = desiredRegionSido;
         if (desiredRegionSigungu != null) this.desiredRegionSigungu = desiredRegionSigungu;
         if (desiredRegionDong != null) this.desiredRegionDong = desiredRegionDong;
+        if (desiredRegion2Sido != null) this.desiredRegion2Sido = desiredRegion2Sido;
+        if (desiredRegion2Sigungu != null) this.desiredRegion2Sigungu = desiredRegion2Sigungu;
+        if (desiredRegion3Sido != null) this.desiredRegion3Sido = desiredRegion3Sido;
+        if (desiredRegion3Sigungu != null) this.desiredRegion3Sigungu = desiredRegion3Sigungu;
         if (preferredJobTypeMajor != null) this.preferredJobTypeMajor = preferredJobTypeMajor;
         if (preferredJobTypeMid != null) this.preferredJobTypeMid = preferredJobTypeMid;
         if (preferredJobTypeMinor != null) this.preferredJobTypeMinor = preferredJobTypeMinor;

@@ -39,7 +39,8 @@ public class AuthController {
     }
 
     @GetMapping("/signup")
-    public String signUpPage() {
+    public String signUpPage(Model model) {
+        model.addAttribute("sigunguBySidoJson", buildSigunguBySidoJson());
         return "signup"; // templates/signup.html
     }
 

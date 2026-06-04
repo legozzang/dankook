@@ -19,6 +19,11 @@
     .info{padding:12px;border:1px solid #e4e9f0;border-radius:10px;background:#fafbfc;margin-bottom:10px}
     .label{color:var(--muted);font-size:13px}
     .value{font-size:16px;font-weight:700}
+    .region-list{display:grid;gap:8px;margin-top:8px}
+    .region-item{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #dbe7f3;border-radius:10px;background:#fff}
+    .region-rank{display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:28px;border-radius:999px;background:#e8f2fb;color:var(--primary);font-size:13px;font-weight:800}
+    .region-rank.optional{background:#f1f5f9;color:var(--muted)}
+    .region-value{font-size:15px;font-weight:800;color:var(--text)}
     .btn{height:42px;border:none;border-radius:10px;padding:0 14px;font-weight:800;cursor:pointer}
     .btn-primary{background:var(--primary);color:#fff}
     .btn-primary:hover{background:var(--primary-strong)}
@@ -36,7 +41,23 @@
       <div id="profileBox" hidden>
         <div class="info"><div class="label">이메일</div><div class="value" id="displayEmail"></div></div>
         <div class="info"><div class="label">닉네임</div><div class="value" id="displayNickname"></div></div>
-        <div class="info"><div class="label">선호 지역</div><div class="value" id="displayRegion"></div></div>
+        <div class="info">
+          <div class="label">관심 지역</div>
+          <div class="region-list">
+            <div class="region-item">
+              <span class="region-rank">관심 1</span>
+              <span class="region-value" id="displayRegion1"></span>
+            </div>
+            <div class="region-item">
+              <span class="region-rank optional">관심 2</span>
+              <span class="region-value" id="displayRegion2"></span>
+            </div>
+            <div class="region-item">
+              <span class="region-rank optional">관심 3</span>
+              <span class="region-value" id="displayRegion3"></span>
+            </div>
+          </div>
+        </div>
         <div class="info"><div class="label">선호 직종</div><div class="value" id="displayJobType"></div></div>
         <div class="info"><div class="label">선호 급여 유형</div><div class="value" id="displayPayType"></div></div>
         <div class="info"><div class="label">최소 희망 급여</div><div class="value" id="displayMinPay"></div></div>
@@ -108,10 +129,17 @@
 
         setText('displayEmail', data.email);
         setText('displayNickname', data.nickname);
-        setText('displayRegion', joinConfigured([
+        setText('displayRegion1', joinConfigured([
           data.desired_region_sido,
-          data.desired_region_sigungu,
-          data.desired_region_dong
+          data.desired_region_sigungu
+        ]));
+        setText('displayRegion2', joinConfigured([
+          data.desired_region2_sido,
+          data.desired_region2_sigungu
+        ]));
+        setText('displayRegion3', joinConfigured([
+          data.desired_region3_sido,
+          data.desired_region3_sigungu
         ]));
         setText('displayJobType', joinConfigured([
           data.preferred_job_type_major,

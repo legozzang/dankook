@@ -26,7 +26,7 @@ public class JobPosting {
     private Long id;
 
     // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
-    @OneToOne(mappedBy = "jobPosting")
+    @OneToOne(mappedBy = "jobPosting", fetch = FetchType.LAZY)
     private JobPostingAiSummary jobPostingAiSummary;
 
     // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
