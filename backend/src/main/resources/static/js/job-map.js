@@ -40,30 +40,16 @@
                 jobMid: preferredMid || ""
             };
 
-            if (desiredSido) {
-                selectedSido = desiredSido;
-                filterSido.value = desiredSido;
-                fillSelect(filterSigungu, "시/군/구 전체", SIGUNGU_BY_SIDO[selectedSido] || []);
-                filterSigungu.disabled = false;
-                if (desiredSigungu) {
-                    selectedSigungu = desiredSigungu;
-                    filterSigungu.value = desiredSigungu;
-                }
-            }
-
-            if (preferredMajor) {
-                selectedJobMajor = preferredMajor;
-                filterJobMajor.value = preferredMajor;
-                fillSelect(filterJobMid, "중분류 전체", JOB_MID_BY_MAJOR[selectedJobMajor] || []);
-                filterJobMid.disabled = false;
-                if (preferredMid) {
-                    selectedJobMid = preferredMid;
-                    filterJobMid.value = preferredMid;
-                }
-            }
-
-            if (desiredSido || preferredMajor) {
+            if (shouldApplyInitialPreferences()) {
+                applyInitialPreferenceFilters();
                 await runSearch();
+                initialPreferenceFiltersApplied = true;
+                return;
+            }
+
+            if (map) {
+                renderMarkers();
+                applyFilters();
             }
         } catch (error) {
             // 프로필을 불러오지 못하면 기본 목록을 그대로 보여준다.
@@ -105,6 +91,7 @@
     let selectedSort = "distance";
     let selectedJobMid = "all";
     let selectedDong = "all";
+    let initialPreferenceFiltersApplied = false;
     let userPreferences = {
         sido: "",
         sigungu: "",
@@ -125,7 +112,7 @@
     const MARKER_COLORS = {
         [MARKER_STATUS.INFERRED_LOCATION]: "#6b7280",
         [MARKER_STATUS.CLOSING_SOON]: "#dc2626",
-        [MARKER_STATUS.RECOMMENDED]: "#16a34a",
+        [MARKER_STATUS.RECOMMENDED]: "#FFC800FF",
         [MARKER_STATUS.DEFAULT]: "#2563eb"
     };
 
@@ -172,6 +159,31 @@
             values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
     }
 
+    function shouldApplyInitialPreferences() {
+        return !initialPreferenceFiltersApplied &&
+            Boolean(userPreferences.sido) &&
+            selectedRadius === "all" &&
+            selectedSido === "all" &&
+            selectedSigungu === "all" &&
+            selectedJobMajor === "all" &&
+            selectedJobMid === "all" &&
+            selectedPayType === "all" &&
+            selectedDong === "all" &&
+            document.getElementById("keywordInput").value.trim() === "";
+    }
+
+    function applyInitialPreferenceFilters() {
+        selectedSido = userPreferences.sido;
+        filterSido.value = userPreferences.sido;
+        fillSelect(filterSigungu, "시/군/구 전체", SIGUNGU_BY_SIDO[selectedSido] || []);
+        filterSigungu.disabled = false;
+
+        if (userPreferences.sigungu) {
+            selectedSigungu = userPreferences.sigungu;
+            filterSigungu.value = userPreferences.sigungu;
+        }
+    }
+
     function updateRadiusCircle() {
         if (!map) {
             return;
@@ -216,10 +228,12 @@
             payType: selectedPayType,
             sort: selectedSort
         };
-        if (selectedRadius !== "all") {
+        if (selectedRadius !== "all" || selectedSort === "distance") {
             const center = searchCenter();
             params.lat = center.lat;
             params.lng = center.lng;
+        }
+        if (selectedRadius !== "all") {
             params.radius = selectedRadius;
         }
         return params;
@@ -408,9 +422,9 @@
         return L.divIcon({
             className: `job-marker-icon job-marker-icon--${status}`,
             html: `<span style="background:${getMarkerColor(status)}"></span>`,
-            iconSize: [24, 32],
-            iconAnchor: [12, 28],
-            popupAnchor: [0, -28]
+            iconSize: [36, 44],
+            iconAnchor: [18, 40],
+            popupAnchor: [0, -40]
         });
     }
 
@@ -533,7 +547,7 @@
         try {
             const allFiltersDefault = !hasServerFilter();
 
-            if (allFiltersDefault && resultLimit.value === "10") {
+            if (allFiltersDefault && resultLimit.value === "10" && selectedSort !== "distance") {
                 resetToInitialCards();
                 applyFilters();
                 return;
