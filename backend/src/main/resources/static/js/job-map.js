@@ -24,6 +24,7 @@
                 headers: {"Authorization": "Bearer " + token}
             });
             if (!response.ok) {
+                await loadDefaultCampusResults();
                 return;
             }
 
@@ -32,27 +33,21 @@
             const desiredSigungu = profile.desiredRegionSigungu ?? profile.desired_region_sigungu;
             const preferredMajor = profile.preferredJobTypeMajor ?? profile.preferred_job_type_major;
             const preferredMid = profile.preferredJobTypeMid ?? profile.preferred_job_type_mid;
+            const preferredPayType = profile.preferredPayType ?? profile.preferred_pay_type;
+            const minPayAmount = profile.minPayAmount ?? profile.min_pay_amount;
 
             userPreferences = {
                 sido: desiredSido || "",
                 sigungu: desiredSigungu || "",
                 jobMajor: preferredMajor || "",
-                jobMid: preferredMid || ""
+                jobMid: preferredMid || "",
+                payType: preferredPayType || "",
+                minPayAmount: Number(minPayAmount) > 0 ? Number(minPayAmount) : 0
             };
 
-            if (shouldApplyInitialPreferences()) {
-                applyInitialPreferenceFilters();
-                await runSearch();
-                initialPreferenceFiltersApplied = true;
-                return;
-            }
-
-            if (map) {
-                renderMarkers();
-                applyFilters();
-            }
+            await loadDefaultCampusResults();
         } catch (error) {
-            // 프로필을 불러오지 못하면 기본 목록을 그대로 보여준다.
+            await loadDefaultCampusResults();
         }
     }
 
@@ -63,6 +58,7 @@
     const SIGUNGU_BY_SIDO = JOB_MAP_CONFIG.sigunguBySido || {};
     const JOB_MID_BY_MAJOR = JOB_MAP_CONFIG.jobMidByMajor || {};
     const campus = JOB_MAP_CONFIG.defaultCenter || {lat: 37.3216, lng: 127.1267};
+    const DEFAULT_INITIAL_RADIUS = "3";
     const cardsContainer = document.querySelector(".cards");
     const initialCardsHtml = cardsContainer.innerHTML;
     let cards = Array.from(document.querySelectorAll(".job-card"));
@@ -83,7 +79,7 @@
     const resultLimit = document.getElementById("resultLimit");
     const searchBtn = document.getElementById("searchBtn");
     const resetBtn = document.getElementById("resetBtn");
-    let selectedRadius = "all";
+    let selectedRadius = DEFAULT_INITIAL_RADIUS;
     let selectedSido = "all";
     let selectedSigungu = "all";
     let selectedJobMajor = "all";
@@ -91,12 +87,14 @@
     let selectedSort = "distance";
     let selectedJobMid = "all";
     let selectedDong = "all";
-    let initialPreferenceFiltersApplied = false;
+    let initialResultsLoaded = false;
     let userPreferences = {
         sido: "",
         sigungu: "",
         jobMajor: "",
-        jobMid: ""
+        jobMid: "",
+        payType: "",
+        minPayAmount: 0
     };
     let customCenter = null;
     let customMarker = null;
@@ -171,31 +169,6 @@
     function fillSelect(select, placeholder, values) {
         select.innerHTML = `<option value="all">${placeholder}</option>` +
             values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
-    }
-
-    function shouldApplyInitialPreferences() {
-        return !initialPreferenceFiltersApplied &&
-            Boolean(userPreferences.sido) &&
-            selectedRadius === "all" &&
-            selectedSido === "all" &&
-            selectedSigungu === "all" &&
-            selectedJobMajor === "all" &&
-            selectedJobMid === "all" &&
-            selectedPayType === "all" &&
-            selectedDong === "all" &&
-            document.getElementById("keywordInput").value.trim() === "";
-    }
-
-    function applyInitialPreferenceFilters() {
-        selectedSido = userPreferences.sido;
-        filterSido.value = userPreferences.sido;
-        fillSelect(filterSigungu, "시/군/구 전체", SIGUNGU_BY_SIDO[selectedSido] || []);
-        filterSigungu.disabled = false;
-
-        if (userPreferences.sigungu) {
-            selectedSigungu = userPreferences.sigungu;
-            filterSigungu.value = userPreferences.sigungu;
-        }
     }
 
     function updateRadiusCircle() {
@@ -584,6 +557,18 @@
             visibleCount.textContent = "0";
         }
     }
+
+    async function loadDefaultCampusResults() {
+        if (initialResultsLoaded) {
+            return;
+        }
+
+        initialResultsLoaded = true;
+        selectedRadius = DEFAULT_INITIAL_RADIUS;
+        setActive(radiusButtons, radiusButtons.find((button) => button.dataset.radius === DEFAULT_INITIAL_RADIUS));
+        updateRadiusCircle();
+        await runSearch();
+    }
     
 function applyFilters() {
     let count = 0;
@@ -672,7 +657,7 @@ function applyFilters() {
             }
             customMarker = L.marker([e.latlng.lat, e.latlng.lng], {
                 icon: L.divIcon({className: "custom-center-icon", html: "📍", iconSize: [24, 24]})
-            }).addTo(map).bindPopup("검색 중심").openPopup();
+            }).addTo(map);
             if (resetCenterButton) {
                 resetCenterButton.style.display = "";
             }
@@ -688,7 +673,10 @@ function applyFilters() {
         });
 
         syncCardsFromDom();
-        applyFilters();
+        updateRadiusCircle();
+        if (!localStorage.getItem("accessToken")) {
+            loadDefaultCampusResults();
+        }
     }
 
     radiusButtons.forEach((button) => {
@@ -778,10 +766,10 @@ function applyFilters() {
         selectedJobMid = "all";
         selectedPayType = "all";
         selectedSort = "distance";
-        selectedRadius = "all";
+        selectedRadius = DEFAULT_INITIAL_RADIUS;
         selectedDong = "all";
 
-        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === "all"));
+        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === DEFAULT_INITIAL_RADIUS));
         setActive(dongButtons, dongButtons.find(b => b.dataset.dong === "all"));
         updateRadiusCircle();
 
@@ -796,8 +784,7 @@ function applyFilters() {
         customCenter = null;
         if (resetCenterButton) resetCenterButton.style.display = "none";
 
-        resetToInitialCards();
-        applyFilters();
+        await runSearch();
     });
 
     dongButtons.forEach((button) => {
@@ -809,7 +796,7 @@ function applyFilters() {
     });
 
     if (resetCenterButton) {
-        resetCenterButton.addEventListener("click", () => {
+        resetCenterButton.addEventListener("click", async () => {
             customCenter = null;
             if (customMarker) {
                 customMarker.remove();
@@ -817,7 +804,7 @@ function applyFilters() {
             }
             resetCenterButton.style.display = "none";
             updateRadiusCircle();
-            applyFilters();
+            await runSearch();
         });
     }
 
