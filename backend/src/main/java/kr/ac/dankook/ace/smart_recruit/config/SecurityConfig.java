@@ -36,6 +36,10 @@ public class SecurityConfig {
 
             // 3. 요청별 권한 설정
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/job-postings/recommendations").authenticated()
+                .requestMatchers("/api/job-postings/recommendations/refresh").authenticated()
+                .requestMatchers("/api/job-postings/recommendations/estimated-time").permitAll()
+
                 // 누구나 접근 가능한 경로 (화이트리스트)
                 .requestMatchers("/",
                                 "/auth/signup",
@@ -59,7 +63,8 @@ public class SecurityConfig {
                 // 회원 정보 수정/삭제는 인증된 사용자만 접근 가능
                 .requestMatchers("/auth/update/me",
                                 "/auth/delete/me",
-                                "/auth/members/me"
+                                "/auth/members/me",
+                                "/auth/me/gemini"
                                 ).authenticated()
 
                 .requestMatchers("/admin", "/admin/**").hasRole("ADMIN")

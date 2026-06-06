@@ -101,6 +101,16 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    @PatchMapping("/me/gemini")
+    @ResponseBody
+    public ResponseEntity<Void> updateGeminiSettings(
+            @AuthenticationPrincipal User user,
+            @RequestBody GeminiSettingsRequest request
+    ) {
+        authService.updateGeminiSettings(user.getUsername(), request);
+        return ResponseEntity.ok().build();
+    }
+
     private String buildKscoHierarchyJson() {
         try {
             Path path = resolveKscoPath();

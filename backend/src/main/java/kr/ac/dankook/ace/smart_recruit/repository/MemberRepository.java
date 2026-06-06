@@ -7,6 +7,7 @@ import kr.ac.dankook.ace.smart_recruit.model.member.Member;
 import kr.ac.dankook.ace.smart_recruit.model.member.Role;
 
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface MemberRepository extends JpaRepository<Member, Long> {
@@ -18,4 +19,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     boolean existsByNickname(String nickname);
 
     long countByRole(Role role);
+
+    List<Member> findByGeminiApiKeyIsNotNull();
 }

@@ -84,13 +84,14 @@ public class JobPostingService {
         }
     }
 
-    private JobPostingCard toCard(JobPosting jobPosting) {
+    public JobPostingCard toCard(JobPosting jobPosting) {
         String location = locationLabel(jobPosting);
         String dong = dongLabel(jobPosting, location);
         boolean hasExactLocation = hasCoordinate(jobPosting);
         Coordinate coordinate = hasExactLocation
                 ? new Coordinate(jobPosting.getLatitude(), jobPosting.getLongitude())
                 : fallbackCoordinateFor(jobPosting.getId(), dong);
+        List<String> summaryLines = summaryLines(jobPosting);
 
         return new JobPostingCard(
                 jobPosting.getId(),
@@ -108,7 +109,8 @@ public class JobPostingService {
                 deadlineLabel(jobPosting.getDeadline()),
                 salaryLabel(jobPosting),
                 extractWorkTime(jobPosting.getContent()),
-                summaryLines(jobPosting),
+                "",
+                summaryLines,
                 jobPosting.getExternalUrl(),
                 coordinate.latitude(),
                 coordinate.longitude(),
@@ -263,6 +265,7 @@ public class JobPostingService {
             String deadline,
             String salary,
             String workTime,
+            String recommendationReason,
             List<String> summaryLines,
             String externalUrl,
             double latitude,

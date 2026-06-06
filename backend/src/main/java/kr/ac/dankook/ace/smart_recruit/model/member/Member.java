@@ -101,6 +101,12 @@ public class Member{
     @Column(name = "email_notification", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     private boolean emailNotification = false;
 
+    @Column(name = "gemini_api_key", length = 200)
+    private String geminiApiKey;
+
+    @Column(name = "recommendation_interval_hours")
+    private Integer recommendationIntervalHours;
+
     // 아래 두 어노테이션으로 시간 자동 입력
     @PrePersist
     public void prePersist() {
@@ -144,6 +150,11 @@ public class Member{
         }
     }
 
+    public void updateGeminiSettings(String apiKey, Integer intervalHours) {
+        this.geminiApiKey = normalizeBlank(apiKey);
+        this.recommendationIntervalHours = intervalHours;
+    }
+
     public void updatePreferences(
             String desiredRegionSido,
             String desiredRegionSigungu,
@@ -172,5 +183,9 @@ public class Member{
         if (preferredJobTypeDetail != null) this.preferredJobTypeDetail = preferredJobTypeDetail;
         if (preferredPayType != null) this.preferredPayType = preferredPayType;
         if (minPayAmount != null) this.minPayAmount = minPayAmount;
+    }
+
+    private String normalizeBlank(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }
