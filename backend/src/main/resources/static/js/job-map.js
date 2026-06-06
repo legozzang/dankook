@@ -40,6 +40,7 @@ function getAccessToken() {
                 headers: authHeaders()
             });
             if (!response.ok) {
+                await loadDefaultCampusResults();
                 return;
             }
 
@@ -48,41 +49,21 @@ function getAccessToken() {
             const desiredSigungu = profile.desiredRegionSigungu ?? profile.desired_region_sigungu;
             const preferredMajor = profile.preferredJobTypeMajor ?? profile.preferred_job_type_major;
             const preferredMid = profile.preferredJobTypeMid ?? profile.preferred_job_type_mid;
+            const preferredPayType = profile.preferredPayType ?? profile.preferred_pay_type;
+            const minPayAmount = profile.minPayAmount ?? profile.min_pay_amount;
 
             userPreferences = {
                 sido: desiredSido || "",
                 sigungu: desiredSigungu || "",
                 jobMajor: preferredMajor || "",
-                jobMid: preferredMid || ""
+                jobMid: preferredMid || "",
+                payType: preferredPayType || "",
+                minPayAmount: Number(minPayAmount) > 0 ? Number(minPayAmount) : 0
             };
 
-            if (desiredSido) {
-                selectedSido = desiredSido;
-                filterSido.value = desiredSido;
-                fillSelect(filterSigungu, "시/군/구 전체", SIGUNGU_BY_SIDO[selectedSido] || []);
-                filterSigungu.disabled = false;
-                if (desiredSigungu) {
-                    selectedSigungu = desiredSigungu;
-                    filterSigungu.value = desiredSigungu;
-                }
-            }
-
-            if (preferredMajor) {
-                selectedJobMajor = preferredMajor;
-                filterJobMajor.value = preferredMajor;
-                fillSelect(filterJobMid, "중분류 전체", JOB_MID_BY_MAJOR[selectedJobMajor] || []);
-                filterJobMid.disabled = false;
-                if (preferredMid) {
-                    selectedJobMid = preferredMid;
-                    filterJobMid.value = preferredMid;
-                }
-            }
-
-            if (desiredSido || preferredMajor) {
-                await runSearch();
-            }
+            await loadDefaultCampusResults();
         } catch (error) {
-            // 프로필을 불러오지 못하면 기본 목록을 그대로 보여준다.
+            await loadDefaultCampusResults();
         }
     }
 
@@ -93,6 +74,7 @@ function getAccessToken() {
     const SIGUNGU_BY_SIDO = JOB_MAP_CONFIG.sigunguBySido || {};
     const JOB_MID_BY_MAJOR = JOB_MAP_CONFIG.jobMidByMajor || {};
     const campus = JOB_MAP_CONFIG.defaultCenter || {lat: 37.3216, lng: 127.1267};
+    const DEFAULT_INITIAL_RADIUS = "3";
     const cardsContainer = document.querySelector(".cards");
     const initialCardsHtml = cardsContainer.innerHTML;
     let cards = Array.from(document.querySelectorAll(".job-card"));
@@ -126,11 +108,14 @@ function getAccessToken() {
     let selectedJobMid = "all";
     let selectedDong = "all";
     let recommendationMode = false;
+    let initialResultsLoaded = false;
     let userPreferences = {
         sido: "",
         sigungu: "",
         jobMajor: "",
-        jobMid: ""
+        jobMid: "",
+        payType: "",
+        minPayAmount: 0
     };
     let customCenter = null;
     let customMarker = null;
@@ -146,7 +131,7 @@ function getAccessToken() {
     const MARKER_COLORS = {
         [MARKER_STATUS.INFERRED_LOCATION]: "#6b7280",
         [MARKER_STATUS.CLOSING_SOON]: "#dc2626",
-        [MARKER_STATUS.RECOMMENDED]: "#16a34a",
+        [MARKER_STATUS.RECOMMENDED]: "#FFC800FF",
         [MARKER_STATUS.DEFAULT]: "#2563eb"
     };
 
@@ -186,6 +171,20 @@ function getAccessToken() {
 
     function field(source, camelName, snakeName, fallback = "") {
         return source[camelName] ?? source[snakeName] ?? fallback;
+    }
+
+    function safeOriginalUrl(value) {
+        const url = String(value ?? "").trim();
+        if (!url) {
+            return "";
+        }
+
+        try {
+            const parsed = new URL(url);
+            return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.href : "";
+        } catch (error) {
+            return "";
+        }
     }
 
     function fillSelect(select, placeholder, values) {
@@ -259,10 +258,12 @@ function getAccessToken() {
             payType: selectedPayType,
             sort: selectedSort
         };
-        if (selectedRadius !== "all") {
+        if (selectedRadius !== "all" || selectedSort === "distance") {
             const center = searchCenter();
             params.lat = center.lat;
             params.lng = center.lng;
+        }
+        if (selectedRadius !== "all") {
             params.radius = selectedRadius;
         }
         return params;
@@ -283,6 +284,7 @@ function getAccessToken() {
             jobMid: field(job, "jobTypeMid", "job_type_mid"),
             recommendationReason: field(job, "recommendationReason", "recommendation_reason"),
             status: field(job, "status", "status"),
+            externalUrl: field(job, "externalUrl", "external_url"),
             lat: field(job, "latitude", "latitude", 0),
             lng: field(job, "longitude", "longitude", 0),
             exactLocation: field(job, "exactLocation", "exact_location", false)
@@ -297,6 +299,9 @@ function getAccessToken() {
         const recommendationHtml = data.recommendationReason
             ? `<li>추천 이유: ${escapeHtml(data.recommendationReason)}</li>`
             : "";
+        const originalUrl = safeOriginalUrl(data.externalUrl);
+        const detailHref = originalUrl || `/jobpostings/${encodeURIComponent(data.id)}`;
+        const detailTarget = originalUrl ? ` target="_blank" rel="noopener"` : "";
         const summaryHtml = Array.isArray(summaryLines)
             ? recommendationHtml + summaryLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")
             : "";
@@ -317,6 +322,7 @@ function getAccessToken() {
                      data-job-mid="${escapeHtml(data.jobMid)}"
                      data-recommendation-reason="${escapeHtml(data.recommendationReason)}"
                      data-status="${escapeHtml(data.status)}"
+                     data-external-url="${escapeHtml(data.externalUrl)}"
                      data-lat="${escapeHtml(data.lat)}"
                      data-lng="${escapeHtml(data.lng)}"
                      data-exact-location="${exactLocation}">
@@ -350,7 +356,7 @@ function getAccessToken() {
                     ${exactLocation ? "실제 위치" : "좌표 미등록 - 임시 위치"}
                 </span>
 
-                <a class="detail-link" href="/jobpostings/${escapeHtml(data.id)}">상세 보기</a>
+                <a class="detail-link" href="${escapeHtml(detailHref)}"${detailTarget}>상세 보기</a>
             </article>
         `;
     }
@@ -460,9 +466,9 @@ function getAccessToken() {
         return L.divIcon({
             className: `job-marker-icon job-marker-icon--${status}`,
             html: `<span style="background:${getMarkerColor(status)}"></span>`,
-            iconSize: [24, 32],
-            iconAnchor: [12, 28],
-            popupAnchor: [0, -28]
+            iconSize: [36, 44],
+            iconAnchor: [18, 40],
+            popupAnchor: [0, -40]
         });
     }
 
@@ -618,7 +624,7 @@ function getAccessToken() {
 
             const allFiltersDefault = !hasServerFilter();
 
-            if (allFiltersDefault && resultLimit.value === "10") {
+            if (allFiltersDefault && resultLimit.value === "10" && selectedSort !== "distance") {
                 resetToInitialCards();
                 applyFilters();
                 return;
@@ -635,6 +641,18 @@ function getAccessToken() {
             console.error(error);
             visibleCount.textContent = "0";
         }
+    }
+
+    async function loadDefaultCampusResults() {
+        if (initialResultsLoaded) {
+            return;
+        }
+
+        initialResultsLoaded = true;
+        selectedRadius = DEFAULT_INITIAL_RADIUS;
+        setActive(radiusButtons, radiusButtons.find((button) => button.dataset.radius === DEFAULT_INITIAL_RADIUS));
+        updateRadiusCircle();
+        await runSearch();
     }
     
 function applyFilters() {
@@ -746,7 +764,7 @@ function applyFilters() {
             }
             customMarker = L.marker([e.latlng.lat, e.latlng.lng], {
                 icon: L.divIcon({className: "custom-center-icon", html: "📍", iconSize: [24, 24]})
-            }).addTo(map).bindPopup("검색 중심").openPopup();
+            }).addTo(map);
             if (resetCenterButton) {
                 resetCenterButton.style.display = "";
             }
@@ -762,7 +780,10 @@ function applyFilters() {
         });
 
         syncCardsFromDom();
-        applyFilters();
+        updateRadiusCircle();
+        if (!localStorage.getItem("accessToken")) {
+            loadDefaultCampusResults();
+        }
     }
 
     radiusButtons.forEach((button) => {
@@ -852,10 +873,10 @@ function applyFilters() {
         selectedJobMid = "all";
         selectedPayType = "all";
         selectedSort = "distance";
-        selectedRadius = "all";
+        selectedRadius = DEFAULT_INITIAL_RADIUS;
         selectedDong = "all";
 
-        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === "all"));
+        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === DEFAULT_INITIAL_RADIUS));
         setActive(dongButtons, dongButtons.find(b => b.dataset.dong === "all"));
         updateRadiusCircle();
 
@@ -870,8 +891,7 @@ function applyFilters() {
         customCenter = null;
         if (resetCenterButton) resetCenterButton.style.display = "none";
 
-        resetToInitialCards();
-        applyFilters();
+        await runSearch();
     });
 
     dongButtons.forEach((button) => {
@@ -883,7 +903,7 @@ function applyFilters() {
     });
 
     if (resetCenterButton) {
-        resetCenterButton.addEventListener("click", () => {
+        resetCenterButton.addEventListener("click", async () => {
             customCenter = null;
             if (customMarker) {
                 customMarker.remove();
@@ -891,7 +911,7 @@ function applyFilters() {
             }
             resetCenterButton.style.display = "none";
             updateRadiusCircle();
-            applyFilters();
+            await runSearch();
         });
     }
 

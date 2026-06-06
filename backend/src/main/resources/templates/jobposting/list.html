@@ -14,17 +14,44 @@
     <link rel="stylesheet" href="/css/job-map.css">
 </head>
 <body>
-<main class="page">
-    <div class="header">
-        <h1>채용 공고</h1>
-        <div id="guestMenu">
-            <a class="write-button" href="/auth/login">로그인</a>
-        </div>
-        <div id="userMenu" style="display:none;gap:8px;">
-            <a class="write-button" href="/auth/mypage">내 정보</a>
-            <button class="write-button" type="button" onclick="handleLogout()">로그아웃</button>
+<header class="site-header">
+    <div class="site-header__inner">
+        <a class="brand" href="/jobpostings" aria-label="Smart Recruit 홈">
+            <span class="brand-mark">SR</span>
+            <span class="brand-text">Smart Recruit</span>
+        </a>
+
+        <nav class="site-nav" aria-label="주요 메뉴">
+            <a class="site-nav__link active" href="/jobpostings">채용 공고</a>
+            <a class="site-nav__link" href="/communities">커뮤니티</a>
+            <a class="site-nav__link" href="/admin/dashboard">관리자</a>
+        </nav>
+
+        <div class="auth-actions">
+            <div id="guestMenu">
+                <a class="write-button" href="/auth/login">로그인</a>
+            </div>
+            <div id="userMenu" style="display:none;gap:8px;">
+                <a class="write-button write-button--ghost" href="/auth/mypage">내 정보</a>
+                <button class="write-button" type="button" onclick="handleLogout()">로그아웃</button>
+            </div>
         </div>
     </div>
+</header>
+
+<main class="page">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">Smart Recruit Map</p>
+            <h1>채용 공고</h1>
+            <p class="page-description">지도에서 위치를 확인하고, 조건에 맞는 공고를 빠르게 찾아보세요.</p>
+        </div>
+        <div class="page-header__meta">
+            <span>지도형 탐색</span>
+            <span>거리순 정렬</span>
+            <span>추천 마커</span>
+        </div>
+    </section>
 
     <section class="layout" th:with="jobCount=${#lists.size(jobPostings)}">
         <div class="map-panel" aria-label="채용 공고 지도">
@@ -50,7 +77,7 @@
                 <span id="filterToggleIcon">▲</span>
             </button>
             <div class="filters" id="filtersBody">
-                <div>
+                <div class="filter-group">
                     <p class="filter-title">지역 필터</p>
                     <div class="filter-row">
                         <select id="filterSido">
@@ -62,7 +89,7 @@
                         </select>
                     </div>
                 </div>
-                <div>
+                <div class="filter-group">
                     <p class="filter-title">직업 필터</p>
                     <div class="filter-row">
                         <select id="filterJobMajor">
@@ -74,7 +101,7 @@
                         </select>
                     </div>
                 </div>
-                <div>
+                <div class="filter-group">
                     <p class="filter-title">급여유형</p>
                     <div class="filter-row">
                         <select id="filterPayType">
@@ -83,31 +110,33 @@
                         </select>
                     </div>
                 </div>
-                <div>
+                <div class="filter-group">
                     <p class="filter-title">반경 필터</p>
                     <div class="filter-row" role="group" aria-label="반경 필터">
-                        <button class="filter-button active" type="button" data-radius="all">전체</button>
+                        <button class="filter-button" type="button" data-radius="all">전체</button>
                         <button class="filter-button" type="button" data-radius="1">1km</button>
-                        <button class="filter-button" type="button" data-radius="3">3km</button>
+                        <button class="filter-button active" type="button" data-radius="3">3km</button>
                         <button class="filter-button" type="button" data-radius="5">5km</button>
                     </div>
                 </div>
-                <div class="filter-row" style="align-items:center;gap:8px;margin-top:8px;">
-                    <span class="filter-title" style="margin:0;">정렬</span>
-                    <button class="filter-button active" type="button" id="sortDistanceBtn">거리순</button>
-                    <button class="filter-button" type="button" id="sortSalaryBtn"
-                            disabled style="opacity:0.4;cursor:not-allowed;" title="급여유형을 선택하세요">급여순</button>
+                <div class="filter-group filter-group--wide">
+                    <p class="filter-title">정렬</p>
+                    <div class="filter-row">
+                        <button class="filter-button active" type="button" id="sortDistanceBtn">거리순</button>
+                        <button class="filter-button" type="button" id="sortSalaryBtn"
+                                disabled title="급여유형을 선택하세요">급여순</button>
+                    </div>
                 </div>
-                <div class="filter-row" style="align-items:center;gap:8px;margin-top:4px;">
-                    <label for="resultLimit">결과 수</label>
+                <div class="filter-actions">
+                    <label class="result-limit-label" for="resultLimit">결과 수</label>
                     <select id="resultLimit">
                         <option value="10" selected>10개</option>
                         <option value="50">50개</option>
                         <option value="100">100개</option>
                         <option value="all">전체</option>
                     </select>
-                    <button id="searchBtn" type="button" class="filter-button active" style="padding:6px 16px;">검색</button>
-                    <button id="resetBtn" type="button" class="filter-button" style="padding:6px 16px;">초기화</button>
+                    <button id="searchBtn" type="button" class="filter-button filter-button--primary">검색</button>
+                    <button id="resetBtn" type="button" class="filter-button">초기화</button>
                 </div>
                 <!--
                 <div>
@@ -118,7 +147,10 @@
                     </div>
                 </div>
                 -->
-                <span class="result-count"><strong id="visibleCount" th:text="${jobCount}">0</strong>개의 공고</span>
+                <div class="result-summary">
+                    <span class="result-count"><strong id="visibleCount" th:text="${jobCount}">0</strong>개의 공고</span>
+                    <span>지도 마커를 선택하면 목록 위치가 함께 표시됩니다.</span>
+                </div>
             </div>
 
             <div class="cards">

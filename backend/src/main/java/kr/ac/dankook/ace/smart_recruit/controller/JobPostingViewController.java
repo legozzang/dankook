@@ -24,6 +24,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JobPostingViewController {
 
+    private static final double DANKOOK_LATITUDE = 37.3216;
+    private static final double DANKOOK_LONGITUDE = 127.1267;
+    private static final double DEFAULT_RADIUS_KM = 3.0;
+    private static final int DEFAULT_RESULT_LIMIT = 10;
+
     private final JobPostingService jobPostingService;
     private final JobPostingRepository jobPostingRepository;
 
@@ -35,7 +40,19 @@ public class JobPostingViewController {
     // http://localhost:8080/jobpostings
     @GetMapping("/jobpostings")
     public String jobPostingList(Model model) {
-        List<JobPostingCard> jobPostings = jobPostingService.findAllCards();
+        List<JobPostingCard> jobPostings = jobPostingService.findCardsByRadius(
+                DANKOOK_LATITUDE,
+                DANKOOK_LONGITUDE,
+                DEFAULT_RADIUS_KM,
+                DEFAULT_RESULT_LIMIT,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "distance"
+        );
         List<String> dongs = jobPostings.stream()
                 .map(JobPostingCard::dong)
                 .distinct()
