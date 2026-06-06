@@ -170,6 +170,13 @@
     }
 
     function shouldApplyInitialPreferences() {
+
+        // 마이페이지에서 특정 공고를 클릭한 경우 focusId가 URL에 존재하는데, 이때는 초기 선호 필터를 적용하지 않고 해당 공고만 강조해서 보여줌
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('focusId')) {
+            return false; 
+        }
+
         // 초기 필터 적용 로직
         // 1. 선호 지역이 존재하는지 체크
         const hasRegionPreference = userPreferences.regions && 
@@ -636,6 +643,23 @@ function applyFilters() {
     let count = 0;
     const visibleMarkers = [];
 
+    // 1. 주소창 파라미터 값 검증
+    const urlParams = new URLSearchParams(window.location.search);
+    let focusId = urlParams.get('focusId'); 
+    if (focusId) {
+        focusId = focusId.trim();
+    }
+    const focusTitle = urlParams.get('focusTitle') ? urlParams.get('focusTitle').trim() : null;
+
+    console.log("==================================================");
+    console.log("🔍 [1단계: 주소창 파라미터 검증]");
+    console.log("-> 현재 주소창 focusId :", focusId, `(타입: ${typeof focusId})`);
+    console.log("-> 현재 주소창 focusTitle :", focusTitle);
+    console.log("==================================================");
+
+    // DOM에 존재하는 모든 카드의 ID를 추적하기 위한 배열
+    const allCardIdsInDom = [];
+
     cards.forEach((card) => {
         const isExactLocation = card.dataset.exactLocation === "true";
         const lat = Number(card.dataset.lat);
@@ -644,28 +668,44 @@ function applyFilters() {
 
         const point = {lat, lng};
 
-        const inRadius =
-            selectedRadius === "all" ||
-            (hasValidPoint && distanceKm(searchCenter(), point) <= Number(selectedRadius));
+        // 기존 필터 조건들
+        const inRadius = selectedRadius === "all" || (hasValidPoint && distanceKm(searchCenter(), point) <= Number(selectedRadius));
+        const inSido = selectedSido === "all" || card.dataset.sido === selectedSido;
+        const inSigungu = selectedSigungu === "all" || card.dataset.sigungu === selectedSigungu;
+        const inDong = selectedDong === "all" || card.dataset.dong === selectedDong;
+        const inJobMajor = selectedJobMajor === "all" || card.dataset.jobMajor === selectedJobMajor;
+        const inJobMid = selectedJobMid === "all" || card.dataset.jobMid === selectedJobMid;
 
-        const inSido =
-            selectedSido === "all" || card.dataset.sido === selectedSido;
+        let visible = inRadius && inSido && inSigungu && inDong && inJobMajor && inJobMid;
 
-        const inSigungu =
-            selectedSigungu === "all" || card.dataset.sigungu === selectedSigungu;
+        // 2. 현재 카드의 data-id를 수집 및 대조
+        const cardId = card.dataset.id ? card.dataset.id.trim() : "";
+        const cardCompany = card.dataset.company ? card.dataset.company.trim() : "";
+        const cardTitle = card.querySelector('.job-card__title')?. some || card.id; // 카드 제목 요소 추정
 
-        const inDong =
-            selectedDong === "all" || card.dataset.dong === selectedDong;
+        // 나중에 한 번에 출력하기 위해 배열에 저장
+        allCardIdsInDom.push({
+            domId: card.id,
+            datasetId: cardId,
+            company: cardCompany
+        });
 
-        const inJobMajor =
-            selectedJobMajor === "all" || card.dataset.jobMajor === selectedJobMajor;
+        if (focusId && focusId !== "undefined" && focusId !== "") {
+            // 철저하게 문자열 대조
+            let isMatch = (cardId === focusId);
+            
+            // 2차 방어선 (회사명 대조)
+            if (!isMatch && focusTitle) {
+                const cardText = card.innerText || card.textContent || "";
+                if (cardCompany.includes(focusTitle) || cardText.includes(focusTitle)) {
+                    isMatch = true;
+                }
+            }
 
-        const inJobMid =
-            selectedJobMid === "all" || card.dataset.jobMid === selectedJobMid;
+            visible = isMatch;
+        }
 
-        const visible = inRadius && inSido && inSigungu && inDong && inJobMajor && inJobMid;
         const marker = markers.get(card.dataset.id);
-
         card.hidden = !visible;
 
         if (marker) {
@@ -682,10 +722,37 @@ function applyFilters() {
         }
     });
 
-    visibleCount.textContent = count;
+    // 3. 수집된 화면상의 모든 카드 ID를 콘솔에 전수 출력 (실무 트레이싱 관행)
+    console.log("📋 [2단계: 현재 메인 화면에 로드된 모든 카드 data-id 전수 조사]");
+    console.table(allCardIdsInDom); 
+    console.log("==================================================");
 
+    visibleCount.textContent = count;
+    console.log(`[결과] 최종 필터를 통과하여 노출된 공고 개수: ${count}개`);
+
+    // 4. 단독 마커 핀포인트 카메라 연동 및 자동 팝업
     if (visibleMarkers.length > 0) {
-        map.fitBounds(L.featureGroup(visibleMarkers).getBounds().pad(0.22), {maxZoom: 15});
+        if (focusId && focusId !== "undefined" && focusId !== "") {
+            const targetMarker = visibleMarkers[0];
+            const latLng = targetMarker.getLatLng();
+            
+            map.setView(latLng, 17);
+            
+            setTimeout(() => {
+                targetMarker.openPopup();
+            }, 150);
+
+            const targetCard = document.querySelector('.job-card:not([hidden])');
+            if (targetCard && typeof selectCard === 'function') {
+                selectCard(targetCard);
+            } 
+        } else {
+            map.fitBounds(L.featureGroup(visibleMarkers).getBounds().pad(0.22), {maxZoom: 15});
+        }
+    } else {
+        if (focusId) {
+            console.error(`❌ [매칭 실패] 주소창의 focusId(${focusId})가 화면상의 datasetId 목록에 단 하나도 존재하지 않습니다.`);
+        }
     }
 }
 
