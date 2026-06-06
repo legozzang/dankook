@@ -112,6 +112,7 @@
     let map;
     let radiusCircle = null;
     const markers = new Map();
+    const scrappedIds = new Set();
     const MARKER_STATUS = {
         INFERRED_LOCATION: "inferred-location",
         CLOSING_SOON: "closing-soon",
@@ -879,9 +880,6 @@ function applyFilters() {
         initMap();
     }
 
-/* ── 스크랩 기능 ── */
-const scrappedIds = new Set();
-
 function getToken() {
     const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
     return match ? match[1] : (localStorage.getItem("accessToken") || "");
@@ -928,7 +926,7 @@ async function loadScrappedIds() {
         if (!res.ok) return;
         const ids = await res.json();
         scrappedIds.clear();
-        ids.forEach((id) => scrappedIds.add(id));
+        ids.forEach((id) => scrappedIds.add(Number(id)));
         renderScrapButtons();
     } catch (e) {
         console.warn("스크랩 목록 로드 실패", e);
