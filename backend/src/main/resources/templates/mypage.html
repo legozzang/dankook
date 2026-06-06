@@ -69,6 +69,13 @@
       </div>
     </section>
 
+    <section class="card" id="scrapSection">
+      <h2>스크랩한 공고</h2>
+      <p id="scrapLoading" style="color:#667085; margin:0 0 8px;">스크랩 목록을 불러오는 중...</p>
+      <p id="scrapEmpty" style="display:none; color:#667085; margin:0;">스크랩한 공고가 없습니다.</p>
+      <div id="scrapList" style="display:grid; gap:10px;"></div>
+    </section>
+
     <section class="card">
       <h2>회원 탈퇴</h2>
       <p style="color:#667085">탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
@@ -201,7 +208,105 @@
     }
   }
 
-  window.addEventListener('DOMContentLoaded', loadMyInfo);
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c =>
+      ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  }
+
+  /* ── 스크랩 목록 렌더링 ─────────────────────────────────────── */
+  async function loadScraps() {
+    const token = getToken();
+    if (!token || token === 'undefined' || token === 'null') return;
+
+    const loadingEl = document.getElementById('scrapLoading');
+    const emptyEl   = document.getElementById('scrapEmpty');
+    const listEl    = document.getElementById('scrapList');
+
+    try {
+      const res = await fetch('/api/scraps/my', { headers: authHeaders() });
+      if (!res.ok) { loadingEl.style.display = 'none'; return; }
+      const items = await res.json();
+      loadingEl.style.display = 'none';
+
+      if (items.length === 0) { emptyEl.style.display = 'block'; return; }
+
+      listEl.innerHTML = items.map(item => `
+        <div class="scrap-item" id="scrap-row-${item.jobPostingId}"
+             style="display:flex;justify-content:space-between;align-items:flex-start;
+                    padding:14px;border:1px solid #dbe7f3;border-radius:10px;
+                    background:#fafbfc;gap:12px;transition:opacity .2s;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;color:#667085;margin-bottom:2px;">${escapeHtml(item.company)}</div>
+            <div style="font-weight:700;font-size:15px;margin-bottom:6px;word-break:break-all;">${escapeHtml(item.title)}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:13px;color:#667085;">
+              <span>📍 ${escapeHtml(item.location)}</span>
+              <span>💰 ${escapeHtml(item.salary)}</span>
+              <span>📅 ${escapeHtml(item.deadline)}</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            <a href="/jobpostings/${item.jobPostingId}"
+               style="display:inline-block;padding:6px 14px;background:#1f6fb2;color:#fff;
+                      border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;text-align:center;">
+              자세히 보기
+            </a>
+            <button id="scrap-btn-${item.jobPostingId}"
+                    onclick="toggleScrapMypage(${item.jobPostingId})"
+                    style="padding:6px 14px;background:#fffbef;color:#d97706;border:1px solid #f59e0b;
+                           border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+              ★ 스크랩됨
+            </button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      loadingEl.style.display = 'none';
+    }
+  }
+
+  /* ── 마이페이지 스크랩 토글 (행은 유지, 버튼 상태만 전환) ──── */
+  async function toggleScrapMypage(jobPostingId) {
+    const token = getToken();
+    if (!token) { alert('로그인이 필요한 서비스입니다.'); return; }
+
+    const btn = document.getElementById(`scrap-btn-${jobPostingId}`);
+    const row = document.getElementById(`scrap-row-${jobPostingId}`);
+    if (!btn) return;
+
+    try {
+      const res = await fetch(`/api/scraps/toggle?jobPostingId=${jobPostingId}`, {
+        method: 'POST',
+        headers: authHeaders()
+      });
+      if (res.status === 401) { alert('로그인이 필요한 서비스입니다.'); return; }
+      if (!res.ok) throw new Error(res.status);
+
+      const data = await res.json();   // { "scraped": true/false }
+
+      if (data.scraped) {
+        // 다시 스크랩 → 활성 스타일
+        btn.textContent = '★ 스크랩됨';
+        btn.style.background = '#fffbef';
+        btn.style.color = '#d97706';
+        btn.style.borderColor = '#f59e0b';
+        if (row) row.style.opacity = '1';
+      } else {
+        // 스크랩 해제 → 비활성 스타일 (행은 남아서 재토글 가능)
+        btn.textContent = '☆ 스크랩';
+        btn.style.background = '#fff';
+        btn.style.color = '#6b7280';
+        btn.style.borderColor = '#ccd5df';
+        if (row) row.style.opacity = '0.5';
+      }
+    } catch (e) {
+      alert('스크랩 처리에 실패했습니다.');
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    loadMyInfo();
+    loadScraps();
+  });
 </script>
 </body>
 </html>

@@ -305,7 +305,8 @@
             status: field(job, "status", "status"),
             lat: field(job, "latitude", "latitude", 0),
             lng: field(job, "longitude", "longitude", 0),
-            exactLocation: field(job, "exactLocation", "exact_location", false)
+            exactLocation: field(job, "exactLocation", "exact_location", false),
+            scraped: field(job, "scraped", "scraped", false)
         };
     }
 
@@ -335,7 +336,8 @@
                      data-status="${escapeHtml(data.status)}"
                      data-lat="${escapeHtml(data.lat)}"
                      data-lng="${escapeHtml(data.lng)}"
-                     data-exact-location="${exactLocation}">
+                     data-exact-location="${exactLocation}"
+                     data-scraped="${data.scraped}">
                 <div>
                     <p class="company">${escapeHtml(data.company)}</p>
                     <h2 class="job-title">${escapeHtml(data.title)}</h2>
@@ -366,9 +368,15 @@
                     ${exactLocation ? "실제 위치" : "좌표 미등록 - 임시 위치"}
                 </span>
 
-                <a class="detail-link" href="/jobpostings/${escapeHtml(data.id)}">상세 보기</a>
-            </article>
-        `;
+                <div class="card-actions">
+                    <a class="detail-link" href="/jobpostings/${escapeHtml(data.id)}">상세 보기</a>
+                    <button class="scrap-btn${data.scraped === true || data.scraped === 'true' ? ' scrapped' : ''}"
+                            type="button"
+                            data-id="${escapeHtml(data.id)}"
+                            data-scraped="${data.scraped}"
+                            aria-label="스크랩">${data.scraped === true || data.scraped === 'true' ? '★' : '☆'}</button>
+                </div>
+            </article>`;
     }
 
     function clearMarkers() {
@@ -536,7 +544,7 @@
     function bindCardEvents() {
         cards.forEach((card) => {
             card.addEventListener("click", (event) => {
-                if (event.target.closest("a")) {
+                if (event.target.closest("a") || event.target.closest("button")) {
                     return;
                 }
                 selectCard(card);
@@ -553,6 +561,7 @@
         cards = Array.from(document.querySelectorAll(".job-card"));
         bindCardEvents();
         renderMarkers();
+        renderScrapButtons();
     }
 
     function renderCards(jobs) {
@@ -862,6 +871,99 @@ function applyFilters() {
         await runSearch();
     });
 
+    document.getElementById("keywordInput").addEventListener("keydown", async (e) => {
+        if (e.key === "Enter") await runSearch();
+    });
+
     if (window.L) {
         initMap();
     }
+
+/* ── 스크랩 기능 ── */
+const scrappedIds = new Set();
+
+function getToken() {
+    const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
+    return match ? match[1] : (localStorage.getItem("accessToken") || "");
+}
+
+/**
+ * 버튼 한 개의 시각 상태(텍스트·클래스·title)를 scraped 값에 맞게 갱신한다.
+ */
+function applyScrapState(btn, scraped) {
+    btn.textContent = scraped ? "★" : "☆";
+    btn.classList.toggle("scrapped", scraped);
+    btn.title = scraped ? "스크랩 해제" : "스크랩";
+    btn.dataset.scraped = String(scraped);
+}
+
+/**
+ * 현재 DOM에 있는 모든 .scrap-btn 을 scrappedIds Set 기준으로 동기화한다.
+ */
+function renderScrapButtons() {
+    document.querySelectorAll(".scrap-btn").forEach((btn) => {
+        applyScrapState(btn, scrappedIds.has(Number(btn.dataset.id)));
+    });
+}
+
+/**
+ * 페이지 로드 시:
+ *  1) Thymeleaf가 서버에서 이미 data-scraped 를 채워 놓은 경우 DOM에서 초기화
+ *  2) 서버 확인용 /api/scraps/my/ids 로 검증·동기화
+ */
+async function loadScrappedIds() {
+    // ① Thymeleaf 서버 렌더링 결과로 scrappedIds 초기화 (플래시 없음)
+    document.querySelectorAll(".scrap-btn[data-scraped='true']").forEach((btn) => {
+        scrappedIds.add(Number(btn.dataset.id));
+    });
+    renderScrapButtons();
+
+    // ② 로그인 상태면 서버와 동기화
+    const token = getToken();
+    if (!token) return;
+    try {
+        const res = await fetch("/api/scraps/my/ids", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (!res.ok) return;
+        const ids = await res.json();
+        scrappedIds.clear();
+        ids.forEach((id) => scrappedIds.add(id));
+        renderScrapButtons();
+    } catch (e) {
+        console.warn("스크랩 목록 로드 실패", e);
+    }
+}
+
+// 이벤트 위임 — 동적으로 추가된 버튼도 동작
+document.querySelector(".cards").addEventListener("click", async (event) => {
+    const btn = event.target.closest(".scrap-btn");
+    if (!btn) return;
+
+    const token = getToken();
+    if (!token) {
+        alert("로그인이 필요한 서비스입니다.");
+        return;
+    }
+
+    const id = Number(btn.dataset.id);
+    try {
+        const res = await fetch(`/api/scraps/toggle?jobPostingId=${id}`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (res.status === 401) { alert("로그인이 필요한 서비스입니다."); return; }
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();          // { "scraped": true/false }
+        if (data.scraped) {
+            scrappedIds.add(id);
+        } else {
+            scrappedIds.delete(id);
+        }
+        applyScrapState(btn, data.scraped);     // 해당 버튼만 즉시 갱신
+    } catch (e) {
+        alert("스크랩 처리에 실패했습니다.");
+    }
+});
+
+document.addEventListener("DOMContentLoaded", loadScrappedIds);

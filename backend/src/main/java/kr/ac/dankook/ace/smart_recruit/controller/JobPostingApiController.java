@@ -162,7 +162,8 @@ public class JobPostingApiController {
                 card.externalUrl(),
                 card.latitude(),
                 card.longitude(),
-                card.exactLocation()
+                card.exactLocation(),
+                card.scraped()
         );
     }
 
@@ -201,7 +202,8 @@ public class JobPostingApiController {
             String externalUrl,
             double latitude,
             double longitude,
-            boolean exactLocation
+            boolean exactLocation,
+            boolean scraped
     ) {
     }
 
