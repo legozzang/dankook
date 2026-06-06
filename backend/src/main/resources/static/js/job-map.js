@@ -169,8 +169,20 @@
     }
 
     function shouldApplyInitialPreferences() {
+        // 초기 필터 적용 로직
+        // 1. 선호 지역이 존재하는지 체크
+        const hasRegionPreference = userPreferences.regions && 
+                                    userPreferences.regions.length > 0 && 
+                                    Boolean(userPreferences.regions[0].sido);
+
+        // 2. 선호 직종이 존재하는지 체크
+        const hasJobPreference = Boolean(userPreferences.jobMajor);
+
+        // 3. 둘 중 하나라도 설정되어 있다면 초기 필터 대상임
+        const hasAnyPreference = hasRegionPreference || hasJobPreference;
+
         return !initialPreferenceFiltersApplied &&
-            Boolean(userPreferences.sido) &&
+            hasAnyPreference &&
             selectedRadius === "all" &&
             selectedSido === "all" &&
             selectedSigungu === "all" &&
@@ -182,14 +194,43 @@
     }
 
     function applyInitialPreferenceFilters() {
-        selectedSido = userPreferences.sido;
-        filterSido.value = userPreferences.sido;
-        fillSelect(filterSigungu, "시/군/구 전체", SIGUNGU_BY_SIDO[selectedSido] || []);
-        filterSigungu.disabled = false;
+        // [1] 지역 설정 바인딩 (존재할 때만)
+        if (userPreferences.regions && userPreferences.regions.length > 0) {
+            const primaryRegion = userPreferences.regions[0];
+            if (primaryRegion.sido) {
+                selectedSido = primaryRegion.sido;
+                filterSido.value = primaryRegion.sido;
+                fillSelect(filterSigungu, "시/군/구 전체", SIGUNGU_BY_SIDO[selectedSido] || []);
+                filterSigungu.disabled = false;
 
-        if (userPreferences.sigungu) {
-            selectedSigungu = userPreferences.sigungu;
-            filterSigungu.value = userPreferences.sigungu;
+                if (primaryRegion.sigungu) {
+                    selectedSigungu = primaryRegion.sigungu;
+                    filterSigungu.value = primaryRegion.sigungu;
+                }
+            }
+        }
+
+        // [2] 직종 설정 바인딩 (존재할 때만)
+        if (userPreferences.jobMajor) {
+            selectedJobMajor = userPreferences.jobMajor;
+            filterJobMajor.value = userPreferences.jobMajor;
+            fillSelect(filterJobMid, "중분류 전체", JOB_MID_BY_MAJOR[selectedJobMajor] || []);
+            filterJobMid.disabled = false;
+
+            if (userPreferences.jobMid) {
+                selectedJobMid = userPreferences.jobMid;
+                filterJobMid.value = userPreferences.jobMid;
+            }
+        }
+
+        // [3] 급여 유형 연동
+        if (userPreferences.payType) {
+            selectedPayType = userPreferences.payType;
+            filterPayType.value = userPreferences.payType;
+            sortSalaryBtn.disabled = false;
+            sortSalaryBtn.style.opacity = "1";
+            sortSalaryBtn.style.cursor = "pointer";
+            sortSalaryBtn.title = "";
         }
     }
 
