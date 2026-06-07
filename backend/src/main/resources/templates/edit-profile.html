@@ -118,6 +118,7 @@
             .btn { width: 100%; }
         }
     </style>
+    <script src="/js/auth-utils.js"></script>
 </head>
 <body>
 <div class="page">
@@ -224,17 +225,7 @@
         const SIGUNGU_BY_SIDO = JSON.parse(/*[[${sigunguBySidoJson}]]*/ '{}');
         document.addEventListener('DOMContentLoaded', loadMemberInfo);
 
-        function getToken() {
-            const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
-            return match ? match[1] : (localStorage.getItem('accessToken') || '');
-        }
-
-        function authHeaders() {
-            const headers = { 'Content-Type': 'application/json' };
-            const token = getToken();
-            if (token) headers['Authorization'] = 'Bearer ' + token;
-            return headers;
-        }
+        // getToken() / authHeaders() → auth-utils.js 에서 전역 제공
 
         function resetSelect(select, placeholder = '전체') {
             select.innerHTML = `<option value="">${placeholder}</option>`;

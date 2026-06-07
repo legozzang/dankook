@@ -489,6 +489,10 @@ h1 {
     background: #ffffff;
 }
 
+.job-card[hidden] {
+    display: none !important;
+}
+
 .job-card {
     display: grid;
     gap: 11px;
@@ -709,4 +713,40 @@ h1 {
     .meta-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* ── 카드 액션 행 (상세 보기 + 스크랩) ── */
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.scrap-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid #ccd5df;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #98a2b3;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.scrap-btn:hover {
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+
+.scrap-btn.scrapped {
+    border-color: #f59e0b;
+    background: #fffbef;
+    color: #d97706;
 }

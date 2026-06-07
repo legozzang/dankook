@@ -17,6 +17,7 @@
         th { background: #eef2f6; color: #4b5563; }
         h1 { margin: 0; }
     </style>
+    <script src="/js/auth-utils.js"></script>
 </head>
 <body>
 <main class="page">
@@ -68,13 +69,7 @@
     </table>
 </main>
 <script>
-    function authHeaders() {
-        const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
-        const token = match ? match[1] : (localStorage.getItem('accessToken') || '');
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = 'Bearer ' + token;
-        return headers;
-    }
+    // authHeaders() → auth-utils.js 에서 전역 제공
 
     async function changeRole(id) {
         const role = document.getElementById(`role-${id}`).value;

@@ -4,6 +4,7 @@ import kr.ac.dankook.ace.smart_recruit.security.jwt.JwtAuthenticationFilter;
 import kr.ac.dankook.ace.smart_recruit.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.security.autoconfigure.web.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,8 +54,7 @@ public class SecurityConfig {
                                 // [임시] 로컬 테스트용 — 채용공고 화면·AI 파이프라인 업로드 경로 인증 해제
                                 // TODO: 운영 전 팀원과 협의 후 적절한 권한 정책으로 교체 필요
                                 "/api/job-postings",
-                                "/api/job-postings/**",
-                                "/auth/edit-profile"
+                                "/api/job-postings/**"
                                 ).permitAll()
                 
                 // 정적 리소스 (CSS, JS, 이미지 등)도 모두 허용
@@ -64,7 +64,9 @@ public class SecurityConfig {
                 .requestMatchers("/auth/update/me",
                                 "/auth/delete/me",
                                 "/auth/members/me",
-                                "/auth/me/gemini"
+                                "/auth/edit-profile",
+                                "/auth/me/gemini",
+                                "/api/scraps/**"
                                 ).authenticated()
 
                 .requestMatchers("/admin", "/admin/**").hasRole("ADMIN")
@@ -73,8 +75,13 @@ public class SecurityConfig {
             )
 
             // 4. JWT 필터 배치
-            .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), 
-                            UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
+                            UsernamePasswordAuthenticationFilter.class)
+
+            // 5. 비인증 REST 요청 → 302 리다이렉트 대신 401 Unauthorized 반환
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) ->
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")));
 
         return http.build();
     }

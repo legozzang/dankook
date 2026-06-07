@@ -18,6 +18,7 @@
         h1 { margin: 0; }
         .pagination span { font-weight: 700; color: #4b5563; }
     </style>
+    <script src="/js/auth-utils.js"></script>
 </head>
 <body>
 <main class="page">
@@ -132,13 +133,7 @@
         updateMid('jpMajor', 'jpMid');
     });
 
-    function authHeaders() {
-        const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
-        const token = match ? match[1] : (localStorage.getItem('accessToken') || '');
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = 'Bearer ' + token;
-        return headers;
-    }
+    // authHeaders() → auth-utils.js 에서 전역 제공
 
     async function changeStatus(id, status) {
         const response = await fetch(`/admin/job-postings/${id}/status`, {
