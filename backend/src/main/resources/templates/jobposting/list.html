@@ -63,12 +63,17 @@
         </div>
 
         <aside class="list-panel" aria-label="채용 공고 목록">
-            <div class="list-toolbar">
-                <label class="search-label" for="keywordInput">공고 검색</label>
-                <input id="keywordInput" class="keyword-input" type="text" placeholder="공고 제목으로 검색">
+            <div id="jobListTabs" class="filter-row" style="gap:8px;padding:10px;border-bottom:1px solid #e5eaf0;">
+                <button class="filter-button active" type="button" id="allJobsTab">전체 공고</button>
+                <button class="filter-button" type="button" id="recommendationsTab">맞춤 추천</button>
             </div>
-            <button class="filter-toggle" type="button" id="filterToggle">
-                <span>필터와 정렬</span>
+            <input id="keywordInput" type="text" placeholder="공고 제목 검색..."
+                   style="width:100%;height:48px;padding:12px 20px;font-size:25px;border:1px solid #cfd6df;border-radius:6px;margin-bottom:0;box-sizing:border-box;">
+            <button type="button" id="filterToggle"
+                    style="width:100%;padding:10px 16px;border:none;border-bottom:1px solid #e5eaf0;
+                           background:#f6f8fb;text-align:left;font-size:13px;font-weight:700;
+                           color:#52606d;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                <span>필터</span>
                 <span id="filterToggleIcon">▲</span>
             </button>
             <div class="filters" id="filtersBody">
@@ -165,6 +170,7 @@
                          th:data-sigungu="${jobPosting.sigungu}"
                          th:data-job-major="${jobPosting.jobTypeMajor}"
                          th:data-job-mid="${jobPosting.jobTypeMid}"
+                         th:data-recommendation-reason="${jobPosting.recommendationReason}"
                          th:data-lat="${jobPosting.latitude}"
                          th:data-lng="${jobPosting.longitude}"
                          th:data-exact-location="${jobPosting.exactLocation}">
@@ -193,6 +199,8 @@
                     </div>
 
                     <ul class="summary" aria-label="AI 요약">
+                        <li th:if="${jobPosting.recommendationReason != null and jobPosting.recommendationReason != ''}"
+                            th:text="|추천 이유: ${jobPosting.recommendationReason}|">추천 이유</li>
                         <li th:each="line : ${jobPosting.summaryLines}" th:text="${line}">핵심 조건 요약</li>
                     </ul>
 
