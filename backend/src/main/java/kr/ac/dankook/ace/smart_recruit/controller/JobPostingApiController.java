@@ -172,7 +172,7 @@ public class JobPostingApiController {
             return null;
         }
         String trimmed = value.trim();
-        return trimmed.isEmpty() || "전체".equals(trimmed) ? null : trimmed;
+        return trimmed.isEmpty() || "전체".equals(trimmed) || "all".equals(trimmed) ? null : trimmed;
     }
 
     private double elapsedSeconds(Instant startedAt) {
