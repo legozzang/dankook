@@ -227,7 +227,8 @@ public class JobPostingApiController {
     }
 
     private CardResponse toRecommendationCardResponse(UserJobRecommendation recommendation) {
-        JobPostingCard card = jobPostingService.toCard(recommendation.getJobPosting());
+        JobPostingCard card = jobPostingService.findCardById(recommendation.getJobPosting().getId())
+                .orElseThrow();
         return toCardResponse(card, recommendation.getRecommendationReason());
     }
 
