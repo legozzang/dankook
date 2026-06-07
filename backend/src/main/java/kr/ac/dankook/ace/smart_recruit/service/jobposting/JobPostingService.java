@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobPosting;
+import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobSourceType;
+import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus;
 import kr.ac.dankook.ace.smart_recruit.model.jobpostingaisummary.JobPostingAiSummary;
 import kr.ac.dankook.ace.smart_recruit.config.AppConstants;
 import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
@@ -42,6 +44,12 @@ public class JobPostingService {
     private final EntityManager entityManager;
     private final ScrapRepository scrapRepository;
     private final MemberRepository memberRepository;
+
+    public List<JobPostingResponse> findAllResponses() {
+        return jobPostingRepository.findAll().stream()
+                .map(this::toResponse)
+                .toList();
+    }
 
     public List<JobPostingCard> findAllCards() {
         List<JobPosting> postings = jobPostingRepository.findRecentWithAiSummary(PageRequest.of(0, 10));
@@ -108,6 +116,32 @@ public class JobPostingService {
         return postings.stream().map(p -> toCard(p, scraped)).toList();
     }
 
+    @Transactional
+    public void create(JobPostingCreateCommand command) {
+        jobPostingRepository.save(new JobPosting(
+                command.title(),
+                command.content(),
+                command.region(),
+                command.jobType(),
+                safeJobStatus(command.status()),
+                command.deadline(),
+                safeSourceType(command.sourceType()),
+                command.externalUrl(),
+                command.company() != null ? command.company() : "",
+                command.latitude() != null ? command.latitude() : AppConstants.DANKOOK_LATITUDE,
+                command.longitude() != null ? command.longitude() : AppConstants.DANKOOK_LONGITUDE,
+                command.regionSido() != null ? command.regionSido() : "",
+                command.regionSigungu() != null ? command.regionSigungu() : "",
+                command.payType(),
+                command.payAmount(),
+                command.jobTypeMajor() != null ? command.jobTypeMajor() : "",
+                command.jobTypeMid() != null ? command.jobTypeMid() : "",
+                command.jobTypeMinor() != null ? command.jobTypeMinor() : "",
+                command.jobTypeDetail() != null ? command.jobTypeDetail() : "",
+                command.welfare()
+        ));
+    }
+
     // ── 스크랩 배치 조회 헬퍼 ──────────────────────────────────────────────
 
     /**
@@ -141,6 +175,23 @@ public class JobPostingService {
     }
 
     // ── 내부 변환 메서드 ──────────────────────────────────────────────────
+
+    private JobPostingResponse toResponse(JobPosting jobPosting) {
+        return new JobPostingResponse(
+                jobPosting.getId(),
+                jobPosting.getTitle(),
+                jobPosting.getContent(),
+                jobPosting.getRegion(),
+                jobPosting.getJobType(),
+                jobPosting.getStatus().name(),
+                jobPosting.getDeadline(),
+                jobPosting.getSourceType().name(),
+                jobPosting.getExternalUrl(),
+                jobPosting.getCreatedAt() != null ? jobPosting.getCreatedAt().toString() : null,
+                jobPosting.getCompany(),
+                jobPosting.getWelfare()
+        );
+    }
 
     private JobPostingCard toCard(JobPosting jobPosting, Set<Long> scrapedIds) {
         String location = locationLabel(jobPosting);
@@ -246,6 +297,22 @@ public class JobPostingService {
         }
     }
 
+    private JobStatus safeJobStatus(String value) {
+        try {
+            return JobStatus.valueOf(value);
+        } catch (Exception e) {
+            return JobStatus.OPEN;
+        }
+    }
+
+    private JobSourceType safeSourceType(String value) {
+        try {
+            return JobSourceType.valueOf(value);
+        } catch (Exception e) {
+            return JobSourceType.INTERNAL;
+        }
+    }
+
     private String companyName(String company) {
         return isBlank(company) ? "회사명 미등록" : company;
     }
@@ -348,6 +415,46 @@ public class JobPostingService {
     }
 
     // ── 공개 레코드 ──────────────────────────────────────────────────────
+
+    public record JobPostingResponse(
+            Long id,
+            String title,
+            String content,
+            String region,
+            String jobType,
+            String status,
+            String deadline,
+            String sourceType,
+            String externalUrl,
+            String createdAt,
+            String company,
+            String welfare
+    ) {
+    }
+
+    public record JobPostingCreateCommand(
+            String title,
+            String content,
+            String region,
+            String jobType,
+            String status,
+            String deadline,
+            String sourceType,
+            String externalUrl,
+            String company,
+            Double latitude,
+            Double longitude,
+            String regionSido,
+            String regionSigungu,
+            String payType,
+            Integer payAmount,
+            String jobTypeMajor,
+            String jobTypeMid,
+            String jobTypeMinor,
+            String jobTypeDetail,
+            String welfare
+    ) {
+    }
 
     public record JobPostingCard(
             Long id,

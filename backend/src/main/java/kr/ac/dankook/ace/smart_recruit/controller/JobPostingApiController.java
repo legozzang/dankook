@@ -1,17 +1,14 @@
 package kr.ac.dankook.ace.smart_recruit.controller;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobPosting;
-import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobSourceType;
-import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus;
 import kr.ac.dankook.ace.smart_recruit.model.recommendation.UserJobRecommendation;
 import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
-import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.recommendation.RecommendationStatRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.recommendation.UserJobRecommendationRepository;
 import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService;
-import kr.ac.dankook.ace.smart_recruit.config.AppConstants;
 import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.JobPostingCard;
+import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.JobPostingCreateCommand;
+import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.JobPostingResponse;
 import kr.ac.dankook.ace.smart_recruit.service.recommendation.RecommendationScheduler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -35,7 +32,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class JobPostingApiController {
 
-    private final JobPostingRepository jobPostingRepository;
     private final JobPostingService jobPostingService;
     private final MemberRepository memberRepository;
     private final UserJobRecommendationRepository userJobRecommendationRepository;
@@ -44,23 +40,7 @@ public class JobPostingApiController {
 
     @GetMapping
     public ResponseEntity<List<JobPostingResponse>> list() {
-        List<JobPostingResponse> result = jobPostingRepository.findAll().stream()
-                .map(jp -> new JobPostingResponse(
-                        jp.getId(),
-                        jp.getTitle(),
-                        jp.getContent(),
-                        jp.getRegion(),
-                        jp.getJobType(),
-                        jp.getStatus().name(),
-                        jp.getDeadline(),
-                        jp.getSourceType().name(),
-                        jp.getExternalUrl(),
-                        jp.getCreatedAt() != null ? jp.getCreatedAt().toString() : null,
-                        jp.getCompany(),
-                        jp.getWelfare()
-                ))
-                .toList();
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(jobPostingService.findAllResponses());
     }
 
     @GetMapping("/search")
@@ -221,61 +201,29 @@ public class JobPostingApiController {
 
     @PostMapping
     public ResponseEntity<Void> create(@RequestBody JobPostingRequest request) {
-        jobPostingRepository.save(new JobPosting(
+        jobPostingService.create(new JobPostingCreateCommand(
                 request.title(),
                 request.content(),
                 request.region(),
                 request.jobType(),
-                safeJobStatus(request.status()),
+                request.status(),
                 request.deadline(),
-                safeSourceType(request.sourceType()),
+                request.sourceType(),
                 request.externalUrl(),
-                request.company() != null ? request.company() : "",
-                request.latitude() != null ? request.latitude() : AppConstants.DANKOOK_LATITUDE,
-                request.longitude() != null ? request.longitude() : AppConstants.DANKOOK_LONGITUDE,
-                request.regionSido() != null ? request.regionSido() : "",
-                request.regionSigungu() != null ? request.regionSigungu() : "",
+                request.company(),
+                request.latitude(),
+                request.longitude(),
+                request.regionSido(),
+                request.regionSigungu(),
                 request.payType(),
                 request.payAmount(),
-                request.jobTypeMajor() != null ? request.jobTypeMajor() : "",
-                request.jobTypeMid() != null ? request.jobTypeMid() : "",
-                request.jobTypeMinor() != null ? request.jobTypeMinor() : "",
-                request.jobTypeDetail() != null ? request.jobTypeDetail() : "",
+                request.jobTypeMajor(),
+                request.jobTypeMid(),
+                request.jobTypeMinor(),
+                request.jobTypeDetail(),
                 request.welfare()
         ));
         return ResponseEntity.status(201).build();
-    }
-
-    private JobStatus safeJobStatus(String s) {
-        try {
-            return JobStatus.valueOf(s);
-        } catch (Exception e) {
-            return JobStatus.OPEN;
-        }
-    }
-
-    private JobSourceType safeSourceType(String s) {
-        try {
-            return JobSourceType.valueOf(s);
-        } catch (Exception e) {
-            return JobSourceType.INTERNAL;
-        }
-    }
-
-    record JobPostingResponse(
-            Long id,
-            String title,
-            String content,
-            String region,
-            String jobType,
-            String status,
-            String deadline,
-            String sourceType,
-            String externalUrl,
-            String createdAt,
-            String company,
-            String welfare
-    ) {
     }
 
     record CardResponse(
