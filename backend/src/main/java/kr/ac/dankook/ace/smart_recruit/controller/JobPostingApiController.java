@@ -150,18 +150,18 @@ public class JobPostingApiController {
                 .filter(seconds -> seconds != null && seconds > 0)
                 .toList();
         if (durations.isEmpty()) {
-            return ResponseEntity.ok(new EstimatedTimeResponse(0, 0));
+            return ResponseEntity.ok(new EstimatedTimeResponse(0.0, 0));
         }
 
         double average = durations.stream().mapToDouble(Double::doubleValue).average().orElse(0);
         long estimatedSeconds = Math.max(1, Math.round(average));
-        return ResponseEntity.ok(new EstimatedTimeResponse(estimatedSeconds, durations.size()));
+        return ResponseEntity.ok(new EstimatedTimeResponse((double) estimatedSeconds, durations.size()));
     }
 
     private int parseLimit(String limit) {
         try {
             int parsed = Integer.parseInt(limit);
-            return Math.min(Math.max(parsed, 1), AppConstants.MAX_SEARCH_RESULTS);
+            return parsed > 0 ? parsed : 10;
         } catch (NumberFormatException e) {
             return 10;
         }
