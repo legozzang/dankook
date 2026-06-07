@@ -27,6 +27,7 @@ import kr.ac.dankook.ace.smart_recruit.model.member.Member;
 import kr.ac.dankook.ace.smart_recruit.model.member.Role;
 import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
+import kr.ac.dankook.ace.smart_recruit.util.JsonViewUtils;
 import lombok.RequiredArgsConstructor;
 
 @Controller
@@ -121,12 +122,8 @@ public class AdminViewController {
         String normalizedKeyword = normalize(keyword);
         Role roleFilter = parseRole(role);
 
-        List<Member> members = memberRepository.findAll().stream()
-                .filter(member -> roleFilter == null || member.getRole() == roleFilter)
-                .filter(member -> normalizedKeyword.isBlank()
-                        || contains(member.getEmail(), normalizedKeyword)
-                        || contains(member.getNickname(), normalizedKeyword))
-                .toList();
+        // findAll() + 메모리 스트림 필터 → DB 쿼리로 교체 (OOM 방지)
+        List<Member> members = memberRepository.findByRoleAndKeyword(roleFilter, normalizedKeyword);
 
         Map<String, String> currentFilters = new HashMap<>();
         currentFilters.put("role", role == null ? "" : role);
@@ -217,8 +214,8 @@ public class AdminViewController {
     private void addCascadeModel(Model model, List<Object[]> regionRaw, List<Object[]> jobTypeRaw) {
         model.addAttribute("sidoList", SIDO_LIST);
         model.addAttribute("majorList", majorList(jobTypeRaw));
-        model.addAttribute("sigunguBySidoJson", toJson(sigunguBySido(regionRaw)));
-        model.addAttribute("midByMajorJson", toJson(midByMajor(jobTypeRaw)));
+        model.addAttribute("sigunguBySidoJson", JsonViewUtils.toJson(sigunguBySido(regionRaw)));
+        model.addAttribute("midByMajorJson", JsonViewUtils.toJson(midByMajor(jobTypeRaw)));
     }
 
     private Map<String, Long> regionStats(List<Object[]> rows, int limit) {
@@ -317,34 +314,6 @@ public class AdminViewController {
                 .distinct()
                 .sorted()
                 .toList();
-    }
-
-    private String toJson(Object value) {
-        if (!(value instanceof Map<?, ?> map)) {
-            return "{}";
-        }
-
-        return map.entrySet().stream()
-                .map(entry -> "\"" + escapeJson(entry.getKey()) + "\":" + toJsonArray(entry.getValue()))
-                .collect(Collectors.joining(",", "{", "}"));
-    }
-
-    private String toJsonArray(Object value) {
-        if (!(value instanceof List<?> list)) {
-            return "[]";
-        }
-
-        return list.stream()
-                .map(item -> "\"" + escapeJson(item) + "\"")
-                .collect(Collectors.joining(",", "[", "]"));
-    }
-
-    private String escapeJson(Object value) {
-        return nvl(value)
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\r", "\\r")
-                .replace("\n", "\\n");
     }
 
     private String filterLabel(String... values) {

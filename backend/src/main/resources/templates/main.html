@@ -22,7 +22,8 @@
     </nav>
 
     <script>
-        function updateNav() {
+        // job-map.js 의 updateAuthNav()와 동일한 역할 — 함수명 통일
+        function updateAuthNav() {
             const token = localStorage.getItem('accessToken');
             const guestMenu = document.getElementById('guestMenu');
             const userMenu = document.getElementById('userMenu');
@@ -37,7 +38,7 @@
         }
 
         // 페이지 로드 시 상태 확인
-        window.onload = updateNav;
+        window.onload = updateAuthNav;
         
         // 메인 페이지 스크립트 하단에 추가
         function handleLogout() {

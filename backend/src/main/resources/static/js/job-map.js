@@ -198,15 +198,7 @@ function updateAuthNav() {
         card.scrollIntoView({block: "nearest"});
     }
 
-    function escapeHtml(value) {
-        return String(value ?? "").replace(/[&<>"']/g, (char) => ({
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            "\"": "&quot;",
-            "'": "&#39;"
-        }[char]));
-    }
+    // escapeHtml() → auth-utils.js 전역 함수 사용 (중복 제거)
 
     function field(source, camelName, snakeName, fallback = "") {
         return source[camelName] ?? source[snakeName] ?? fallback;
@@ -942,10 +934,7 @@ function applyFilters() {
 
     // ★ initMap()은 통합 진입점(DOMContentLoaded)에서 호출 — 여기서 직접 호출 제거
 
-function getToken() {
-    const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
-    return match ? match[1] : (localStorage.getItem("accessToken") || "");
-}
+// getToken() → auth-utils.js 전역 함수 사용 (중복 제거)
 
 /**
  * 버튼 한 개의 시각 상태(텍스트·클래스·title)를 scraped 값에 맞게 갱신한다.

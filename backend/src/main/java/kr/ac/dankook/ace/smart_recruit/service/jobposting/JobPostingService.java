@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobPosting;
 import kr.ac.dankook.ace.smart_recruit.model.jobpostingaisummary.JobPostingAiSummary;
+import kr.ac.dankook.ace.smart_recruit.config.AppConstants;
 import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.scrap.ScrapRepository;
@@ -34,8 +35,6 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class JobPostingService {
 
-    private static final double DANKOOK_LATITUDE = 37.3216;
-    private static final double DANKOOK_LONGITUDE = 127.1267;
     private static final Pattern SALARY_PATTERN = Pattern.compile("(시급|월급|일급|연봉|급여)\\s*[:：]?\\s*([0-9,]+\\s*(원|만원)?|협의|면접\\s*후\\s*결정)");
     private static final Pattern WORK_TIME_PATTERN = Pattern.compile("((근무\\s*시간|근무시간|시간)\\s*[:：]?\\s*)?([0-2]?\\d\\s*[:시]\\s*\\d{0,2}\\s*~\\s*[0-2]?\\d\\s*[:시]\\s*\\d{0,2}|오전\\s*\\d+\\s*시\\s*~\\s*오후\\s*\\d+\\s*시|주\\s*\\d+\\s*일|요일\\s*협의)");
 
@@ -327,8 +326,8 @@ public class JobPostingService {
         int seed = Math.abs((String.valueOf(id) + dong).hashCode());
         double angle = (seed % 360) * Math.PI / 180;
         double radiusKm = 0.6 + (seed % 4300) / 1000.0;
-        double lat = DANKOOK_LATITUDE + (Math.cos(angle) * radiusKm / 111.0);
-        double lng = DANKOOK_LONGITUDE + (Math.sin(angle) * radiusKm / (111.0 * Math.cos(Math.toRadians(DANKOOK_LATITUDE))));
+        double lat = AppConstants.DANKOOK_LATITUDE + (Math.cos(angle) * radiusKm / 111.0);
+        double lng = AppConstants.DANKOOK_LONGITUDE + (Math.sin(angle) * radiusKm / (111.0 * Math.cos(Math.toRadians(AppConstants.DANKOOK_LATITUDE))));
         return new Coordinate(round(lat), round(lng));
     }
 

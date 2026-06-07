@@ -11,23 +11,24 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import kr.ac.dankook.ace.smart_recruit.config.AppConstants;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService;
 import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.JobPostingCard;
+import kr.ac.dankook.ace.smart_recruit.util.JsonViewUtils;
 import lombok.RequiredArgsConstructor;
-/* 
+import lombok.extern.slf4j.Slf4j;
+
+/*
     최초 작성자 : 유지훈
     최초 작성일 : 2026.04.18
-    목적 : Jobposting을 위한 Controller
-    개정 이력 :  이름, 20xx.0x.xx (변경사항) <= 향후 작성
+    목적 : /jobpostings 뷰 라우팅 Controller
+    개정 이력 : 박진현, 2026.06.07 (focusId 파라미터 방어, AppConstants·JsonViewUtils·Slf4j 적용)
 */
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class JobPostingViewController {
-
-    // 단국대 기준 좌표 — JS의 JobMapConfig.defaultCenter 와 반드시 동일해야 함
-    private static final double DANKOOK_LATITUDE  = 37.3216;
-    private static final double DANKOOK_LONGITUDE = 127.1267;
 
     private final JobPostingService jobPostingService;
     private final JobPostingRepository jobPostingRepository;
@@ -37,7 +38,6 @@ public class JobPostingViewController {
         return "redirect:/jobpostings";
     }
 
-    // http://localhost:8080/jobpostings
     @GetMapping("/jobpostings")
     public String jobPostingList(
             @RequestParam(value = "focusId", required = false) String focusIdParam,
@@ -60,7 +60,7 @@ public class JobPostingViewController {
                             .ifPresent(target -> jobPostings.add(0, target));
                 } catch (Exception e) {
                     // 유령 ID(DB에 없는 값) → 무시하고 정상 목록만 렌더링
-                    System.err.println("[WARN] focusId " + focusId + " not found in DB: " + e.getMessage());
+                    log.warn("[focusId 미발견] id={}, msg={}", focusId, e.getMessage());
                 }
             }
         }
@@ -92,9 +92,9 @@ public class JobPostingViewController {
         model.addAttribute("payTypes", jobPostingRepository.findDistinctPayTypes());
         model.addAttribute("dongs", dongs);
         model.addAttribute("sidos", new ArrayList<>(sigunguBySido.keySet()));
-        model.addAttribute("sigunguBySidoJson", toJson(sigunguBySido));
+        model.addAttribute("sigunguBySidoJson", JsonViewUtils.toJson(sigunguBySido));
         model.addAttribute("jobMajors", new ArrayList<>(jobTypeMidByMajor.keySet()));
-        model.addAttribute("jobTypeMidByMajorJson", toJson(jobTypeMidByMajor));
+        model.addAttribute("jobTypeMidByMajorJson", JsonViewUtils.toJson(jobTypeMidByMajor));
 
         return "jobposting/list";
     }
@@ -110,7 +110,7 @@ public class JobPostingViewController {
         try {
             return Long.parseLong(raw.trim());
         } catch (NumberFormatException e) {
-            System.err.println("[WARN] 유효하지 않은 focusId 포맷 무시: " + raw);
+            log.warn("[focusId 포맷 오류] raw={}", raw);
             return null;
         }
     }
@@ -123,28 +123,5 @@ public class JobPostingViewController {
                     return "jobposting/detail";
                 })
                 .orElse("redirect:/jobpostings");
-    }
-
-    private String toJson(Map<String, List<String>> valuesByKey) {
-        StringBuilder sb = new StringBuilder("{");
-        boolean firstKey = true;
-        for (Map.Entry<String, List<String>> entry : valuesByKey.entrySet()) {
-            if (!firstKey) sb.append(',');
-            firstKey = false;
-            sb.append('"').append(escapeJson(entry.getKey())).append("\":[");
-            boolean firstValue = true;
-            for (String value : entry.getValue()) {
-                if (!firstValue) sb.append(',');
-                firstValue = false;
-                sb.append('"').append(escapeJson(value)).append('"');
-            }
-            sb.append(']');
-        }
-        sb.append('}');
-        return sb.toString();
-    }
-
-    private String escapeJson(String value) {
-        return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

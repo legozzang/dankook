@@ -6,6 +6,7 @@ import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobSourceType;
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService;
+import kr.ac.dankook.ace.smart_recruit.config.AppConstants;
 import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.JobPostingCard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +23,6 @@ import java.util.List;
 @RequestMapping("/api/job-postings")
 @RequiredArgsConstructor
 public class JobPostingApiController {
-
-    private static final double DEFAULT_LATITUDE = 37.3216;
-    private static final double DEFAULT_LONGITUDE = 127.1267;
 
     private final JobPostingRepository jobPostingRepository;
     private final JobPostingService jobPostingService;
@@ -98,8 +96,8 @@ public class JobPostingApiController {
                 safeSourceType(request.sourceType()),
                 request.externalUrl(),
                 request.company() != null ? request.company() : "",
-                request.latitude() != null ? request.latitude() : DEFAULT_LATITUDE,
-                request.longitude() != null ? request.longitude() : DEFAULT_LONGITUDE,
+                request.latitude() != null ? request.latitude() : AppConstants.DANKOOK_LATITUDE,
+                request.longitude() != null ? request.longitude() : AppConstants.DANKOOK_LONGITUDE,
                 request.regionSido() != null ? request.regionSido() : "",
                 request.regionSigungu() != null ? request.regionSigungu() : "",
                 request.payType(),

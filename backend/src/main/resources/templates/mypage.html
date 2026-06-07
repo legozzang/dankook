@@ -85,6 +85,7 @@
     }
     .btn-scrap:disabled { cursor: not-allowed; opacity: 0.6; }
   </style>
+  <script src="/js/auth-utils.js"></script>
 </head>
 <body>
   <main class="wrap">
@@ -139,17 +140,7 @@
   </main>
 
 <script>
-  function getToken() {
-    const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
-    return match ? match[1] : (localStorage.getItem('accessToken') || '');
-  }
-
-  function authHeaders() {
-    const headers = { 'Content-Type': 'application/json' };
-    const token = getToken();
-    if (token) headers['Authorization'] = 'Bearer ' + token;
-    return headers;
-  }
+  // getToken() / authHeaders() / escapeHtml() → auth-utils.js 에서 전역 제공
 
   function setText(id, value) {
     const element = document.getElementById(id);
@@ -263,10 +254,7 @@
     }
   }
 
-  function escapeHtml(value) {
-    return String(value ?? '').replace(/[&<>"']/g, c =>
-      ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-  }
+  // escapeHtml() → auth-utils.js 에서 전역 제공
 
   /* ── 스크랩 목록 렌더링 ─────────────────────────────────────── */
   async function loadScraps() {
@@ -348,10 +336,6 @@
 
         const jobPostingId = btn.dataset.id;
         const row = btn.closest('.scrap-item');
-
-        console.log("클릭된 공고 ID:", jobPostingId); 
-        console.log("보내는 토큰 토큰:", token);
-
 
         if (!jobPostingId) {
           console.error("공고 ID를 찾을 수 없습니다.");
