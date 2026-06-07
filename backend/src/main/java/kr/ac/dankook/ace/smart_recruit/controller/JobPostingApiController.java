@@ -109,9 +109,18 @@ public class JobPostingApiController {
 
         return memberRepository.findByEmail(user.getUsername())
                 .map(member -> {
-                    List<CardResponse> result = userJobRecommendationRepository.findByMemberId(member.getId())
-                            .stream()
-                            .map(this::toRecommendationCardResponse)
+                    List<UserJobRecommendation> recs = userJobRecommendationRepository.findByMemberId(member.getId());
+                    List<Long> jobIds = recs.stream()
+                            .map(r -> r.getJobPosting().getId())
+                            .toList();
+                    Map<Long, JobPostingCard> cardMap = jobPostingService.findCardsByIdIn(jobIds).stream()
+                            .collect(java.util.stream.Collectors.toMap(JobPostingCard::id, c -> c));
+                    List<CardResponse> result = recs.stream()
+                            .map(r -> {
+                                JobPostingCard card = cardMap.get(r.getJobPosting().getId());
+                                return card == null ? null : toCardResponse(card, r.getRecommendationReason());
+                            })
+                            .filter(c -> c != null)
                             .toList();
                     return ResponseEntity.ok(result);
                 })
@@ -138,18 +147,76 @@ public class JobPostingApiController {
         List<Double> durations = recommendationStatRepository.findTop10ByOrderByCreatedAtDesc()
                 .stream()
                 .map(stat -> stat.getDurationSeconds())
-                .filter(duration -> duration != null && duration >= 0)
+                .filter(seconds -> seconds != null && seconds > 0)
                 .toList();
-
         if (durations.isEmpty()) {
-            return ResponseEntity.ok(new EstimatedTimeResponse(null, 0));
+            return ResponseEntity.ok(new EstimatedTimeResponse(0, 0));
         }
 
-        double average = durations.stream()
-                .mapToDouble(Double::doubleValue)
-                .average()
-                .orElse(0.0);
-        return ResponseEntity.ok(new EstimatedTimeResponse(Math.ceil(average), durations.size()));
+        double average = durations.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+        long estimatedSeconds = Math.max(1, Math.round(average));
+        return ResponseEntity.ok(new EstimatedTimeResponse(estimatedSeconds, durations.size()));
+    }
+
+    private int parseLimit(String limit) {
+        try {
+            int parsed = Integer.parseInt(limit);
+            return Math.min(Math.max(parsed, 1), AppConstants.MAX_SEARCH_RESULTS);
+        } catch (NumberFormatException e) {
+            return 10;
+        }
+    }
+
+    private String normalizeFilter(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() || "전체".equals(trimmed) ? null : trimmed;
+    }
+
+    private double elapsedSeconds(Instant startedAt) {
+        return Duration.between(startedAt, Instant.now()).toMillis() / 1000.0;
+    }
+
+    private Map<Long, String> findPersonalizedReasons(User user) {
+        if (user == null) {
+            return Collections.emptyMap();
+        }
+        return memberRepository.findByEmail(user.getUsername())
+                .map(member -> userJobRecommendationRepository.findReasonMap(member.getId()))
+                .orElseGet(Collections::emptyMap);
+    }
+
+    private CardResponse toCardResponse(JobPostingCard card, Map<Long, String> personalizedReasons) {
+        String recommendationReason = personalizedReasons.getOrDefault(card.id(), card.recommendationReason());
+        return toCardResponse(card, recommendationReason);
+    }
+
+    private CardResponse toCardResponse(JobPostingCard card, String recommendationReason) {
+        return new CardResponse(
+                card.id(),
+                card.title(),
+                card.companyName(),
+                card.location(),
+                card.dong(),
+                card.sido(),
+                card.sigungu(),
+                card.jobType(),
+                card.jobTypeMajor(),
+                card.jobTypeMid(),
+                card.status(),
+                card.deadline(),
+                card.salary(),
+                card.workTime(),
+                recommendationReason,
+                card.summaryLines(),
+                card.externalUrl(),
+                card.latitude(),
+                card.longitude(),
+                card.exactLocation(),
+                card.scraped()
+        );
     }
 
     @PostMapping
@@ -193,69 +260,6 @@ public class JobPostingApiController {
         } catch (Exception e) {
             return JobSourceType.INTERNAL;
         }
-    }
-
-    private String normalizeFilter(String value) {
-        return value != null && !value.isBlank() && !"all".equals(value) ? value : null;
-    }
-
-    private int parseLimit(String limit) {
-        try {
-            int parsed = Integer.parseInt(limit);
-            return parsed > 0 ? parsed : 10;
-        } catch (NumberFormatException e) {
-            return 10;
-        }
-    }
-
-    private double elapsedSeconds(Instant startedAt) {
-        return Duration.between(startedAt, Instant.now()).toMillis() / 1000.0;
-    }
-
-    private Map<Long, String> findPersonalizedReasons(User user) {
-        if (user == null) {
-            return Collections.emptyMap();
-        }
-        return memberRepository.findByEmail(user.getUsername())
-                .map(member -> userJobRecommendationRepository.findReasonMap(member.getId()))
-                .orElseGet(Collections::emptyMap);
-    }
-
-    private CardResponse toCardResponse(JobPostingCard card, Map<Long, String> personalizedReasons) {
-        String recommendationReason = personalizedReasons.getOrDefault(card.id(), card.recommendationReason());
-        return toCardResponse(card, recommendationReason);
-    }
-
-    private CardResponse toRecommendationCardResponse(UserJobRecommendation recommendation) {
-        JobPostingCard card = jobPostingService.findCardById(recommendation.getJobPosting().getId())
-                .orElseThrow();
-        return toCardResponse(card, recommendation.getRecommendationReason());
-    }
-
-    private CardResponse toCardResponse(JobPostingCard card, String recommendationReason) {
-        return new CardResponse(
-                card.id(),
-                card.title(),
-                card.companyName(),
-                card.location(),
-                card.dong(),
-                card.sido(),
-                card.sigungu(),
-                card.jobType(),
-                card.jobTypeMajor(),
-                card.jobTypeMid(),
-                card.status(),
-                card.deadline(),
-                card.salary(),
-                card.workTime(),
-                recommendationReason,
-                card.summaryLines(),
-                card.externalUrl(),
-                card.latitude(),
-                card.longitude(),
-                card.exactLocation(),
-                card.scraped()
-        );
     }
 
     record JobPostingResponse(

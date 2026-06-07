@@ -62,6 +62,13 @@ public class JobPostingService {
         });
     }
 
+    public List<JobPostingCard> findCardsByIdIn(List<Long> ids) {
+        if (ids.isEmpty()) return List.of();
+        List<JobPosting> postings = jobPostingRepository.findWithAiSummaryByIdIn(ids);
+        Set<Long> scraped = batchScrapedIds(postings);
+        return postings.stream().map(p -> toCard(p, scraped)).toList();
+    }
+
     public List<JobPostingCard> findCardsByFilters(
             String sido, String sigungu, String jobTypeMajor, String jobTypeMid,
             String keyword, String payType, String sort, Double lat, Double lng, int limit) {

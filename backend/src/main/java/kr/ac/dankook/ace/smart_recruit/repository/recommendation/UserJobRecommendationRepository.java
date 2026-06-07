@@ -15,7 +15,7 @@ import kr.ac.dankook.ace.smart_recruit.model.recommendation.UserJobRecommendatio
 
 public interface UserJobRecommendationRepository extends JpaRepository<UserJobRecommendation, Long> {
 
-    @EntityGraph(attributePaths = "jobPosting")
+    @EntityGraph(attributePaths = {"jobPosting", "jobPosting.jobPostingAiSummary"})
     List<UserJobRecommendation> findByMemberId(Long memberId);
 
     Optional<UserJobRecommendation> findByMemberIdAndJobPostingId(Long memberId, Long jobPostingId);
