@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.ArrayList;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +43,7 @@ public class JobPostingViewController {
     @GetMapping("/jobpostings")
     public String jobPostingList(
             @RequestParam(value = "focusId", required = false) String focusIdParam,
+            @AuthenticationPrincipal User user,
             Model model) {
 
         // ── focusId 파싱: null·공백·"undefined"·비숫자 모두 방어 ──────────────
@@ -96,8 +99,14 @@ public class JobPostingViewController {
         model.addAttribute("sigunguBySidoJson", JsonViewUtils.toJson(sigunguBySido));
         model.addAttribute("jobMajors", new ArrayList<>(jobTypeMidByMajor.keySet()));
         model.addAttribute("jobTypeMidByMajorJson", JsonViewUtils.toJson(jobTypeMidByMajor));
+        model.addAttribute("isAdmin", isAdmin(user));
 
         return "jobposting/list";
+    }
+
+    private boolean isAdmin(User user) {
+        return user != null && user.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 
     /**
