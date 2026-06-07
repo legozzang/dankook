@@ -1,10 +1,18 @@
-﻿/* ═══════════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
    인증 네비게이션
+   getToken() / authHeaders() → auth-utils.js 전역 함수 사용
 ═══════════════════════════════════════════════════════════════════════════ */
 function updateAuthNav() {
-        const token = localStorage.getItem("accessToken");
+        const token = getToken(); // auth-utils.js
         document.getElementById("guestMenu").style.display = token ? "none" : "";
         document.getElementById("userMenu").style.display = token ? "flex" : "none";
+        // 추천 탭은 로그인 상태에서만 활성화
+        const recommendationsTab = document.getElementById("recommendationsTab");
+        if (recommendationsTab) {
+            recommendationsTab.disabled = !token;
+            recommendationsTab.style.opacity = token ? "1" : "0.45";
+            recommendationsTab.title = token ? "" : "로그인이 필요합니다";
+        }
     }
 
     function handleLogout() {
@@ -139,7 +147,11 @@ function updateAuthNav() {
     const resultLimit = document.getElementById("resultLimit");
     const searchBtn = document.getElementById("searchBtn");
     const resetBtn = document.getElementById("resetBtn");
-    let selectedRadius = DEFAULT_INITIAL_RADIUS;
+    const allJobsTab = document.getElementById("allJobsTab");
+    const recommendationsTab = document.getElementById("recommendationsTab");
+    const keywordInput = document.getElementById("keywordInput");
+    const tabButtons = [allJobsTab, recommendationsTab].filter(Boolean);
+    let selectedRadius = "all";
     let selectedSido = "all";
     let selectedSigungu = "all";
     let selectedJobMajor = "all";
@@ -147,6 +159,7 @@ function updateAuthNav() {
     let selectedSort = "distance";
     let selectedJobMid = "all";
     let selectedDong = "all";
+    let recommendationMode = false;
     let initialResultsLoaded = false;
     let userPreferences = {
         regions: [],
@@ -264,6 +277,21 @@ function updateAuthNav() {
         }
     }
 
+    // ── 추천 탭 모드 토글 (Gemini AI 추천 기능) ──────────────────────────────
+    function setTabActive(activeTab) {
+        tabButtons.forEach((button) => button.classList.toggle("active", button === activeTab));
+    }
+
+    function setRecommendationMode(enabled) {
+        recommendationMode = enabled;
+        setTabActive(enabled ? recommendationsTab : allJobsTab);
+
+        if (keywordInput)       keywordInput.style.display       = enabled ? "none" : "";
+        if (filterToggle)       filterToggle.style.display       = enabled ? "none" : "";
+        if (filtersBody)        filtersBody.style.display        = enabled ? "none" : "";
+        if (resetCenterButton)  resetCenterButton.style.display  = enabled || !customCenter ? "none" : "";
+    }
+
     function updateRadiusCircle() {
         if (!map) {
             return;
@@ -332,6 +360,7 @@ function updateAuthNav() {
             sigungu: field(job, "sigungu", "sigungu"),
             jobMajor: field(job, "jobTypeMajor", "job_type_major"),
             jobMid: field(job, "jobTypeMid", "job_type_mid"),
+            recommendationReason: field(job, "recommendationReason", "recommendation_reason"),
             status: field(job, "status", "status"),
             externalUrl: field(job, "externalUrl", "external_url"),
             lat: field(job, "latitude", "latitude", 0),
@@ -346,11 +375,14 @@ function updateAuthNav() {
         const workTime = field(job, "workTime", "work_time", "근무시간 협의");
         const summaryLines = field(job, "summaryLines", "summary_lines", []);
         const exactLocation = data.exactLocation === true || data.exactLocation === "true";
+        const recommendationHtml = data.recommendationReason
+            ? `<li>추천 이유: ${escapeHtml(data.recommendationReason)}</li>`
+            : "";
         const originalUrl = safeOriginalUrl(data.externalUrl);
         const detailHref = originalUrl || `/jobpostings/${encodeURIComponent(data.id)}`;
         const detailTarget = originalUrl ? ` target="_blank" rel="noopener"` : "";
         const summaryHtml = Array.isArray(summaryLines)
-            ? summaryLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")
+            ? recommendationHtml + summaryLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")
             : "";
 
         return `
@@ -367,6 +399,7 @@ function updateAuthNav() {
                      data-sigungu="${escapeHtml(data.sigungu)}"
                      data-job-major="${escapeHtml(data.jobMajor)}"
                      data-job-mid="${escapeHtml(data.jobMid)}"
+                     data-recommendation-reason="${escapeHtml(data.recommendationReason)}"
                      data-status="${escapeHtml(data.status)}"
                      data-external-url="${escapeHtml(data.externalUrl)}"
                      data-lat="${escapeHtml(data.lat)}"
@@ -430,11 +463,15 @@ function updateAuthNav() {
     }
 
     function summaryText(card) {
+        const recommendationReason = String(card.dataset.recommendationReason ?? "").trim();
+        if (recommendationReason) {
+            return "추천 이유: " + recommendationReason;
+        }
+
         const lines = Array.from(card.querySelectorAll(".summary li"))
             .map((item) => item.textContent.trim())
             .filter(Boolean);
 
-        // TODO: AI 추천 사유(recommendation_reason 등)가 API/DTO에 노출되면 summaryLines보다 우선 표시한다.
         return lines.length > 0 ? lines.join(" / ") : "";
     }
 
@@ -630,6 +667,34 @@ function updateAuthNav() {
         }
     }
 
+    async function fetchAndRenderRecommendations() {
+        const token = getAccessToken();
+        if (!token) {
+            cardsContainer.innerHTML = `<p class="empty">맞춤 추천은 로그인이 필요합니다.</p>`;
+            syncCardsFromDom();
+            visibleCount.textContent = "0";
+            return;
+        }
+
+        const response = await fetch("/api/job-postings/recommendations", {
+            headers: authHeaders()
+        });
+        if (!response.ok) {
+            throw new Error(`맞춤 추천 조회 실패: ${response.status}`);
+        }
+
+        const jobs = await response.json();
+        if (jobs.length === 0) {
+            cardsContainer.innerHTML = `<p class="empty">아직 생성된 맞춤 추천 공고가 없습니다.</p>`;
+            syncCardsFromDom();
+            visibleCount.textContent = "0";
+            return;
+        }
+
+        renderCards(jobs);
+        showAllCards();
+    }
+
     async function refreshServerResults() {
         try {
             if (hasServerFilter()) {
@@ -646,6 +711,11 @@ function updateAuthNav() {
 
     async function runSearch() {
         try {
+            if (recommendationMode) {
+                await fetchAndRenderRecommendations();
+                return;
+            }
+
             const allFiltersDefault = !hasServerFilter();
 
             if (allFiltersDefault && resultLimit.value === "10" && selectedSort !== "distance") {
@@ -743,6 +813,28 @@ function applyFilters() {
             "— 컨트롤러의 focusId 주입 로직을 확인하세요.");
     }
 }
+
+    function showAllCards() {
+        let count = 0;
+        const visibleMarkers = [];
+
+        cards.forEach((card) => {
+            card.hidden = false;
+            count += 1;
+
+            const marker = markers.get(card.dataset.id);
+            if (marker && map) {
+                marker.addTo(map);
+                visibleMarkers.push(marker);
+            }
+        });
+
+        visibleCount.textContent = count;
+
+        if (map && visibleMarkers.length > 0) {
+            map.fitBounds(L.featureGroup(visibleMarkers).getBounds().pad(0.22), {maxZoom: 15});
+        }
+    }
 
     function addMarkerLegend() {
         const legend = L.control({position: "bottomleft"});
@@ -931,6 +1023,28 @@ function applyFilters() {
     document.getElementById("keywordInput").addEventListener("keydown", async (e) => {
         if (e.key === "Enter") await runSearch();
     });
+
+    // ── 추천 탭 이벤트 (Gemini AI 추천 기능) ─────────────────────────────
+    if (allJobsTab) {
+        allJobsTab.addEventListener("click", async () => {
+            setRecommendationMode(false);
+            await runSearch();
+        });
+    }
+
+    if (recommendationsTab) {
+        recommendationsTab.addEventListener("click", async () => {
+            if (!getToken()) {
+                cardsContainer.innerHTML = `<p class="empty">맞춤 추천은 로그인이 필요합니다.</p>`;
+                syncCardsFromDom();
+                visibleCount.textContent = "0";
+                return;
+            }
+            setRecommendationMode(true);
+            updateRadiusCircle();
+            await fetchAndRenderRecommendations();
+        });
+    }
 
     // ★ initMap()은 통합 진입점(DOMContentLoaded)에서 호출 — 여기서 직접 호출 제거
 

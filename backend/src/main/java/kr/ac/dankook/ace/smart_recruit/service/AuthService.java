@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import kr.ac.dankook.ace.smart_recruit.dto.LoginRequest;
 import kr.ac.dankook.ace.smart_recruit.dto.MemberInfoResponse;
+import kr.ac.dankook.ace.smart_recruit.dto.GeminiSettingsRequest;
 import kr.ac.dankook.ace.smart_recruit.dto.SignUpRequest;
 import kr.ac.dankook.ace.smart_recruit.dto.TokenResponse;
 import kr.ac.dankook.ace.smart_recruit.dto.UpdateRequest;
@@ -141,6 +142,24 @@ public class AuthService {
         member.updateEmailNotification(request.getEmailNotification());
     }
 
+    @Transactional
+    public void updateGeminiSettings(String userEmail, GeminiSettingsRequest request) {
+        Member member = memberRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        Integer intervalHours = request.getIntervalHours();
+        if (intervalHours != null
+                && intervalHours != 1
+                && intervalHours != 3
+                && intervalHours != 6
+                && intervalHours != 12
+                && intervalHours != 24) {
+            throw new IllegalArgumentException("추천 갱신 주기는 1/3/6/12/24시간 중 하나여야 합니다.");
+        }
+
+        member.updateGeminiSettings(request.getGeminiApiKey(), intervalHours);
+    }
+
     // 회원 정보 조회
     public MemberInfoResponse getMemberInfo(String userEmail){
         Member member = memberRepository.findByEmail(userEmail)
@@ -161,7 +180,9 @@ public class AuthService {
                 member.getPreferredJobTypeDetail(),
                 member.getPreferredPayType(),
                 member.getMinPayAmount(),
-                member.isEmailNotification()
+                member.isEmailNotification(),
+                member.getGeminiApiKey(),
+                member.getRecommendationIntervalHours()
         );
     }
 }

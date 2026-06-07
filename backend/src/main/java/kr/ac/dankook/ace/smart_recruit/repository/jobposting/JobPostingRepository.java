@@ -59,6 +59,41 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
             """)
     List<JobPosting> findWithAiSummaryByIdIn(@Param("ids") List<Long> ids);
 
+    @Query("""
+            SELECT j FROM JobPosting j
+            LEFT JOIN FETCH j.jobPostingAiSummary
+            WHERE ((:jobTypeMajor IS NOT NULL AND :jobTypeMajor <> '' AND j.jobTypeMajor = :jobTypeMajor)
+                OR (:regionSido IS NOT NULL AND :regionSido <> '' AND j.regionSido = :regionSido)
+                OR (:regionSigungu IS NOT NULL AND :regionSigungu <> '' AND j.regionSigungu = :regionSigungu))
+              AND j.payAmount IS NOT NULL AND j.payAmount > 0
+              AND j.id NOT IN :excludeIds
+            ORDER BY j.payAmount DESC
+            """)
+    List<JobPosting> findRecommendationTargetsByPay(
+            @Param("jobTypeMajor") String jobTypeMajor,
+            @Param("regionSido") String regionSido,
+            @Param("regionSigungu") String regionSigungu,
+            @Param("excludeIds") List<Long> excludeIds,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT j FROM JobPosting j
+            LEFT JOIN FETCH j.jobPostingAiSummary
+            WHERE ((:jobTypeMajor IS NOT NULL AND :jobTypeMajor <> '' AND j.jobTypeMajor = :jobTypeMajor)
+                OR (:regionSido IS NOT NULL AND :regionSido <> '' AND j.regionSido = :regionSido)
+                OR (:regionSigungu IS NOT NULL AND :regionSigungu <> '' AND j.regionSigungu = :regionSigungu))
+              AND j.id NOT IN :excludeIds
+            ORDER BY j.createdAt DESC
+            """)
+    List<JobPosting> findRecommendationTargetsByLatest(
+            @Param("jobTypeMajor") String jobTypeMajor,
+            @Param("regionSido") String regionSido,
+            @Param("regionSigungu") String regionSigungu,
+            @Param("excludeIds") List<Long> excludeIds,
+            Pageable pageable
+    );
+
     @Query("SELECT DISTINCT j.payType FROM JobPosting j WHERE j.payType IS NOT NULL AND j.payType <> '' ORDER BY j.payType")
     List<String> findDistinctPayTypes();
 
@@ -100,5 +135,4 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
     List<Object[]> avgPayByRegion(@Param("major") String major, @Param("mid") String mid, @Param("payType") String payType);
 
     long countByStatus(JobStatus status);
-
 }

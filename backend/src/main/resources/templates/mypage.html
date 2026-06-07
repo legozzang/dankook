@@ -24,6 +24,10 @@
     .region-rank{display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:28px;border-radius:999px;background:#e8f2fb;color:var(--primary);font-size:13px;font-weight:800}
     .region-rank.optional{background:#f1f5f9;color:var(--muted)}
     .region-value{font-size:15px;font-weight:800;color:var(--text)}
+    .form-field{display:grid;gap:6px;margin-top:12px}
+    .form-field label{font-size:13px;font-weight:800;color:var(--muted)}
+    .form-field input,.form-field select{height:42px;border:1px solid #cfd6df;border-radius:10px;padding:0 12px;font-size:15px;background:#fff;color:var(--text)}
+    .status-text{margin:10px 0 0;font-size:13px;color:var(--muted)}
     .btn{height:42px;border:none;border-radius:10px;padding:0 14px;font-weight:800;cursor:pointer}
     .btn-primary{background:var(--primary);color:#fff}
     .btn-primary:hover{background:var(--primary-strong)}
@@ -133,6 +137,32 @@
     </section>
 
     <section class="card">
+      <h2>AI 맞춤 추천</h2>
+      <p style="color:#667085;margin:0;">Gemini API 키를 저장하면 관심 직종과 관심 지역 기준으로 공고별 추천 이유가 자동 생성됩니다.</p>
+      <div class="form-field">
+        <label for="geminiApiKey">Gemini API 키</label>
+        <input id="geminiApiKey" type="password" autocomplete="off" placeholder="Gemini API 키 입력" />
+      </div>
+      <div class="form-field">
+        <label for="geminiInterval">갱신 주기</label>
+        <select id="geminiInterval">
+          <option value="">비활성</option>
+          <option value="1">1시간</option>
+          <option value="3">3시간</option>
+          <option value="6">6시간</option>
+          <option value="12">12시간</option>
+          <option value="24">24시간</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top: 14px;">
+        <button class="btn btn-primary" type="button" onclick="saveGeminiSettings()">AI 추천 설정 저장</button>
+        <button class="btn btn-ghost" type="button" id="refreshRecommendationsBtn" onclick="refreshRecommendationsNow()">지금 갱신</button>
+      </div>
+      <p id="geminiStatus" class="status-text"></p>
+      <p id="refreshStatus" class="status-text"></p>
+    </section>
+
+    <section class="card">
       <h2>회원 탈퇴</h2>
       <p style="color:#667085">탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
       <button class="btn btn-danger" onclick="deleteAccount()">계정 삭제하기</button>
@@ -208,6 +238,13 @@
             ? data.min_pay_amount.toLocaleString() + '원'
             : '미설정';
         }
+
+        const geminiApiKey = data.gemini_api_key ?? data.geminiApiKey ?? '';
+        const recommendationInterval = data.recommendation_interval_hours ?? data.recommendationIntervalHours ?? '';
+        const geminiApiKeyInput = document.getElementById('geminiApiKey');
+        const geminiIntervalSelect = document.getElementById('geminiInterval');
+        if (geminiApiKeyInput) geminiApiKeyInput.value = geminiApiKey || '';
+        if (geminiIntervalSelect) geminiIntervalSelect.value = recommendationInterval ? String(recommendationInterval) : '';
 
         profileBox.hidden = false;
       } else if (response.status === 401 || response.status === 403) {
@@ -389,6 +426,132 @@
       });
     }
   });
+
+  /* ── Gemini AI 추천 설정 ─────────────────────────────────────── */
+  async function saveGeminiSettings() {
+    const status = document.getElementById('geminiStatus');
+    const apiKey = document.getElementById('geminiApiKey').value.trim();
+    const intervalValue = document.getElementById('geminiInterval').value;
+
+    if (status) {
+      status.textContent = '저장 중...';
+      status.style.color = '#667085';
+    }
+
+    try {
+      const response = await fetch('/auth/me/gemini', {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          gemini_api_key: apiKey,
+          interval_hours: intervalValue ? Number(intervalValue) : null
+        })
+      });
+
+      if (response.ok) {
+        if (status) {
+          status.textContent = 'AI 추천 설정이 저장되었습니다.';
+          status.style.color = '#1f6fb2';
+        }
+      } else if (response.status === 401 || response.status === 403) {
+        alert('로그인이 필요합니다.');
+        location.href = '/auth/login';
+      } else {
+        const message = await response.text();
+        if (status) {
+          status.textContent = message || 'AI 추천 설정 저장에 실패했습니다.';
+          status.style.color = '#b42318';
+        }
+      }
+    } catch (error) {
+      console.error('AI 추천 설정 저장 실패:', error);
+      if (status) {
+        status.textContent = '네트워크 오류가 발생했습니다.';
+        status.style.color = '#b42318';
+      }
+    }
+  }
+
+  function estimatedTimeLabel(data) {
+    const seconds = data?.estimated_seconds ?? data?.estimatedSeconds;
+    if (seconds === null || seconds === undefined) {
+      return '처음 갱신은 시간이 걸릴 수 있어요.';
+    }
+    return `약 ${Math.ceil(seconds)}초 예상`;
+  }
+
+  async function loadEstimatedRecommendationTime() {
+    const response = await fetch('/api/job-postings/recommendations/estimated-time', {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!response.ok) {
+      return '처음 갱신은 시간이 걸릴 수 있어요.';
+    }
+    return estimatedTimeLabel(await response.json());
+  }
+
+  async function refreshRecommendationsNow() {
+    const status = document.getElementById('refreshStatus');
+    const button = document.getElementById('refreshRecommendationsBtn');
+
+    if (status) {
+      status.textContent = '예상 대기시간 확인 중...';
+      status.style.color = '#667085';
+    }
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = '처리 중...';
+    }
+
+    try {
+      const estimateText = await loadEstimatedRecommendationTime();
+      if (status) {
+        status.textContent = `${estimateText} · 처리 중...`;
+        status.style.color = '#667085';
+      }
+
+      const response = await fetch('/api/job-postings/recommendations/refresh', {
+        method: 'POST',
+        headers: authHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const count = data.count ?? 0;
+        const durationSeconds = data.duration_seconds ?? data.durationSeconds ?? 0;
+        const completedText = `갱신 완료 (${count}개 공고, ${Number(durationSeconds).toFixed(1)}초)`;
+        if (status) {
+          status.textContent = completedText;
+          status.style.color = '#1f6fb2';
+        }
+        alert(completedText);
+      } else if (response.status === 401 || response.status === 403) {
+        alert('로그인이 필요합니다.');
+        location.href = '/auth/login';
+      } else {
+        const message = await response.text();
+        if (status) {
+          status.textContent = message || '맞춤 추천 갱신에 실패했습니다.';
+          status.style.color = '#b42318';
+        }
+      }
+    } catch (error) {
+      console.error('맞춤 추천 갱신 실패:', error);
+      if (status) {
+        status.textContent = '네트워크 오류가 발생했습니다.';
+        status.style.color = '#b42318';
+      }
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = '지금 갱신';
+      }
+    }
+  }
+
+  // loadMyInfo()는 통합 DOMContentLoaded 핸들러에서 호출됨 (중복 제거)
 </script>
 </body>
 </html>

@@ -41,4 +41,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             """)
     List<Member> findByRoleAndKeyword(@Param("role") Role role,
                                       @Param("keyword") String keyword);
+
+    /** Gemini API 키가 설정된 회원 목록 — 추천 갱신 배치 등에서 사용 */
+    List<Member> findByGeminiApiKeyIsNotNull();
 }

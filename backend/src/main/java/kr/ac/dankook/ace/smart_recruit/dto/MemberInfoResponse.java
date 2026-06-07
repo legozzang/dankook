@@ -22,4 +22,6 @@ public class MemberInfoResponse {
     private String preferredPayType;
     private Integer minPayAmount;
     private Boolean emailNotification;
+    private String geminiApiKey;
+    private Integer recommendationIntervalHours;
 }

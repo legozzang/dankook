@@ -162,6 +162,7 @@ public class JobPostingService {
                 deadlineLabel(jobPosting.getDeadline()),
                 salaryLabel(jobPosting),
                 extractWorkTime(jobPosting.getContent()),
+                "",                          // recommendationReason (추천 경로가 아닌 경우 빈 값)
                 summaryLines(jobPosting),
                 jobPosting.getExternalUrl(),
                 coordinate.latitude(),
@@ -361,6 +362,7 @@ public class JobPostingService {
             String deadline,
             String salary,
             String workTime,
+            String recommendationReason,
             List<String> summaryLines,
             String externalUrl,
             double latitude,
