@@ -43,10 +43,6 @@ public class JobPostingService {
     private final ScrapRepository scrapRepository;
     private final MemberRepository memberRepository;
 
-    public List<JobPosting> findAll() {
-        return jobPostingRepository.findAllByOrderByCreatedAtDesc();
-    }
-
     public List<JobPostingCard> findAllCards() {
         List<JobPosting> postings = jobPostingRepository.findRecentWithAiSummary(PageRequest.of(0, 10));
         Set<Long> scraped = batchScrapedIds(postings);
@@ -54,7 +50,7 @@ public class JobPostingService {
     }
 
     public Optional<JobPostingCard> findCardById(Long id) {
-        return jobPostingRepository.findById(id).map(posting -> {
+        return jobPostingRepository.findByIdWithAiSummary(id).map(posting -> {
             Long memberId = currentMemberId();
             boolean scraped = memberId != null
                     && scrapRepository.existsByMember_IdAndJobPosting_Id(memberId, id);

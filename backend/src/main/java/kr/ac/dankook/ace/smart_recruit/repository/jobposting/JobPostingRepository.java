@@ -16,8 +16,6 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
 
     List<JobPosting> findAllByOrderByCreatedAtDesc();
 
-    List<JobPosting> findTop10ByOrderByCreatedAtDesc();
-
     @Query("""
             SELECT j FROM JobPosting j
             LEFT JOIN FETCH j.jobPostingAiSummary
