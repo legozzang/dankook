@@ -100,6 +100,9 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
     @Query("SELECT DISTINCT j.regionSido, j.regionSigungu FROM JobPosting j WHERE j.regionSido IS NOT NULL AND j.regionSido <> '' AND j.regionSigungu IS NOT NULL AND j.regionSigungu <> '' ORDER BY j.regionSido, j.regionSigungu")
     List<Object[]> findDistinctSidoSigunguPairs();
 
+    @Query("SELECT DISTINCT j.regionSido FROM JobPosting j WHERE j.regionSido IS NOT NULL AND j.regionSido <> '' ORDER BY j.regionSido")
+    List<String> findDistinctSidos();
+
     @Query("SELECT DISTINCT j.jobTypeMajor, j.jobTypeMid FROM JobPosting j WHERE j.jobTypeMajor IS NOT NULL AND j.jobTypeMajor <> '' ORDER BY j.jobTypeMajor, j.jobTypeMid")
     List<Object[]> findDistinctJobMajorMidPairs();
 

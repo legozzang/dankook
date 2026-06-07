@@ -82,8 +82,9 @@ public class JobPostingViewController {
         for (Object[] row : jobPostingRepository.findDistinctJobMajorMidPairs()) {
             String major = (String) row[0];
             String mid = row[1] != null ? (String) row[1] : "";
+            List<String> mids = jobTypeMidByMajor.computeIfAbsent(major, k -> new ArrayList<>());
             if (!mid.isBlank()) {
-                jobTypeMidByMajor.computeIfAbsent(major, k -> new ArrayList<>()).add(mid);
+                mids.add(mid);
             }
         }
 
@@ -91,7 +92,7 @@ public class JobPostingViewController {
         model.addAttribute("focusId", focusId != null ? String.valueOf(focusId) : null);
         model.addAttribute("payTypes", jobPostingRepository.findDistinctPayTypes());
         model.addAttribute("dongs", dongs);
-        model.addAttribute("sidos", new ArrayList<>(sigunguBySido.keySet()));
+        model.addAttribute("sidos", jobPostingRepository.findDistinctSidos());
         model.addAttribute("sigunguBySidoJson", JsonViewUtils.toJson(sigunguBySido));
         model.addAttribute("jobMajors", new ArrayList<>(jobTypeMidByMajor.keySet()));
         model.addAttribute("jobTypeMidByMajorJson", JsonViewUtils.toJson(jobTypeMidByMajor));
