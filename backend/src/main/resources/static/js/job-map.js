@@ -1,4 +1,7 @@
-﻿function updateAuthNav() {
+﻿/* ═══════════════════════════════════════════════════════════════════════════
+   인증 네비게이션
+═══════════════════════════════════════════════════════════════════════════ */
+function updateAuthNav() {
         const token = localStorage.getItem("accessToken");
         document.getElementById("guestMenu").style.display = token ? "none" : "";
         document.getElementById("userMenu").style.display = token ? "flex" : "none";
@@ -13,19 +16,15 @@
         }
     }
 
-    async function applyUserPreferences() {
-        const token = localStorage.getItem("accessToken");
-        if (!token) {
-            return;
-        }
-
-        try {
-            const response = await fetch("/auth/members/me", {
-                headers: {"Authorization": "Bearer " + token}
-            });
-            if (!response.ok) {
-                return;
-            }
+/* ═══════════════════════════════════════════════════════════════════════════
+   [내부 헬퍼] 회원 선호 정보를 userPreferences에 파싱
+   - camelCase / snake_case 양쪽 방어 (?? 연산자)
+═══════════════════════════════════════════════════════════════════════════ */
+    async function _fetchAndSetPreferences(token) {
+        const response = await fetch("/auth/members/me", {
+            headers: {"Authorization": "Bearer " + token}
+        });
+        if (!response.ok) throw new Error("프로필 조회 실패: " + response.status);
 
             const profile = await response.json();
             const desiredSido = profile.desiredRegionSido ?? profile.desired_region_sido;
@@ -37,6 +36,7 @@
             const preferredMajor = profile.preferredJobTypeMajor ?? profile.preferred_job_type_major;
             const preferredMid = profile.preferredJobTypeMid ?? profile.preferred_job_type_mid;
             const preferredPayType = profile.preferredPayType ?? profile.preferred_pay_type;
+            const minPayAmount    = profile.minPayAmount    ?? profile.min_pay_amount;
 
             userPreferences = {
                 regions: [
@@ -44,34 +44,81 @@
                     {sido: desiredRegion2Sido || "", sigungu: desiredRegion2Sigungu || ""},
                     {sido: desiredRegion3Sido || "", sigungu: desiredRegion3Sigungu || ""}
                 ],
-                jobMajor: preferredMajor || "",
-                jobMid: preferredMid || "",
-                payType: preferredPayType || ""
+                jobMajor:     preferredMajor    || "",
+                jobMid:       preferredMid      || "",
+                payType:      preferredPayType  || "",
+                minPayAmount: Number(minPayAmount) > 0 ? Number(minPayAmount) : 0
             };
+    }
 
-            if (shouldApplyInitialPreferences()) {
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★ 3-시나리오 초기화 함수
+   경쟁 상태(Race Condition) 방지: 통합 진입점에서 await으로 직렬 호출됨
+═══════════════════════════════════════════════════════════════════════════ */
+
+    /**
+     * [시나리오 1] 마이페이지 '자세히 보기' → focusId 강조 표시 (최고 우선순위)
+     * - 반경 필터 강제 해제(all): focusId 공고가 3km 밖이어도 숨겨지지 않음
+     * - applyFilters()가 해당 카드만 표시하고 지도 마커에 핀포인트·팝업 적용
+     */
+    async function initScenarioFocus(focusId) {
+        selectedRadius = "all";
+        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === "all") || null);
+        updateRadiusCircle();
+        // 컨트롤러가 해당 카드를 HTML에 이미 포함했으므로 API 재호출 없이 DOM 필터링
+        renderMarkers();
+        applyFilters(); // 내부에서 URL의 focusId를 읽어 해당 카드만 표시 + 마커 포커싱
+    }
+
+    /**
+     * [시나리오 2] 로그인 회원 → 선호 지역·직종 기반 초기 필터
+     * - 선호 정보 완전 조회(await) 후 필터 적용 → 화면 덮어쓰기 방지
+     * - 선호 설정 없는 회원은 시나리오 3(단국대 기본)으로 폴백
+     * - 반경 제한은 'all'로 열어줌 (선호 지역이 단국대 외곽일 수 있음)
+     */
+    async function initScenarioLoggedIn(token) {
+        try {
+            await _fetchAndSetPreferences(token);
+
+            const hasRegionPref = Boolean(userPreferences.regions?.[0]?.sido);
+            const hasJobPref    = Boolean(userPreferences.jobMajor);
+
+            if (hasRegionPref || hasJobPref) {
+                selectedRadius = "all";
+                setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === "all") || null);
+                updateRadiusCircle();
                 applyInitialPreferenceFilters();
                 await runSearch();
-                initialPreferenceFiltersApplied = true;
-                return;
+            } else {
+                // 선호 설정 없는 로그인 회원 → 단국대 기본 필터로 폴백
+                await initScenarioCampus();
             }
-
-            if (map) {
-                renderMarkers();
-                applyFilters();
-            }
-        } catch (error) {
-            // 프로필을 불러오지 못하면 기본 목록을 그대로 보여준다.
+        } catch (e) {
+            console.warn("[시나리오2] 선호 정보 조회 실패, 단국대 기본 필터 적용:", e);
+            await initScenarioCampus();
         }
     }
 
-    document.addEventListener("DOMContentLoaded", updateAuthNav);
-    document.addEventListener("DOMContentLoaded", applyUserPreferences);
+    /**
+     * [시나리오 3] 비로그인 사용자 (기본 백업)
+     * - 단국대 좌표 기준 반경 3km 필터 자동 적용
+     * - 로그인 회원이더라도 선호 정보가 없으면 이쪽으로 폴백
+     */
+    async function initScenarioCampus() {
+        if (initialResultsLoaded) return; // 이중 호출 방어
+        initialResultsLoaded = true;
+
+        selectedRadius = DEFAULT_INITIAL_RADIUS; // "3"km
+        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === DEFAULT_INITIAL_RADIUS));
+        updateRadiusCircle();
+        await runSearch();
+    }
 
     const JOB_MAP_CONFIG = window.JobMapConfig || {};
     const SIGUNGU_BY_SIDO = JOB_MAP_CONFIG.sigunguBySido || {};
     const JOB_MID_BY_MAJOR = JOB_MAP_CONFIG.jobMidByMajor || {};
     const campus = JOB_MAP_CONFIG.defaultCenter || {lat: 37.3216, lng: 127.1267};
+    const DEFAULT_INITIAL_RADIUS = "3";
     const cardsContainer = document.querySelector(".cards");
     const initialCardsHtml = cardsContainer.innerHTML;
     let cards = Array.from(document.querySelectorAll(".job-card"));
@@ -92,7 +139,7 @@
     const resultLimit = document.getElementById("resultLimit");
     const searchBtn = document.getElementById("searchBtn");
     const resetBtn = document.getElementById("resetBtn");
-    let selectedRadius = "all";
+    let selectedRadius = DEFAULT_INITIAL_RADIUS;
     let selectedSido = "all";
     let selectedSigungu = "all";
     let selectedJobMajor = "all";
@@ -100,12 +147,13 @@
     let selectedSort = "distance";
     let selectedJobMid = "all";
     let selectedDong = "all";
-    let initialPreferenceFiltersApplied = false;
+    let initialResultsLoaded = false;
     let userPreferences = {
         regions: [],
-        jobMajor: "",
-        jobMid: "",
-        payType: ""
+        jobMajor:     "",
+        jobMid:       "",
+        payType:      "",
+        minPayAmount: 0
     };
     let customCenter = null;
     let customMarker = null;
@@ -164,74 +212,56 @@
         return source[camelName] ?? source[snakeName] ?? fallback;
     }
 
+    function safeOriginalUrl(value) {
+        const url = String(value ?? "").trim();
+        if (!url) {
+            return "";
+        }
+
+        try {
+            const parsed = new URL(url);
+            return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.href : "";
+        } catch (error) {
+            return "";
+        }
+    }
+
     function fillSelect(select, placeholder, values) {
         select.innerHTML = `<option value="all">${placeholder}</option>` +
             values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
     }
 
-    function shouldApplyInitialPreferences() {
-
-        // 마이페이지에서 특정 공고를 클릭한 경우 focusId가 URL에 존재하는데, 이때는 초기 선호 필터를 적용하지 않고 해당 공고만 강조해서 보여줌
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('focusId')) {
-            return false; 
-        }
-
-        // 초기 필터 적용 로직
-        // 1. 선호 지역이 존재하는지 체크
-        const hasRegionPreference = userPreferences.regions && 
-                                    userPreferences.regions.length > 0 && 
-                                    Boolean(userPreferences.regions[0].sido);
-
-        // 2. 선호 직종이 존재하는지 체크
-        const hasJobPreference = Boolean(userPreferences.jobMajor);
-
-        // 3. 둘 중 하나라도 설정되어 있다면 초기 필터 대상임
-        const hasAnyPreference = hasRegionPreference || hasJobPreference;
-
-        return !initialPreferenceFiltersApplied &&
-            hasAnyPreference &&
-            selectedRadius === "all" &&
-            selectedSido === "all" &&
-            selectedSigungu === "all" &&
-            selectedJobMajor === "all" &&
-            selectedJobMid === "all" &&
-            selectedPayType === "all" &&
-            selectedDong === "all" &&
-            document.getElementById("keywordInput").value.trim() === "";
-    }
-
+    /**
+     * 회원 선호 정보를 필터 UI에 반영한다.
+     * initScenarioLoggedIn() 에서만 호출 — shouldApplyInitialPreferences() 분기 제거됨.
+     */
     function applyInitialPreferenceFilters() {
-        // [1] 지역 설정 바인딩 (존재할 때만)
-        if (userPreferences.regions && userPreferences.regions.length > 0) {
-            const primaryRegion = userPreferences.regions[0];
-            if (primaryRegion.sido) {
-                selectedSido = primaryRegion.sido;
-                filterSido.value = primaryRegion.sido;
+        // [1] 선호 지역 → 시/도 + 시/군/구 드롭다운 세팅
+        if (userPreferences.regions?.length > 0) {
+            const primary = userPreferences.regions[0];
+            if (primary.sido) {
+                selectedSido = primary.sido;
+                filterSido.value = primary.sido;
                 fillSelect(filterSigungu, "시/군/구 전체", SIGUNGU_BY_SIDO[selectedSido] || []);
                 filterSigungu.disabled = false;
-
-                if (primaryRegion.sigungu) {
-                    selectedSigungu = primaryRegion.sigungu;
-                    filterSigungu.value = primaryRegion.sigungu;
+                if (primary.sigungu) {
+                    selectedSigungu = primary.sigungu;
+                    filterSigungu.value = primary.sigungu;
                 }
             }
         }
-
-        // [2] 직종 설정 바인딩 (존재할 때만)
+        // [2] 선호 직종 → 대분류 + 중분류 드롭다운 세팅
         if (userPreferences.jobMajor) {
             selectedJobMajor = userPreferences.jobMajor;
             filterJobMajor.value = userPreferences.jobMajor;
             fillSelect(filterJobMid, "중분류 전체", JOB_MID_BY_MAJOR[selectedJobMajor] || []);
             filterJobMid.disabled = false;
-
             if (userPreferences.jobMid) {
                 selectedJobMid = userPreferences.jobMid;
                 filterJobMid.value = userPreferences.jobMid;
             }
         }
-
-        // [3] 급여 유형 연동
+        // [3] 선호 급여 유형
         if (userPreferences.payType) {
             selectedPayType = userPreferences.payType;
             filterPayType.value = userPreferences.payType;
@@ -311,6 +341,7 @@
             jobMajor: field(job, "jobTypeMajor", "job_type_major"),
             jobMid: field(job, "jobTypeMid", "job_type_mid"),
             status: field(job, "status", "status"),
+            externalUrl: field(job, "externalUrl", "external_url"),
             lat: field(job, "latitude", "latitude", 0),
             lng: field(job, "longitude", "longitude", 0),
             exactLocation: field(job, "exactLocation", "exact_location", false),
@@ -323,6 +354,9 @@
         const workTime = field(job, "workTime", "work_time", "근무시간 협의");
         const summaryLines = field(job, "summaryLines", "summary_lines", []);
         const exactLocation = data.exactLocation === true || data.exactLocation === "true";
+        const originalUrl = safeOriginalUrl(data.externalUrl);
+        const detailHref = originalUrl || `/jobpostings/${encodeURIComponent(data.id)}`;
+        const detailTarget = originalUrl ? ` target="_blank" rel="noopener"` : "";
         const summaryHtml = Array.isArray(summaryLines)
             ? summaryLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")
             : "";
@@ -342,6 +376,7 @@
                      data-job-major="${escapeHtml(data.jobMajor)}"
                      data-job-mid="${escapeHtml(data.jobMid)}"
                      data-status="${escapeHtml(data.status)}"
+                     data-external-url="${escapeHtml(data.externalUrl)}"
                      data-lat="${escapeHtml(data.lat)}"
                      data-lng="${escapeHtml(data.lng)}"
                      data-exact-location="${exactLocation}"
@@ -377,7 +412,8 @@
                 </span>
 
                 <div class="card-actions">
-                    <a class="detail-link" href="/jobpostings/${escapeHtml(data.id)}">상세 보기</a>
+                    <!-- 외부 공고는 새 탭, 내부 공고는 상세 페이지 이동 -->
+                    <a class="detail-link" href="${escapeHtml(detailHref)}"${detailTarget}>상세 보기</a>
                     <button class="scrap-btn${data.scraped === true || data.scraped === 'true' ? ' scrapped' : ''}"
                             type="button"
                             data-id="${escapeHtml(data.id)}"
@@ -638,27 +674,19 @@
             visibleCount.textContent = "0";
         }
     }
-    
+
+    // loadDefaultCampusResults() → initScenarioCampus() 로 통합됨 (통합 진입점 참조)
+
 function applyFilters() {
     let count = 0;
     const visibleMarkers = [];
 
-    // 1. 주소창 파라미터 값 검증
+    // focusId가 URL에 있으면 해당 카드만 표시하는 포커스 모드로 동작
     const urlParams = new URLSearchParams(window.location.search);
-    let focusId = urlParams.get('focusId'); 
-    if (focusId) {
-        focusId = focusId.trim();
-    }
-    const focusTitle = urlParams.get('focusTitle') ? urlParams.get('focusTitle').trim() : null;
-
-    console.log("==================================================");
-    console.log("🔍 [1단계: 주소창 파라미터 검증]");
-    console.log("-> 현재 주소창 focusId :", focusId, `(타입: ${typeof focusId})`);
-    console.log("-> 현재 주소창 focusTitle :", focusTitle);
-    console.log("==================================================");
-
-    // DOM에 존재하는 모든 카드의 ID를 추적하기 위한 배열
-    const allCardIdsInDom = [];
+    const rawFocus  = urlParams.get("focusId");
+    const focusId   = (rawFocus && rawFocus !== "undefined" && rawFocus.trim() !== "")
+        ? rawFocus.trim()
+        : null;
 
     cards.forEach((card) => {
         const isExactLocation = card.dataset.exactLocation === "true";
@@ -678,31 +706,11 @@ function applyFilters() {
 
         let visible = inRadius && inSido && inSigungu && inDong && inJobMajor && inJobMid;
 
-        // 2. 현재 카드의 data-id를 수집 및 대조
-        const cardId = card.dataset.id ? card.dataset.id.trim() : "";
-        const cardCompany = card.dataset.company ? card.dataset.company.trim() : "";
-        const cardTitle = card.querySelector('.job-card__title')?. some || card.id; // 카드 제목 요소 추정
+        const cardId = (card.dataset.id ?? "").trim();
 
-        // 나중에 한 번에 출력하기 위해 배열에 저장
-        allCardIdsInDom.push({
-            domId: card.id,
-            datasetId: cardId,
-            company: cardCompany
-        });
-
-        if (focusId && focusId !== "undefined" && focusId !== "") {
-            // 철저하게 문자열 대조
-            let isMatch = (cardId === focusId);
-            
-            // 2차 방어선 (회사명 대조)
-            if (!isMatch && focusTitle) {
-                const cardText = card.innerText || card.textContent || "";
-                if (cardCompany.includes(focusTitle) || cardText.includes(focusTitle)) {
-                    isMatch = true;
-                }
-            }
-
-            visible = isMatch;
+        // focusId 모드: 해당 카드만 표시, 나머지 숨김
+        if (focusId) {
+            visible = (cardId === focusId);
         }
 
         const marker = markers.get(card.dataset.id);
@@ -722,37 +730,25 @@ function applyFilters() {
         }
     });
 
-    // 3. 수집된 화면상의 모든 카드 ID를 콘솔에 전수 출력 (실무 트레이싱 관행)
-    console.log("📋 [2단계: 현재 메인 화면에 로드된 모든 카드 data-id 전수 조사]");
-    console.table(allCardIdsInDom); 
-    console.log("==================================================");
-
     visibleCount.textContent = count;
-    console.log(`[결과] 최종 필터를 통과하여 노출된 공고 개수: ${count}개`);
 
-    // 4. 단독 마커 핀포인트 카메라 연동 및 자동 팝업
+    // 지도 카메라 처리
     if (visibleMarkers.length > 0) {
-        if (focusId && focusId !== "undefined" && focusId !== "") {
+        if (focusId) {
+            // focusId 모드: 해당 마커로 핀포인트 이동 + 팝업 자동 오픈
             const targetMarker = visibleMarkers[0];
-            const latLng = targetMarker.getLatLng();
-            
-            map.setView(latLng, 17);
-            
-            setTimeout(() => {
-                targetMarker.openPopup();
-            }, 150);
+            map.setView(targetMarker.getLatLng(), 17);
+            setTimeout(() => targetMarker.openPopup(), 150);
 
-            const targetCard = document.querySelector('.job-card:not([hidden])');
-            if (targetCard && typeof selectCard === 'function') {
-                selectCard(targetCard);
-            } 
+            const targetCard = document.querySelector(".job-card:not([hidden])");
+            if (targetCard) selectCard(targetCard);
         } else {
+            // 일반 모드: 모든 가시 마커가 화면에 들어오도록 자동 줌
             map.fitBounds(L.featureGroup(visibleMarkers).getBounds().pad(0.22), {maxZoom: 15});
         }
-    } else {
-        if (focusId) {
-            console.error(`❌ [매칭 실패] 주소창의 focusId(${focusId})가 화면상의 datasetId 목록에 단 하나도 존재하지 않습니다.`);
-        }
+    } else if (focusId) {
+        console.warn("[focusId 매칭 실패] DOM에서 찾을 수 없는 ID:", focusId,
+            "— 컨트롤러의 focusId 주입 로직을 확인하세요.");
     }
 }
 
@@ -786,7 +782,7 @@ function applyFilters() {
             }
             customMarker = L.marker([e.latlng.lat, e.latlng.lng], {
                 icon: L.divIcon({className: "custom-center-icon", html: "📍", iconSize: [24, 24]})
-            }).addTo(map).bindPopup("검색 중심").openPopup();
+            }).addTo(map);
             if (resetCenterButton) {
                 resetCenterButton.style.display = "";
             }
@@ -802,7 +798,9 @@ function applyFilters() {
         });
 
         syncCardsFromDom();
-        applyFilters();
+        updateRadiusCircle();
+        // ★ 데이터 로딩은 통합 진입점(DOMContentLoaded)에서 시나리오별로 처리
+        //    여기서 직접 호출하지 않음 → 경쟁 상태 방지
     }
 
     radiusButtons.forEach((button) => {
@@ -892,10 +890,10 @@ function applyFilters() {
         selectedJobMid = "all";
         selectedPayType = "all";
         selectedSort = "distance";
-        selectedRadius = "all";
+        selectedRadius = DEFAULT_INITIAL_RADIUS;
         selectedDong = "all";
 
-        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === "all"));
+        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === DEFAULT_INITIAL_RADIUS));
         setActive(dongButtons, dongButtons.find(b => b.dataset.dong === "all"));
         updateRadiusCircle();
 
@@ -910,8 +908,7 @@ function applyFilters() {
         customCenter = null;
         if (resetCenterButton) resetCenterButton.style.display = "none";
 
-        resetToInitialCards();
-        applyFilters();
+        await runSearch();
     });
 
     dongButtons.forEach((button) => {
@@ -923,7 +920,7 @@ function applyFilters() {
     });
 
     if (resetCenterButton) {
-        resetCenterButton.addEventListener("click", () => {
+        resetCenterButton.addEventListener("click", async () => {
             customCenter = null;
             if (customMarker) {
                 customMarker.remove();
@@ -931,7 +928,7 @@ function applyFilters() {
             }
             resetCenterButton.style.display = "none";
             updateRadiusCircle();
-            applyFilters();
+            await runSearch();
         });
     }
 
@@ -943,9 +940,7 @@ function applyFilters() {
         if (e.key === "Enter") await runSearch();
     });
 
-    if (window.L) {
-        initMap();
-    }
+    // ★ initMap()은 통합 진입점(DOMContentLoaded)에서 호출 — 여기서 직접 호출 제거
 
 function getToken() {
     const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
@@ -1031,4 +1026,43 @@ document.querySelector(".cards").addEventListener("click", async (event) => {
     }
 });
 
-document.addEventListener("DOMContentLoaded", loadScrappedIds);
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★★★ 통합 진입점 — DOMContentLoaded 리스너는 이 하나뿐 ★★★
+   경쟁 상태(Race Condition) 원천 차단:
+     - async/await 직렬화로 시나리오 간 덮어쓰기 불가
+     - initMap() → loadScrappedIds() → 시나리오 초기화 순으로 완벽하게 교통정리
+═══════════════════════════════════════════════════════════════════════════ */
+document.addEventListener("DOMContentLoaded", async () => {
+
+    // ── 1. 인증 네비게이션 (동기, 즉시 반영) ─────────────────────────────
+    updateAuthNav();
+
+    // ── 2. 지도 초기화 (Leaflet 없으면 스킵) ─────────────────────────────
+    if (window.L) {
+        initMap();
+    }
+
+    // ── 3. 스크랩 상태 로드 (독립적 — 필터링 로직과 무관, fire-and-forget) ─
+    loadScrappedIds(); // await 없음: 스크랩 표시 지연이 초기 필터에 영향 없음
+
+    // ── 4. URL 파라미터 파싱 ──────────────────────────────────────────────
+    const rawFocusId = new URLSearchParams(window.location.search).get("focusId");
+    const focusId    = (rawFocusId && rawFocusId !== "undefined" && rawFocusId.trim() !== "")
+        ? rawFocusId.trim()
+        : null;
+    const token = localStorage.getItem("accessToken");
+
+    // ── 5. 시나리오 라우팅 (await → 직렬 실행, 경쟁 상태 원천 차단) ───────
+    //
+    //  [우선순위 1] focusId 존재 → 스크랩 공고 강조 모드
+    //  [우선순위 2] 토큰 존재   → 로그인 회원 선호 필터
+    //  [우선순위 3] 그 외       → 비로그인, 단국대 3km 기본 필터
+    //
+    if (focusId) {
+        await initScenarioFocus(focusId);
+    } else if (token) {
+        await initScenarioLoggedIn(token);
+    } else {
+        await initScenarioCampus();
+    }
+});

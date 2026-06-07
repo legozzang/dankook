@@ -25,6 +25,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JobPostingViewController {
 
+    // 단국대 기준 좌표 — JS의 JobMapConfig.defaultCenter 와 반드시 동일해야 함
+    private static final double DANKOOK_LATITUDE  = 37.3216;
+    private static final double DANKOOK_LONGITUDE = 127.1267;
+
     private final JobPostingService jobPostingService;
     private final JobPostingRepository jobPostingRepository;
 
@@ -35,79 +39,80 @@ public class JobPostingViewController {
 
     // http://localhost:8080/jobpostings
     @GetMapping("/jobpostings")
-    public String jobPostingList(@RequestParam(value = "focusId", required = false) String focusId, Model model) {
-        
-        List<JobPostingCard> jobPostings = jobPostingService.findAllCards();
-        
-        // 🚨 [실무 방어 관행 Habit] 마이페이지 포커스 ID가 넘어왔는데, 
-        // 페이징이나 데이터 목록 압축 때문에 현재 리스트에 해당 ID가 누락되는 현상을 철저히 방어합니다.
-        if (focusId != null && !focusId.isBlank() && !focusId.equals("undefined")) {
-            try {
-                Long targetId = Long.parseLong(focusId.trim());
-                
-                // 현재 전체 카드 목록에 마이페이지에서 요청한 focusId가 존재하는지 검증
-                boolean isPresent = jobPostings.stream()
-                        .anyMatch(card -> card.id() != null && card.id().equals(targetId));
-                
-                // 만약 현재 수집된 카드 목록에 해당 공고가 누락되어 있다면 단독 추가 처리
-                if (!isPresent) {
-                    jobPostingService.findCardById(targetId).ifPresent(targetCard -> {
-                        // 리스트 맨 앞에 강제로 끼워 넣어 프론트엔드 DOM에 무조건 그리도록 보장합니다.
-                        // 이로 인해 자바스크립트 applyFilters() 내부의 console.table 전수조사에 명확히 검출됩니다.
-                        if (jobPostings instanceof ArrayList) {
-                            jobPostings.add(0, targetCard);
-                        } else {
-                            List<JobPostingCard> modifiableList = new ArrayList<>(jobPostings);
-                            modifiableList.add(0, targetCard);
-                            model.addAttribute("jobPostings", modifiableList);
-                            return;
-                        }
-                    });
+    public String jobPostingList(
+            @RequestParam(value = "focusId", required = false) String focusIdParam,
+            Model model) {
+
+        // ── focusId 파싱: null·공백·"undefined"·비숫자 모두 방어 ──────────────
+        Long focusId = parseFocusId(focusIdParam);
+
+        // ── 전체 카드 조회 (JS 레이어가 시나리오별 필터링 담당) ────────────────
+        List<JobPostingCard> jobPostings = new ArrayList<>(jobPostingService.findAllCards());
+
+        // ── focusId 방어: 해당 공고가 목록에 없으면 맨 앞에 강제 삽입 ──────────
+        // 이유: 초기 HTML에 카드가 없으면 JS의 applyFilters()가 focusId를 찾지 못함
+        if (focusId != null) {
+            boolean alreadyPresent = jobPostings.stream()
+                    .anyMatch(c -> focusId.equals(c.id()));
+            if (!alreadyPresent) {
+                try {
+                    jobPostingService.findCardById(focusId)
+                            .ifPresent(target -> jobPostings.add(0, target));
+                } catch (Exception e) {
+                    // 유령 ID(DB에 없는 값) → 무시하고 정상 목록만 렌더링
+                    System.err.println("[WARN] focusId " + focusId + " not found in DB: " + e.getMessage());
                 }
-            } catch (NumberFormatException e) {
-                // 숫자가 아닌 이상한 값이 파라미터로 유입되었을 때 로그만 남기고 정상 흐름 유지
-                System.err.println("[경고] 유효하지 않은 focusId 포맷 유입: " + focusId);
             }
         }
 
-        // 기존 뷰 바인딩 로직 유지
+        // ── 뷰 바인딩 ──────────────────────────────────────────────────────────
         List<String> dongs = jobPostings.stream()
                 .map(JobPostingCard::dong)
                 .distinct()
                 .toList();
-                
+
         Map<String, List<String>> sigunguBySido = new TreeMap<>();
         for (Object[] row : jobPostingRepository.findDistinctSidoSigunguPairs()) {
             String sido = (String) row[0];
             String sigungu = (String) row[1];
-            sigunguBySido.computeIfAbsent(sido, key -> new ArrayList<>()).add(sigungu);
+            sigunguBySido.computeIfAbsent(sido, k -> new ArrayList<>()).add(sigungu);
         }
-        List<String> sidos = new ArrayList<>(sigunguBySido.keySet());
 
         Map<String, List<String>> jobTypeMidByMajor = new TreeMap<>();
         for (Object[] row : jobPostingRepository.findDistinctJobMajorMidPairs()) {
             String major = (String) row[0];
             String mid = row[1] != null ? (String) row[1] : "";
             if (!mid.isBlank()) {
-                jobTypeMidByMajor.computeIfAbsent(major, key -> new ArrayList<>()).add(mid);
+                jobTypeMidByMajor.computeIfAbsent(major, k -> new ArrayList<>()).add(mid);
             }
         }
-        List<String> jobMajors = new ArrayList<>(jobTypeMidByMajor.keySet());
-        
+
+        model.addAttribute("jobPostings", jobPostings);
+        model.addAttribute("focusId", focusId != null ? String.valueOf(focusId) : null);
         model.addAttribute("payTypes", jobPostingRepository.findDistinctPayTypes());
-        
-        // 위에서 가공 및 안전 검증이 끝난 리스트를 바인딩
-        if (model.getAttribute("jobPostings") == null) {
-            model.addAttribute("jobPostings", jobPostings);
-        }
-        
         model.addAttribute("dongs", dongs);
-        model.addAttribute("sidos", sidos);
+        model.addAttribute("sidos", new ArrayList<>(sigunguBySido.keySet()));
         model.addAttribute("sigunguBySidoJson", toJson(sigunguBySido));
-        model.addAttribute("jobMajors", jobMajors);
+        model.addAttribute("jobMajors", new ArrayList<>(jobTypeMidByMajor.keySet()));
         model.addAttribute("jobTypeMidByMajorJson", toJson(jobTypeMidByMajor));
-        
+
         return "jobposting/list";
+    }
+
+    /**
+     * focusId 문자열을 Long으로 안전하게 변환한다.
+     * null, 공백, "undefined", 비숫자 → null 반환 (500 방지)
+     */
+    private Long parseFocusId(String raw) {
+        if (raw == null || raw.isBlank() || "undefined".equalsIgnoreCase(raw.trim())) {
+            return null;
+        }
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (NumberFormatException e) {
+            System.err.println("[WARN] 유효하지 않은 focusId 포맷 무시: " + raw);
+            return null;
+        }
     }
 
     @GetMapping("/jobpostings/{id}")
