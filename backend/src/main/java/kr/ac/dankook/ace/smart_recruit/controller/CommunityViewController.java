@@ -58,6 +58,9 @@ public class CommunityViewController {
 
     @GetMapping("/communities/write")
     public String write(@AuthenticationPrincipal User user, Model model) {
+        if (user == null) {
+            return "redirect:/auth/login?redirect=/communities/write";
+        }
         model.addAttribute("isAdmin", isAdmin(user));
         return "community/write";
     }

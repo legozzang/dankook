@@ -116,6 +116,9 @@ public class JobPostingApiController {
 
         return memberRepository.findByEmail(user.getUsername())
                 .map(member -> {
+                    if (member.getGeminiApiKey() == null || member.getGeminiApiKey().isBlank()) {
+                        return ResponseEntity.ok(new RefreshResponse("Gemini API 키를 먼저 등록해 주세요.", 0, elapsedSeconds(startedAt)));
+                    }
                     int count = recommendationScheduler.refreshForMember(member.getId());
                     return ResponseEntity.ok(new RefreshResponse("갱신 완료", count, elapsedSeconds(startedAt)));
                 })

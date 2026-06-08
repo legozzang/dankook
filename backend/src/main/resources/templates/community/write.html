@@ -215,6 +215,11 @@
                 headers: authHeaders(),
                 body: JSON.stringify(payload)
             });
+            if (response.status === 401) {
+                alert("로그인이 필요합니다. 로그인 페이지로 이동합니다.");
+                location.href = "/auth/login?redirect=/communities/write";
+                return;
+            }
             if (!response.ok) {
                 alert("게시글 작성에 실패했습니다.");
                 return;

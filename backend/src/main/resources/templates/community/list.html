@@ -131,6 +131,7 @@
         const token = getToken();
         document.getElementById("guestMenu").style.display = token ? "none" : "";
         document.getElementById("userMenu").style.display = token ? "flex" : "none";
+        document.getElementById("writeLink").style.display = token ? "" : "none";
     }
 
     function handleLogout() {
@@ -143,7 +144,7 @@
     document.getElementById("writeLink").addEventListener("click", (event) => {
         if (!getToken()) {
             event.preventDefault();
-            location.href = "/auth/login";
+            location.href = "/auth/login?redirect=/communities/write";
         }
     });
     document.querySelectorAll("tr[data-href]").forEach(row => {

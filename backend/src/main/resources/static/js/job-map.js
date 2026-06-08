@@ -1110,6 +1110,7 @@ document.querySelector(".cards").addEventListener("click", async (event) => {
     }
 
     const id = Number(btn.dataset.id);
+    btn.disabled = true;
     try {
         const res = await fetch(`/api/scraps/toggle?jobPostingId=${id}`, {
             method: "POST",
@@ -1126,6 +1127,8 @@ document.querySelector(".cards").addEventListener("click", async (event) => {
         applyScrapState(btn, data.scraped);     // 해당 버튼만 즉시 갱신
     } catch (e) {
         alert("스크랩 처리에 실패했습니다.");
+    } finally {
+        btn.disabled = false;
     }
 });
 
