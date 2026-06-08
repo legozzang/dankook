@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>게시글 수정 | Smart Recruit</title>
+    <style>
+        body { margin: 0; background: #f5f6f8; color: #222831; font-family: Arial, "Noto Sans KR", sans-serif; }
+        .site-header { background: #fff; border-bottom: 1px solid #dde3ea; }
+        .site-header__inner { max-width: 1120px; margin: 0 auto; min-height: 64px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+        .brand, .site-nav__link, .write-button, .back-link { text-decoration: none; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; color: #172033; font-weight: 800; }
+        .brand-mark { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 6px; background: #1769aa; color: #fff; }
+        .site-nav { display: flex; align-items: center; gap: 6px; }
+        .site-nav__link { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: 6px; color: #52606d; font-size: 14px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+        .site-nav__link:hover { background: #f1f5f9; color: #1769aa; }
+        .site-nav__link.active { background: #e8f1fa; color: #1769aa; }
+        .auth-actions { display: flex; align-items: center; gap: 8px; }
+        .write-button { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 16px; border: 0; border-radius: 6px; background: #1769aa; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .write-button--ghost { border: 1px solid #cfd6df; background: #ffffff; color: #1769aa; }
+        .page { max-width: 780px; margin: 0 auto; padding: 40px 20px; }
+        .panel { background: #fff; border: 1px solid #dde3ea; border-radius: 6px; padding: 24px; }
+        h1 { margin: 0 0 22px; font-size: 30px; letter-spacing: 0; }
+        label { display: block; margin: 16px 0 8px; color: #344054; font-weight: 800; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #cfd6df; border-radius: 6px; box-sizing: border-box; font: inherit; }
+        textarea { min-height: 300px; resize: vertical; }
+        .actions { margin-top: 20px; display: flex; justify-content: space-between; gap: 12px; }
+        .back-link { color: #1769aa; font-weight: 800; }
+        @media (max-width: 720px) {
+            .site-header__inner { align-items: flex-start; flex-direction: column; }
+            .page { padding: 28px 14px; }
+            .actions { align-items: flex-start; flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+<header class="site-header">
+    <div class="site-header__inner">
+        <a class="brand" href="/jobpostings" aria-label="Smart Recruit 홈">
+            <span class="brand-mark">SR</span>
+            <span class="brand-text">Smart Recruit</span>
+        </a>
+        <nav class="site-nav" aria-label="주요 메뉴">
+            <a class="site-nav__link" href="/jobpostings">채용 공고</a>
+            <a class="site-nav__link active" href="/communities">커뮤니티</a>
+            <a class="site-nav__link" href="/admin/dashboard" th:if="${isAdmin}">관리자</a>
+        </nav>
+        <div class="auth-actions">
+            <div id="guestMenu"><a class="write-button" href="/auth/login">로그인</a></div>
+            <div id="userMenu" style="display:none;gap:8px;">
+                <a class="write-button write-button--ghost" href="/auth/mypage">내 정보</a>
+                <button class="write-button" type="button" onclick="handleLogout()">로그아웃</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="page" th:data-post-id="${post.id}">
+    <section class="panel">
+        <h1>게시글 수정</h1>
+        <form id="editForm">
+            <label for="title">제목</label>
+            <input id="title" type="text" maxlength="200" required th:value="${post.title}">
+            <label for="content">내용</label>
+            <textarea id="content" required th:text="${post.content}"></textarea>
+            <div class="actions">
+                <a class="back-link" th:href="@{/communities/{id}(id=${post.id})}">취소</a>
+                <button class="write-button" type="submit">수정완료</button>
+            </div>
+        </form>
+    </section>
+</main>
+<script src="/js/auth-utils.js"></script>
+<script>
+    function updateAuthNav() {
+        const token = getToken();
+        document.getElementById("guestMenu").style.display = token ? "none" : "";
+        document.getElementById("userMenu").style.display = token ? "flex" : "none";
+    }
+
+    function handleLogout() {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("memberId");
+        document.cookie = "accessToken=; path=/; max-age=0";
+        location.href = "/auth/login";
+    }
+
+    if (!getToken()) {
+        location.href = "/auth/login";
+    }
+
+    document.getElementById("editForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const postId = document.querySelector(".page").dataset.postId;
+        const payload = {
+            title: document.getElementById("title").value.trim(),
+            content: document.getElementById("content").value.trim()
+        };
+        if (!payload.title || !payload.content) {
+            alert("제목과 내용을 입력해주세요.");
+            return;
+        }
+        try {
+            const response = await fetch(`/api/communities/${postId}`, {
+                method: "PUT",
+                headers: authHeaders(),
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                alert("게시글 수정에 실패했습니다.");
+                return;
+            }
+            location.href = `/communities/${postId}`;
+        } catch (error) {
+            alert("게시글 수정에 실패했습니다.");
+        }
+    });
+
+    updateAuthNav();
+</script>
+</body>
+</html>

@@ -1,6 +1,8 @@
 package kr.ac.dankook.ace.smart_recruit.model.communitycomment;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.persistence.*;
 import kr.ac.dankook.ace.smart_recruit.model.community.Community;
@@ -28,6 +30,13 @@ public class CommunityComment {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "parent_id")
+    private CommunityComment parent;
+
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CommunityComment> replies = new ArrayList<>();
+
     @Column(name = "created_at",updatable = false) // Column 이름을 따로 설정, 설정하지 않으면 변수이름 따라감
     private LocalDateTime createdAt;
 
@@ -51,5 +60,12 @@ public class CommunityComment {
         this.community = community;
         this.member = member;
         this.content = content;
+    }
+
+    public CommunityComment(Community community, Member member, String content, CommunityComment parent) {
+        this.community = community;
+        this.member = member;
+        this.content = content;
+        this.parent = parent;
     }
 }
