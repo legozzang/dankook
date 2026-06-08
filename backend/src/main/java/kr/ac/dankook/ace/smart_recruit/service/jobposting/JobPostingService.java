@@ -270,6 +270,7 @@ public class JobPostingService {
                       AND (:jobTypeMajor IS NULL OR job_type_major = :jobTypeMajor)
                       AND (:jobTypeMid IS NULL OR job_type_mid = :jobTypeMid)
                       AND (:keyword IS NULL OR LOWER(title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+                      AND status = 'OPEN'
                 ) sub
                 WHERE distance <= :radiusKm
                 ORDER BY distance

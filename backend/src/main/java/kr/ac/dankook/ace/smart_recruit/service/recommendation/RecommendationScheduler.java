@@ -88,11 +88,27 @@ public class RecommendationScheduler {
 
     private List<JobPosting> findRecommendationTargets(Member member) {
         String jobTypeMajor = normalize(member.getPreferredJobTypeMajor());
-        String regionSido = normalize(member.getDesiredRegionSido());
-        String regionSigungu = normalize(member.getDesiredRegionSigungu());
-        if (!isBlank(regionSigungu)) {
-            regionSido = null;
+        String jobTypeMid = normalize(member.getPreferredJobTypeMid());
+        String payType = normalize(member.getPreferredPayType());
+
+        String regionSido1 = normalize(member.getDesiredRegionSido());
+        String regionSigungu1 = normalize(member.getDesiredRegionSigungu());
+        if (!isBlank(regionSigungu1)) {
+            regionSido1 = null;
         }
+
+        String regionSido2 = normalize(member.getDesiredRegion2Sido());
+        String regionSigungu2 = normalize(member.getDesiredRegion2Sigungu());
+        if (!isBlank(regionSigungu2)) {
+            regionSido2 = null;
+        }
+
+        String regionSido3 = normalize(member.getDesiredRegion3Sido());
+        String regionSigungu3 = normalize(member.getDesiredRegion3Sigungu());
+        if (!isBlank(regionSigungu3)) {
+            regionSido3 = null;
+        }
+
         List<Long> excludeIds = recommendationRepository.findByMemberId(member.getId())
                 .stream()
                 .map(recommendation -> recommendation.getJobPosting().getId())
@@ -104,15 +120,27 @@ public class RecommendationScheduler {
 
         List<JobPosting> byPay = jobPostingRepository.findRecommendationTargetsByPay(
                 jobTypeMajor,
-                regionSido,
-                regionSigungu,
+                jobTypeMid,
+                payType,
+                regionSido1,
+                regionSigungu1,
+                regionSido2,
+                regionSigungu2,
+                regionSido3,
+                regionSigungu3,
                 excludeIds,
                 limitTen
         );
         List<JobPosting> byLatest = jobPostingRepository.findRecommendationTargetsByLatest(
                 jobTypeMajor,
-                regionSido,
-                regionSigungu,
+                jobTypeMid,
+                payType,
+                regionSido1,
+                regionSigungu1,
+                regionSido2,
+                regionSigungu2,
+                regionSido3,
+                regionSigungu3,
                 excludeIds,
                 limitTen
         );

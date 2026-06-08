@@ -19,6 +19,7 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
     @Query("""
             SELECT j FROM JobPosting j
             LEFT JOIN FETCH j.jobPostingAiSummary
+            WHERE j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN
             ORDER BY j.createdAt DESC
             """)
     List<JobPosting> findRecentWithAiSummary(Pageable pageable);
@@ -27,6 +28,7 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
             SELECT j FROM JobPosting j
             LEFT JOIN FETCH j.jobPostingAiSummary
             WHERE j.id = :id
+              AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN
             """)
     Optional<JobPosting> findByIdWithAiSummary(@Param("id") Long id);
 
@@ -39,6 +41,7 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
               AND (:jobTypeMid IS NULL OR j.jobTypeMid = :jobTypeMid)
               AND (:keyword IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
               AND (:payType IS NULL OR j.payType = :payType)
+              AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN
             ORDER BY j.createdAt DESC
             """)
     List<JobPosting> findByFilters(
@@ -54,6 +57,7 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
             SELECT j FROM JobPosting j
             LEFT JOIN FETCH j.jobPostingAiSummary
             WHERE j.id IN :ids
+              AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN
             """)
     List<JobPosting> findWithAiSummaryByIdIn(@Param("ids") List<Long> ids);
 
@@ -61,16 +65,29 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
             SELECT j FROM JobPosting j
             LEFT JOIN FETCH j.jobPostingAiSummary
             WHERE ((:jobTypeMajor IS NOT NULL AND :jobTypeMajor <> '' AND j.jobTypeMajor = :jobTypeMajor)
-                OR (:regionSido IS NOT NULL AND :regionSido <> '' AND j.regionSido = :regionSido)
-                OR (:regionSigungu IS NOT NULL AND :regionSigungu <> '' AND j.regionSigungu = :regionSigungu))
+                OR (:jobTypeMid IS NOT NULL AND :jobTypeMid <> '' AND j.jobTypeMid = :jobTypeMid)
+                OR (:payType IS NOT NULL AND :payType <> '' AND j.payType = :payType)
+                OR (:regionSido1 IS NOT NULL AND :regionSido1 <> '' AND j.regionSido = :regionSido1)
+                OR (:regionSigungu1 IS NOT NULL AND :regionSigungu1 <> '' AND j.regionSigungu = :regionSigungu1)
+                OR (:regionSido2 IS NOT NULL AND :regionSido2 <> '' AND j.regionSido = :regionSido2)
+                OR (:regionSigungu2 IS NOT NULL AND :regionSigungu2 <> '' AND j.regionSigungu = :regionSigungu2)
+                OR (:regionSido3 IS NOT NULL AND :regionSido3 <> '' AND j.regionSido = :regionSido3)
+                OR (:regionSigungu3 IS NOT NULL AND :regionSigungu3 <> '' AND j.regionSigungu = :regionSigungu3))
               AND j.payAmount IS NOT NULL AND j.payAmount > 0
               AND j.id NOT IN :excludeIds
+              AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN
             ORDER BY j.payAmount DESC
             """)
     List<JobPosting> findRecommendationTargetsByPay(
             @Param("jobTypeMajor") String jobTypeMajor,
-            @Param("regionSido") String regionSido,
-            @Param("regionSigungu") String regionSigungu,
+            @Param("jobTypeMid") String jobTypeMid,
+            @Param("payType") String payType,
+            @Param("regionSido1") String regionSido1,
+            @Param("regionSigungu1") String regionSigungu1,
+            @Param("regionSido2") String regionSido2,
+            @Param("regionSigungu2") String regionSigungu2,
+            @Param("regionSido3") String regionSido3,
+            @Param("regionSigungu3") String regionSigungu3,
             @Param("excludeIds") List<Long> excludeIds,
             Pageable pageable
     );
@@ -79,29 +96,42 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
             SELECT j FROM JobPosting j
             LEFT JOIN FETCH j.jobPostingAiSummary
             WHERE ((:jobTypeMajor IS NOT NULL AND :jobTypeMajor <> '' AND j.jobTypeMajor = :jobTypeMajor)
-                OR (:regionSido IS NOT NULL AND :regionSido <> '' AND j.regionSido = :regionSido)
-                OR (:regionSigungu IS NOT NULL AND :regionSigungu <> '' AND j.regionSigungu = :regionSigungu))
+                OR (:jobTypeMid IS NOT NULL AND :jobTypeMid <> '' AND j.jobTypeMid = :jobTypeMid)
+                OR (:payType IS NOT NULL AND :payType <> '' AND j.payType = :payType)
+                OR (:regionSido1 IS NOT NULL AND :regionSido1 <> '' AND j.regionSido = :regionSido1)
+                OR (:regionSigungu1 IS NOT NULL AND :regionSigungu1 <> '' AND j.regionSigungu = :regionSigungu1)
+                OR (:regionSido2 IS NOT NULL AND :regionSido2 <> '' AND j.regionSido = :regionSido2)
+                OR (:regionSigungu2 IS NOT NULL AND :regionSigungu2 <> '' AND j.regionSigungu = :regionSigungu2)
+                OR (:regionSido3 IS NOT NULL AND :regionSido3 <> '' AND j.regionSido = :regionSido3)
+                OR (:regionSigungu3 IS NOT NULL AND :regionSigungu3 <> '' AND j.regionSigungu = :regionSigungu3))
               AND j.id NOT IN :excludeIds
+              AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN
             ORDER BY j.createdAt DESC
             """)
     List<JobPosting> findRecommendationTargetsByLatest(
             @Param("jobTypeMajor") String jobTypeMajor,
-            @Param("regionSido") String regionSido,
-            @Param("regionSigungu") String regionSigungu,
+            @Param("jobTypeMid") String jobTypeMid,
+            @Param("payType") String payType,
+            @Param("regionSido1") String regionSido1,
+            @Param("regionSigungu1") String regionSigungu1,
+            @Param("regionSido2") String regionSido2,
+            @Param("regionSigungu2") String regionSigungu2,
+            @Param("regionSido3") String regionSido3,
+            @Param("regionSigungu3") String regionSigungu3,
             @Param("excludeIds") List<Long> excludeIds,
             Pageable pageable
     );
 
-    @Query("SELECT DISTINCT j.payType FROM JobPosting j WHERE j.payType IS NOT NULL AND j.payType <> '' ORDER BY j.payType")
+    @Query("SELECT DISTINCT j.payType FROM JobPosting j WHERE j.payType IS NOT NULL AND j.payType <> '' AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN ORDER BY j.payType")
     List<String> findDistinctPayTypes();
 
-    @Query("SELECT DISTINCT j.regionSido, j.regionSigungu FROM JobPosting j WHERE j.regionSido IS NOT NULL AND j.regionSido <> '' AND j.regionSigungu IS NOT NULL AND j.regionSigungu <> '' ORDER BY j.regionSido, j.regionSigungu")
+    @Query("SELECT DISTINCT j.regionSido, j.regionSigungu FROM JobPosting j WHERE j.regionSido IS NOT NULL AND j.regionSido <> '' AND j.regionSigungu IS NOT NULL AND j.regionSigungu <> '' AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN ORDER BY j.regionSido, j.regionSigungu")
     List<Object[]> findDistinctSidoSigunguPairs();
 
-    @Query("SELECT DISTINCT j.regionSido FROM JobPosting j WHERE j.regionSido IS NOT NULL AND j.regionSido <> '' ORDER BY j.regionSido")
+    @Query("SELECT DISTINCT j.regionSido FROM JobPosting j WHERE j.regionSido IS NOT NULL AND j.regionSido <> '' AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN ORDER BY j.regionSido")
     List<String> findDistinctSidos();
 
-    @Query("SELECT DISTINCT j.jobTypeMajor, j.jobTypeMid FROM JobPosting j WHERE j.jobTypeMajor IS NOT NULL AND j.jobTypeMajor <> '' ORDER BY j.jobTypeMajor, j.jobTypeMid")
+    @Query("SELECT DISTINCT j.jobTypeMajor, j.jobTypeMid FROM JobPosting j WHERE j.jobTypeMajor IS NOT NULL AND j.jobTypeMajor <> '' AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN ORDER BY j.jobTypeMajor, j.jobTypeMid")
     List<Object[]> findDistinctJobMajorMidPairs();
 
     @Query("SELECT j.regionSido, j.regionSigungu, COUNT(j) FROM JobPosting j WHERE j.regionSido IS NOT NULL AND j.regionSido <> '' GROUP BY j.regionSido, j.regionSigungu ORDER BY COUNT(j) DESC")
