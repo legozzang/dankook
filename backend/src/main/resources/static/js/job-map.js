@@ -15,6 +15,10 @@ function updateAuthNav() {
         }
     }
 
+    function initAuthUI() {
+        updateAuthNav();
+    }
+
     function handleLogout() {
         if (confirm("로그아웃 하시겠습니까?")) {
             localStorage.removeItem("accessToken");
@@ -1141,7 +1145,7 @@ document.querySelector(".cards").addEventListener("click", async (event) => {
 document.addEventListener("DOMContentLoaded", async () => {
 
     // ── 1. 인증 네비게이션 (동기, 즉시 반영) ─────────────────────────────
-    updateAuthNav();
+    initAuthUI();
 
     // ── 2. 지도 초기화 (Leaflet 없으면 스킵) ─────────────────────────────
     if (window.L) {
@@ -1170,5 +1174,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         await initScenarioLoggedIn(token);
     } else {
         await initScenarioCampus();
+    }
+});
+
+window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+        initAuthUI();
     }
 });

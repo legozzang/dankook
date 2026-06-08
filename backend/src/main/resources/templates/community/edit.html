@@ -107,7 +107,8 @@
                 body: JSON.stringify(payload)
             });
             if (!response.ok) {
-                alert("게시글 수정에 실패했습니다.");
+                const msg = await response.text().catch(() => "");
+                alert(msg || "게시글 수정에 실패했습니다.");
                 return;
             }
             location.href = `/communities/${postId}`;

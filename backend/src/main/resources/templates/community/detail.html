@@ -237,7 +237,8 @@
                 headers: authHeaders()
             });
             if (!response.ok) {
-                alert("댓글 삭제에 실패했습니다.");
+                const msg = await response.text().catch(() => "");
+                alert(msg || "댓글 삭제에 실패했습니다.");
                 return;
             }
             location.reload();
