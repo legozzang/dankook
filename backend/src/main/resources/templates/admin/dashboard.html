@@ -35,9 +35,42 @@
         h1, h2, h3 { margin: 0; }
         h2 { margin-bottom: 10px; font-size: 18px; }
         h3 { margin-bottom: 12px; font-size: 16px; }
+        .site-header { background: #fff; border-bottom: 1px solid #dde3ea; }
+        .site-header__inner { max-width: 1180px; margin: 0 auto; min-height: 64px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; color: #172033; font-weight: 800; text-decoration: none; }
+        .brand-mark { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 6px; background: #1769aa; color: #fff; font-size: 14px; }
+        .brand-text { font-size: 16px; }
+        .site-nav { display: flex; align-items: center; gap: 6px; }
+        .site-nav__link { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: 6px; border: none; color: #52606d; font-size: 14px; font-weight: 800; text-decoration: none; white-space: nowrap; background: transparent; }
+        .site-nav__link:hover { background: #f1f5f9; color: #1769aa; }
+        .site-nav__link.active { background: #e8f1fa; color: #1769aa; }
+        .auth-actions { display: flex; align-items: center; gap: 8px; }
+        .write-button { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 14px; border-radius: 6px; border: none; background: #1769aa; color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; }
+        .write-button--ghost { border: 1px solid #cfd6df; background: #fff; color: #1769aa; }
     </style>
+    <script src="/js/auth-utils.js"></script>
 </head>
 <body>
+<header class="site-header">
+    <div class="site-header__inner">
+        <a class="brand" href="/jobpostings">
+            <span class="brand-mark">SR</span>
+            <span class="brand-text">Smart Recruit</span>
+        </a>
+        <nav class="site-nav">
+            <a class="site-nav__link" href="/jobpostings">채용 공고</a>
+            <a class="site-nav__link" href="/communities">커뮤니티</a>
+            <a class="site-nav__link active" href="/admin/dashboard">관리자</a>
+        </nav>
+        <div class="auth-actions">
+            <div id="guestMenu"><a class="write-button" href="/auth/login">로그인</a></div>
+            <div id="userMenu" style="display:none;gap:8px;">
+                <a class="write-button write-button--ghost" href="/auth/mypage">내 정보</a>
+                <button class="write-button" type="button" onclick="handleLogout()">로그아웃</button>
+            </div>
+        </div>
+    </div>
+</header>
 <main class="page">
     <h1>관리자 대시보드</h1>
     <nav>
@@ -205,10 +238,24 @@
         regionTable.style.display = viz ? '' : 'none';
     }
 
+    function handleLogout() {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("memberId");
+        document.cookie = "accessToken=; path=/; max-age=0";
+        location.href = "/auth/login";
+    }
+
+    function updateAuthNav() {
+        const token = getToken();
+        document.getElementById("guestMenu").style.display = token ? "none" : "";
+        document.getElementById("userMenu").style.display = token ? "flex" : "none";
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         updateSigungu('dSido', 'dSigungu');
         updateMid('dMajor', 'dMid');
         toggleViz();
+        updateAuthNav();
     });
 </script>
 </body>
