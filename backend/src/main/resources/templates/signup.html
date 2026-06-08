@@ -179,8 +179,25 @@
         });
 
         if (response.ok) {
-          alert('회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.');
-          window.location.href = '/auth/login';
+          const loginRes = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: signupData.email,
+              password: signupData.password
+            })
+          }).catch(() => null);
+
+          if (loginRes && loginRes.ok) {
+            const data = await loginRes.json();
+            localStorage.setItem('accessToken', data.access_token);
+            localStorage.setItem('memberId', data.member_id);
+            document.cookie = `accessToken=${data.access_token}; path=/; SameSite=Strict`;
+            window.location.href = '/jobpostings';
+          } else {
+            alert('회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.');
+            window.location.href = '/auth/login';
+          }
         } else {
           errorDiv.textContent = await response.text();
           errorDiv.style.display = 'block';
