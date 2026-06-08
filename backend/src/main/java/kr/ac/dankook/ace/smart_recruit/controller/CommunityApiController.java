@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import kr.ac.dankook.ace.smart_recruit.model.community.Category;
 import kr.ac.dankook.ace.smart_recruit.service.community.CommunityService;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +28,7 @@ public class CommunityApiController {
     @PostMapping
     public ResponseEntity<Void> create(
             @AuthenticationPrincipal User user,
-            @RequestBody CommunityRequest request
+            @Valid @RequestBody CommunityRequest request
     ) {
         Category category = communityService.parseCategory(request.category());
         if (category == null) {
@@ -39,7 +42,7 @@ public class CommunityApiController {
     public ResponseEntity<Void> update(
             @PathVariable Long id,
             @AuthenticationPrincipal User user,
-            @RequestBody CommunityUpdateRequest request
+            @Valid @RequestBody CommunityUpdateRequest request
     ) {
         communityService.update(id, user.getUsername(), request.title(), request.content());
         return ResponseEntity.noContent().build();
@@ -58,7 +61,7 @@ public class CommunityApiController {
     public ResponseEntity<Void> addComment(
             @PathVariable Long id,
             @AuthenticationPrincipal User user,
-            @RequestBody CommentRequest request
+            @Valid @RequestBody CommentRequest request
     ) {
         communityService.addComment(id, user.getUsername(), request.content());
         return ResponseEntity.status(201).build();
@@ -69,7 +72,7 @@ public class CommunityApiController {
             @PathVariable Long id,
             @PathVariable Long cid,
             @AuthenticationPrincipal User user,
-            @RequestBody CommentRequest request
+            @Valid @RequestBody CommentRequest request
     ) {
         communityService.addReply(id, cid, user.getUsername(), request.content());
         return ResponseEntity.status(201).build();
@@ -85,12 +88,22 @@ public class CommunityApiController {
         return ResponseEntity.noContent().build();
     }
 
-    record CommunityRequest(String category, String title, String content, Long jobPostingId) {
+    record CommunityRequest(
+            @NotBlank String category,
+            @NotBlank @Size(max = 100) String title,
+            @NotBlank @Size(max = 5000) String content,
+            Long jobPostingId
+    ) {
     }
 
-    record CommunityUpdateRequest(String title, String content) {
+    record CommunityUpdateRequest(
+            @NotBlank @Size(max = 100) String title,
+            @NotBlank @Size(max = 5000) String content
+    ) {
     }
 
-    record CommentRequest(String content) {
+    record CommentRequest(
+            @NotBlank @Size(max = 1000) String content
+    ) {
     }
 }

@@ -407,12 +407,16 @@
       listEl.innerHTML = items.map(item => {
         
         const postingId = item.job_posting_id; 
+        const isClosed = item.status === 'CLOSED';
+        const closedBadge = isClosed
+          ? '<span style="display:inline-block;background:#fee2e2;color:#dc2626;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;margin-right:6px;vertical-align:middle;">마감</span>'
+          : '';
         
         return `
-          <div class="scrap-item" id="scrap-row-${postingId}" data-scraped="true">
+          <div class="scrap-item" id="scrap-row-${postingId}" data-scraped="true" style="${isClosed ? 'opacity:0.6;' : ''}">
             <div class="scrap-item__info">
               <div class="scrap-item__company">${escapeHtml(item.company)}</div>
-              <div class="scrap-item__title">${escapeHtml(item.title)}</div>
+              <div class="scrap-item__title">${closedBadge}${escapeHtml(item.title)}</div>
               <div class="scrap-item__meta">
                 <span>📍 ${escapeHtml(item.location)}</span>
                 <span>💰 ${escapeHtml(item.salary)}</span>
