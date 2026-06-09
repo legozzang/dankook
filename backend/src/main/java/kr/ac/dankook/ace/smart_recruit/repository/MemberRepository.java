@@ -42,6 +42,18 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     List<Member> findByRoleAndKeyword(@Param("role") Role role,
                                       @Param("keyword") String keyword);
 
+    @Query("""
+            SELECT m FROM Member m
+            WHERE (:keyword = ''
+                   OR LOWER(m.email)    LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR LOWER(m.nickname) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            ORDER BY m.id DESC
+            """)
+    List<Member> findByKeyword(@Param("keyword") String keyword);
+
     /** Gemini API 키가 설정된 회원 목록 — 추천 갱신 배치 등에서 사용 */
     List<Member> findByGeminiApiKeyIsNotNull();
+
+    /** 이메일 알림을 켠 회원 목록 — 매일 추천 공고 메일 발송에서 사용 */
+    List<Member> findByEmailNotificationTrue();
 }

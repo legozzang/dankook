@@ -55,7 +55,8 @@ public class SecurityConfig {
                                 // [임시] 로컬 테스트용 — 채용공고 화면·AI 파이프라인 업로드 경로 인증 해제
                                 // TODO: 운영 전 팀원과 협의 후 적절한 권한 정책으로 교체 필요
                                 "/api/job-postings",
-                                "/api/job-postings/**"
+                                "/api/job-postings/**",
+                                "/error"
                                 ).permitAll()
                 
                 // 정적 리소스 (CSS, JS, 이미지 등)도 모두 허용

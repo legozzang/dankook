@@ -121,8 +121,10 @@ public class AdminViewController {
         String normalizedKeyword = normalize(keyword);
         Role roleFilter = parseRole(role);
 
-        // findAll() + 메모리 스트림 필터 → DB 쿼리로 교체 (OOM 방지)
-        List<Member> members = memberRepository.findByRoleAndKeyword(roleFilter, normalizedKeyword);
+        // role이 없을 때는 null enum JPQL 파라미터를 피하기 위해 별도 쿼리를 사용한다.
+        List<Member> members = (roleFilter == null)
+                ? memberRepository.findByKeyword(normalizedKeyword)
+                : memberRepository.findByRoleAndKeyword(roleFilter, normalizedKeyword);
 
         Map<String, String> currentFilters = new HashMap<>();
         currentFilters.put("role", role == null ? "" : role);
