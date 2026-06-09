@@ -79,10 +79,19 @@ public class SecurityConfig {
             .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
                             UsernamePasswordAuthenticationFilter.class)
 
-            // 5. 비인증 REST 요청 → 302 리다이렉트 대신 401 Unauthorized 반환
+            // 5. 브라우저 페이지 요청은 로그인으로, API 요청은 상태 코드로 응답
             .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((request, response, authException) ->
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")));
+                .authenticationEntryPoint((request, response, authException) -> {
+                    String accept = request.getHeader("Accept");
+                    if (accept != null && accept.contains("text/html")) {
+                        String redirectUrl = request.getRequestURI();
+                        response.sendRedirect("/auth/login?redirect=" + redirectUrl);
+                    } else {
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                    }
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) ->
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden")));
 
         return http.build();
     }
