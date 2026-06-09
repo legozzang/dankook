@@ -68,6 +68,17 @@ public class Member{
     @Column(name = "desired_region_dong", length = 50)
     private String desiredRegionDong;
 
+    // 관심 지역 1의 상세 주소(도로명/지번) — 지오코딩 입력 및 수정화면 표시용
+    @Column(name = "home_address", length = 255)
+    private String homeAddress;
+
+    // 관심 지역 1 상세 주소를 지오코딩한 위경도 — 로그인 시 반경 필터 중심점
+    @Column(name = "home_latitude")
+    private Double homeLatitude;
+
+    @Column(name = "home_longitude")
+    private Double homeLongitude;
+
     @Column(name = "desired_region2_sido", length = 50)
     private String desiredRegion2Sido;
 
@@ -151,6 +162,13 @@ public class Member{
         if (emailNotification != null) {
             this.emailNotification = emailNotification;
         }
+    }
+
+    /** 거주지 상세 주소와 지오코딩 좌표를 갱신한다. 좌표는 null 허용(지오코딩 실패 시). */
+    public void updateHomeLocation(String address, Double latitude, Double longitude) {
+        this.homeAddress = normalizeBlank(address);
+        this.homeLatitude = latitude;
+        this.homeLongitude = longitude;
     }
 
     public void updateGeminiSettings(String apiKey, Integer intervalHours, String customPrompt) {
