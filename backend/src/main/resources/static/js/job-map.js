@@ -78,8 +78,7 @@ function updateAuthNav() {
      * - applyFilters()가 해당 카드만 표시하고 지도 마커에 핀포인트·팝업 적용
      */
     async function initScenarioFocus(focusId) {
-        selectedRadius = "all";
-        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === "all") || null);
+        setRadius("all");
         updateRadiusCircle();
         // 컨트롤러가 해당 카드를 HTML에 이미 포함했으므로 API 재호출 없이 DOM 필터링
         renderMarkers();
@@ -108,8 +107,7 @@ function updateAuthNav() {
                 await runSearch();
             } else if (hasRegionPref || hasJobPref) {
                 // 거주지 좌표가 없으면 기존 시/군/구 이름 기반 필터
-                selectedRadius = "all";
-                setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === "all") || null);
+                setRadius("all");
                 updateRadiusCircle();
                 applyInitialPreferenceFilters();
                 await runSearch();
@@ -137,8 +135,7 @@ function updateAuthNav() {
             map.setView([lat, lng], 14);
         }
         if (resetCenterButton) resetCenterButton.style.display = "";
-        selectedRadius = DEFAULT_INITIAL_RADIUS; // "3"km
-        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === DEFAULT_INITIAL_RADIUS));
+        setRadius(DEFAULT_INITIAL_RADIUS); // "3"km
         updateRadiusCircle();
     }
 
@@ -151,8 +148,7 @@ function updateAuthNav() {
         if (initialResultsLoaded) return; // 이중 호출 방어
         initialResultsLoaded = true;
 
-        selectedRadius = DEFAULT_INITIAL_RADIUS; // "3"km
-        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === DEFAULT_INITIAL_RADIUS));
+        setRadius(DEFAULT_INITIAL_RADIUS); // "3"km
         updateRadiusCircle();
         await runSearch();
     }
@@ -209,6 +205,8 @@ function updateAuthNav() {
     let customMarker = null;
     let map;
     let radiusCircle = null;
+    let mapRadiusButtons = [];
+    let mapRadiusControlElement = null;
     const markers = new Map();
     const scrappedIds = new Set();
     const MARKER_STATUS = {
@@ -241,6 +239,17 @@ function updateAuthNav() {
 
     function setActive(buttons, activeButton) {
         buttons.forEach((button) => button.classList.toggle("active", button === activeButton));
+    }
+
+    function syncRadiusControls() {
+        [...radiusButtons, ...mapRadiusButtons].forEach((button) => {
+            button.classList.toggle("active", button.dataset.radius === selectedRadius);
+        });
+    }
+
+    function setRadius(radius) {
+        selectedRadius = radius;
+        syncRadiusControls();
     }
 
     function selectCard(card) {
@@ -327,6 +336,7 @@ function updateAuthNav() {
         if (filterToggle)       filterToggle.style.display       = enabled ? "none" : "";
         if (filtersBody)        filtersBody.style.display        = enabled ? "none" : "";
         if (resetCenterButton)  resetCenterButton.style.display  = enabled || !customCenter ? "none" : "";
+        if (mapRadiusControlElement) mapRadiusControlElement.hidden = enabled;
     }
 
     function updateRadiusCircle() {
@@ -755,7 +765,7 @@ function updateAuthNav() {
 
             const allFiltersDefault = !hasServerFilter();
 
-            if (allFiltersDefault && resultLimit.value === "10" && selectedSort !== "distance") {
+            if (allFiltersDefault && resultLimit.value === "50" && selectedSort !== "distance") {
                 resetToInitialCards();
                 applyFilters();
                 return;
@@ -878,14 +888,64 @@ function applyFilters() {
         legend.onAdd = () => {
             const container = L.DomUtil.create("div", "marker-legend");
             container.innerHTML = `
-                <div><span class="marker-legend-dot marker-legend-dot--closing"></span>마감 임박</div>
                 <div><span class="marker-legend-dot marker-legend-dot--recommended"></span>추천 공고</div>
                 <div><span class="marker-legend-dot marker-legend-dot--default"></span>일반 공고</div>
-                <div><span class="marker-legend-dot marker-legend-dot--inferred"></span>위치 정보 부족</div>
             `;
             return container;
         };
         legend.addTo(map);
+    }
+
+    function addRadiusControl() {
+        const radiusControl = L.control({position: "topright"});
+        const options = [
+            {value: "all", label: "전체"},
+            {value: "1", label: "1km"},
+            {value: "3", label: "3km"},
+            {value: "5", label: "5km"}
+        ];
+
+        radiusControl.onAdd = () => {
+            const container = L.DomUtil.create("div", "map-radius-control");
+            mapRadiusControlElement = container;
+            container.setAttribute("aria-label", "지도 반경 필터");
+            container.innerHTML = `
+                <p>거리</p>
+                <div>
+                    ${options.map((option) => `
+                        <button type="button" data-radius="${option.value}">${option.label}</button>
+                    `).join("")}
+                </div>
+            `;
+
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+
+            mapRadiusButtons = Array.from(container.querySelectorAll("[data-radius]"));
+            mapRadiusButtons.forEach((button) => {
+                button.addEventListener("click", async () => {
+                    await applyRadius(button.dataset.radius);
+                });
+            });
+            syncRadiusControls();
+
+            return container;
+        };
+
+        radiusControl.addTo(map);
+    }
+
+    async function applyRadius(radius) {
+        setRadius(radius);
+        if (selectedRadius !== "all") {
+            selectedSido = "all";
+            selectedSigungu = "all";
+            filterSido.value = "all";
+            fillSelect(filterSigungu, "시/군/구 전체", []);
+            filterSigungu.disabled = true;
+        }
+        updateRadiusCircle();
+        await runSearch();
     }
 
     function initMap() {
@@ -894,6 +954,7 @@ function applyFilters() {
             maxZoom: 19,
             attribution: "&copy; OpenStreetMap"
         }).addTo(map);
+        addRadiusControl();
         addMarkerLegend();
 
         map.on("click", async (e) => {
@@ -908,11 +969,7 @@ function applyFilters() {
                 resetCenterButton.style.display = "";
             }
             if (selectedRadius === "all") {
-                const btn = radiusButtons.find((button) => button.dataset.radius === "1");
-                if (btn) {
-                    selectedRadius = "1";
-                    setActive(radiusButtons, btn);
-                }
+                setRadius("1");
             }
             updateRadiusCircle();
             await runSearch();
@@ -926,17 +983,7 @@ function applyFilters() {
 
     radiusButtons.forEach((button) => {
         button.addEventListener("click", async () => {
-            selectedRadius = button.dataset.radius;
-            setActive(radiusButtons, button);
-            if (selectedRadius !== "all") {
-                selectedSido = "all";
-                selectedSigungu = "all";
-                filterSido.value = "all";
-                fillSelect(filterSigungu, "시/군/구 전체", []);
-                filterSigungu.disabled = true;
-            }
-            updateRadiusCircle();
-            await runSearch();
+            await applyRadius(button.dataset.radius);
         });
     });
 
@@ -992,6 +1039,7 @@ function applyFilters() {
     filterToggle.addEventListener("click", () => {
         const collapsed = filtersBody.classList.toggle("collapsed");
         filterToggleIcon.textContent = collapsed ? "▼" : "▲";
+        filterToggle.setAttribute("aria-expanded", String(!collapsed));
     });
 
     resetBtn.addEventListener("click", async () => {
@@ -1002,7 +1050,7 @@ function applyFilters() {
         fillSelect(filterJobMid, "중분류 전체", []);
         filterJobMid.disabled = true;
         filterPayType.value = "all";
-        resultLimit.value = "10";
+        resultLimit.value = "50";
         document.getElementById("keywordInput").value = "";
 
         selectedSido = "all";
@@ -1011,10 +1059,9 @@ function applyFilters() {
         selectedJobMid = "all";
         selectedPayType = "all";
         selectedSort = "distance";
-        selectedRadius = DEFAULT_INITIAL_RADIUS;
+        setRadius(DEFAULT_INITIAL_RADIUS);
         selectedDong = "all";
 
-        setActive(radiusButtons, radiusButtons.find(b => b.dataset.radius === DEFAULT_INITIAL_RADIUS));
         setActive(dongButtons, dongButtons.find(b => b.dataset.dong === "all"));
         updateRadiusCircle();
 

@@ -41,23 +41,9 @@
 </header>
 
 <main class="page">
-    <section class="page-header">
-        <div>
-            <p class="eyebrow">Smart Recruit Map</p>
-            <h1>채용 공고</h1>
-            <p class="page-description">지도에서 위치를 확인하고, 조건에 맞는 공고를 빠르게 찾아보세요.</p>
-        </div>
-        <div class="page-header__meta">
-            <span>지도형 탐색</span>
-            <span>거리순 정렬</span>
-            <span>추천 마커</span>
-        </div>
-    </section>
-
     <section class="layout" th:with="jobCount=${#lists.size(jobPostings)}">
         <div class="map-panel" aria-label="채용 공고 지도">
             <div class="map-help">
-                <p>지도를 클릭하면 해당 위치 기준으로 반경 검색</p>
                 <button id="resetCenter" class="reset-center-button" type="button" style="display:none">중심 초기화</button>
             </div>
             <div id="jobMap"></div>
@@ -69,15 +55,15 @@
                 <button class="filter-button" type="button" id="recommendationsTab">맞춤 추천</button>
             </div>
             <input id="keywordInput" type="text" placeholder="공고 제목 검색..."
-                   style="width:100%;height:48px;padding:12px 20px;font-size:25px;border:1px solid #cfd6df;border-radius:6px;margin-bottom:0;box-sizing:border-box;">
-            <button type="button" id="filterToggle"
+                   style="width:100%;height:44px;padding:10px 16px;font-size:16px;border:1px solid #cfd6df;border-radius:6px;margin-bottom:0;box-sizing:border-box;">
+            <button type="button" id="filterToggle" aria-expanded="false" aria-controls="filtersBody"
                     style="width:100%;padding:10px 16px;border:none;border-bottom:1px solid #e5eaf0;
                            background:#f6f8fb;text-align:left;font-size:13px;font-weight:700;
                            color:#52606d;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
                 <span>필터</span>
-                <span id="filterToggleIcon">▲</span>
+                <span id="filterToggleIcon">▼</span>
             </button>
-            <div class="filters" id="filtersBody">
+            <div class="filters collapsed" id="filtersBody">
                 <div class="filter-group">
                     <p class="filter-title">지역 필터</p>
                     <div class="filter-row">
@@ -131,8 +117,8 @@
                 <div class="filter-actions">
                     <label class="result-limit-label" for="resultLimit">결과 수</label>
                     <select id="resultLimit">
-                        <option value="10" selected>10개</option>
-                        <option value="50">50개</option>
+                        <option value="10">10개</option>
+                        <option value="50" selected>50개</option>
                         <option value="100">100개</option>
                         <option value="all">전체</option>
                     </select>
