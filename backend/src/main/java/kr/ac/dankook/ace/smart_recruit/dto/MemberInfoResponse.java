@@ -24,4 +24,5 @@ public class MemberInfoResponse {
     private Boolean emailNotification;
     private String geminiApiKey;
     private Integer recommendationIntervalHours;
+    private String recommendationCustomPrompt;
 }
