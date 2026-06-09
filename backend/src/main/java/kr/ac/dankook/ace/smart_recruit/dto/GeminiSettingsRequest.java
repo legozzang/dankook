@@ -8,4 +8,5 @@ import lombok.NoArgsConstructor;
 public class GeminiSettingsRequest {
     private String geminiApiKey;
     private Integer intervalHours;
+    private String customPrompt;
 }

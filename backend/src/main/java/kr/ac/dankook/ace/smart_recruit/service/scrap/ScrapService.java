@@ -64,7 +64,8 @@ public class ScrapService {
                                     ? j.getPayType() + " " + String.format("%,d", j.getPayAmount()) + "원"
                                     : (j.getPayType() != null ? j.getPayType() : "급여 협의"),
                             j.getDeadline() != null && !j.getDeadline().isBlank() ? j.getDeadline() : "마감일 미정",
-                            scrap.getCreatedAt().toString()
+                            scrap.getCreatedAt().toString(),
+                            j.getStatus().name()
                     );
                 })
                 .toList();
@@ -84,6 +85,7 @@ public class ScrapService {
             String location,
             String salary,
             String deadline,
-            String scrappedAt
+            String scrappedAt,
+            String status
     ) {}
 }

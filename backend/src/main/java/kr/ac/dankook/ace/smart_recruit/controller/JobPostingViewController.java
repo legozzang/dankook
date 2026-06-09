@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.ArrayList;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +43,7 @@ public class JobPostingViewController {
     @GetMapping("/jobpostings")
     public String jobPostingList(
             @RequestParam(value = "focusId", required = false) String focusIdParam,
+            @AuthenticationPrincipal User user,
             Model model) {
 
         // ── focusId 파싱: null·공백·"undefined"·비숫자 모두 방어 ──────────────
@@ -82,8 +85,9 @@ public class JobPostingViewController {
         for (Object[] row : jobPostingRepository.findDistinctJobMajorMidPairs()) {
             String major = (String) row[0];
             String mid = row[1] != null ? (String) row[1] : "";
+            List<String> mids = jobTypeMidByMajor.computeIfAbsent(major, k -> new ArrayList<>());
             if (!mid.isBlank()) {
-                jobTypeMidByMajor.computeIfAbsent(major, k -> new ArrayList<>()).add(mid);
+                mids.add(mid);
             }
         }
 
@@ -91,12 +95,18 @@ public class JobPostingViewController {
         model.addAttribute("focusId", focusId != null ? String.valueOf(focusId) : null);
         model.addAttribute("payTypes", jobPostingRepository.findDistinctPayTypes());
         model.addAttribute("dongs", dongs);
-        model.addAttribute("sidos", new ArrayList<>(sigunguBySido.keySet()));
+        model.addAttribute("sidos", jobPostingRepository.findDistinctSidos());
         model.addAttribute("sigunguBySidoJson", JsonViewUtils.toJson(sigunguBySido));
         model.addAttribute("jobMajors", new ArrayList<>(jobTypeMidByMajor.keySet()));
         model.addAttribute("jobTypeMidByMajorJson", JsonViewUtils.toJson(jobTypeMidByMajor));
+        model.addAttribute("isAdmin", isAdmin(user));
 
         return "jobposting/list";
+    }
+
+    private boolean isAdmin(User user) {
+        return user != null && user.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 
     /**

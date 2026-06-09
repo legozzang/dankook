@@ -13,7 +13,27 @@
  */
 function getToken() {
     const cookieMatch = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
-    return cookieMatch ? cookieMatch[1] : (localStorage.getItem("accessToken") || "");
+    const token = cookieMatch ? cookieMatch[1] : (localStorage.getItem("accessToken") || "");
+    if (!token) return "";
+
+    try {
+        const payloadPart = token.split(".")[1];
+        if (!payloadPart) return "";
+
+        const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = base64.padEnd(base64.length + ((4 - base64.length % 4) % 4), "=");
+        const payload = JSON.parse(atob(padded));
+        if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("memberId");
+            document.cookie = "accessToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict";
+            return "";
+        }
+    } catch (e) {
+        return "";
+    }
+
+    return token;
 }
 
 /**

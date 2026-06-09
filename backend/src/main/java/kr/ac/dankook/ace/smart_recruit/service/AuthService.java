@@ -157,7 +157,7 @@ public class AuthService {
             throw new IllegalArgumentException("추천 갱신 주기는 1/3/6/12/24시간 중 하나여야 합니다.");
         }
 
-        member.updateGeminiSettings(request.getGeminiApiKey(), intervalHours);
+        member.updateGeminiSettings(request.getGeminiApiKey(), intervalHours, request.getCustomPrompt());
     }
 
     // 회원 정보 조회
@@ -182,7 +182,8 @@ public class AuthService {
                 member.getMinPayAmount(),
                 member.isEmailNotification(),
                 member.getGeminiApiKey(),
-                member.getRecommendationIntervalHours()
+                member.getRecommendationIntervalHours(),
+                member.getRecommendationCustomPrompt()
         );
     }
 }

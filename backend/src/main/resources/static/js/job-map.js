@@ -15,6 +15,10 @@ function updateAuthNav() {
         }
     }
 
+    function initAuthUI() {
+        updateAuthNav();
+    }
+
     function handleLogout() {
         if (confirm("로그아웃 하시겠습니까?")) {
             localStorage.removeItem("accessToken");
@@ -668,7 +672,7 @@ function updateAuthNav() {
     }
 
     async function fetchAndRenderRecommendations() {
-        const token = getAccessToken();
+        const token = getToken();
         if (!token) {
             cardsContainer.innerHTML = `<p class="empty">맞춤 추천은 로그인이 필요합니다.</p>`;
             syncCardsFromDom();
@@ -1110,6 +1114,7 @@ document.querySelector(".cards").addEventListener("click", async (event) => {
     }
 
     const id = Number(btn.dataset.id);
+    btn.disabled = true;
     try {
         const res = await fetch(`/api/scraps/toggle?jobPostingId=${id}`, {
             method: "POST",
@@ -1126,6 +1131,8 @@ document.querySelector(".cards").addEventListener("click", async (event) => {
         applyScrapState(btn, data.scraped);     // 해당 버튼만 즉시 갱신
     } catch (e) {
         alert("스크랩 처리에 실패했습니다.");
+    } finally {
+        btn.disabled = false;
     }
 });
 
@@ -1138,7 +1145,7 @@ document.querySelector(".cards").addEventListener("click", async (event) => {
 document.addEventListener("DOMContentLoaded", async () => {
 
     // ── 1. 인증 네비게이션 (동기, 즉시 반영) ─────────────────────────────
-    updateAuthNav();
+    initAuthUI();
 
     // ── 2. 지도 초기화 (Leaflet 없으면 스킵) ─────────────────────────────
     if (window.L) {
@@ -1167,5 +1174,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         await initScenarioLoggedIn(token);
     } else {
         await initScenarioCampus();
+    }
+});
+
+window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+        initAuthUI();
     }
 });

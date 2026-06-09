@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -359,9 +358,5 @@ public class AdminViewController {
 
     private String nvl(Object value) {
         return value == null ? "" : value.toString().trim();
-    }
-
-    private boolean contains(String value, String keyword) {
-        return value != null && value.toLowerCase().contains(Objects.requireNonNullElse(keyword, ""));
     }
 }
