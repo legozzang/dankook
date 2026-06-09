@@ -672,7 +672,7 @@ function updateAuthNav() {
     }
 
     async function fetchAndRenderRecommendations() {
-        const token = getAccessToken();
+        const token = getToken();
         if (!token) {
             cardsContainer.innerHTML = `<p class="empty">맞춤 추천은 로그인이 필요합니다.</p>`;
             syncCardsFromDom();
