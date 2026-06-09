@@ -164,6 +164,7 @@
       <div class="row" style="margin-top: 14px;">
         <button class="btn btn-primary" type="button" onclick="saveGeminiSettings()">AI 추천 설정 저장</button>
         <button class="btn btn-ghost" type="button" id="refreshRecommendationsBtn" onclick="refreshRecommendationsNow()">지금 갱신</button>
+        <button class="btn btn-ghost" type="button" onclick="clearRecommendations()">추천 초기화</button>
       </div>
       <p id="geminiStatus" class="status-text"></p>
       <p id="refreshStatus" class="status-text"></p>
@@ -634,6 +635,29 @@
       if (button) {
         button.disabled = false;
         button.textContent = '지금 갱신';
+      }
+    }
+  }
+
+  async function clearRecommendations() {
+    if (!confirm('저장된 AI 추천 공고를 모두 삭제하시겠습니까?')) return;
+
+    const status = document.getElementById('refreshStatus');
+    try {
+      const res = await fetch('/api/job-postings/recommendations', {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+
+      if (status) {
+        status.textContent = res.ok ? '추천 공고가 초기화되었습니다.' : '초기화에 실패했습니다.';
+        status.style.color = res.ok ? '#1f6fb2' : '#b42318';
+      }
+    } catch (error) {
+      console.error('추천 초기화 실패:', error);
+      if (status) {
+        status.textContent = '초기화에 실패했습니다.';
+        status.style.color = '#b42318';
       }
     }
   }

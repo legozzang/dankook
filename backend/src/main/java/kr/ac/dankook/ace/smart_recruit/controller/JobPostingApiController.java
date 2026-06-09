@@ -14,12 +14,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.transaction.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -105,6 +108,18 @@ public class JobPostingApiController {
                     return ResponseEntity.ok(result);
                 })
                 .orElseGet(() -> ResponseEntity.ok(List.of()));
+    }
+
+    @DeleteMapping("/recommendations")
+    @Transactional
+    public ResponseEntity<Void> clearRecommendations(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        memberRepository.findByEmail(user.getUsername())
+                .ifPresent(member -> userJobRecommendationRepository.deleteByMemberId(member.getId()));
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/recommendations/refresh")

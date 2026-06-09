@@ -22,6 +22,8 @@ public interface UserJobRecommendationRepository extends JpaRepository<UserJobRe
 
     void deleteByMemberIdAndJobPostingId(Long memberId, Long jobPostingId);
 
+    void deleteByMemberId(Long memberId);
+
     @Query("""
             SELECT r.jobPosting.id AS jobPostingId, r.recommendationReason AS reason
             FROM UserJobRecommendation r
