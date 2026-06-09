@@ -75,6 +75,9 @@ public class GeminiService {
         lines.add("선호 직종: " + preferredJobType(member));
         lines.add("희망 지역: " + preferredRegions(member));
         lines.add("급여 형태: " + defaultIfBlank(member.getPreferredPayType(), "무관"));
+        if (!isBlank(member.getRecommendationCustomPrompt())) {
+            lines.add("⭐ 추가 요청사항 (최우선 반영): " + member.getRecommendationCustomPrompt().trim());
+        }
         lines.add("");
         lines.add("[채용공고 목록]");
 

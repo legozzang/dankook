@@ -107,6 +107,9 @@ public class Member{
     @Column(name = "recommendation_interval_hours")
     private Integer recommendationIntervalHours;
 
+    @Column(name = "recommendation_custom_prompt", columnDefinition = "TEXT")
+    private String recommendationCustomPrompt;
+
     // 아래 두 어노테이션으로 시간 자동 입력
     @PrePersist
     public void prePersist() {
@@ -150,9 +153,10 @@ public class Member{
         }
     }
 
-    public void updateGeminiSettings(String apiKey, Integer intervalHours) {
+    public void updateGeminiSettings(String apiKey, Integer intervalHours, String customPrompt) {
         this.geminiApiKey = normalizeBlank(apiKey);
         this.recommendationIntervalHours = intervalHours;
+        this.recommendationCustomPrompt = normalizeBlank(customPrompt);
     }
 
     public void updatePreferences(

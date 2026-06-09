@@ -151,6 +151,12 @@
         <input id="geminiApiKey" type="password" autocomplete="off" placeholder="Gemini API 키 입력" />
       </div>
       <div class="form-field">
+        <label for="geminiCustomPrompt">추가 요청사항</label>
+        <textarea id="geminiCustomPrompt" rows="3"
+                  placeholder="복지 좋으면서 시급 높은 곳 위주로 추천해줘"
+                  style="width:100%;resize:vertical;padding:8px 12px;border:1px solid #cfd6df;border-radius:8px;font-size:14px;color:#172033;"></textarea>
+      </div>
+      <div class="form-field">
         <label for="geminiInterval">갱신 주기</label>
         <select id="geminiInterval">
           <option value="">비활성</option>
@@ -324,9 +330,12 @@
 
         const geminiApiKey = data.gemini_api_key ?? data.geminiApiKey ?? '';
         const recommendationInterval = data.recommendation_interval_hours ?? data.recommendationIntervalHours ?? '';
+        const recommendationCustomPrompt = data.recommendation_custom_prompt ?? data.recommendationCustomPrompt ?? '';
         const geminiApiKeyInput = document.getElementById('geminiApiKey');
+        const geminiCustomPromptTA = document.getElementById('geminiCustomPrompt');
         const geminiIntervalSelect = document.getElementById('geminiInterval');
         if (geminiApiKeyInput) geminiApiKeyInput.value = geminiApiKey || '';
+        if (geminiCustomPromptTA) geminiCustomPromptTA.value = recommendationCustomPrompt || '';
         if (geminiIntervalSelect) geminiIntervalSelect.value = recommendationInterval ? String(recommendationInterval) : '';
 
         profileBox.hidden = false;
@@ -531,7 +540,8 @@
         headers: authHeaders(),
         body: JSON.stringify({
           gemini_api_key: apiKey,
-          interval_hours: intervalValue ? Number(intervalValue) : null
+          interval_hours: intervalValue ? Number(intervalValue) : null,
+          custom_prompt: (document.getElementById('geminiCustomPrompt')?.value ?? '').trim()
         })
       });
 
