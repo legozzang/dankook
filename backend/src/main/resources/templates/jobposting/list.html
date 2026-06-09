@@ -44,7 +44,6 @@
     <section class="layout" th:with="jobCount=${#lists.size(jobPostings)}">
         <div class="map-panel" aria-label="채용 공고 지도">
             <div class="map-help">
-                <p>지도를 클릭하면 해당 위치 기준으로 반경 검색</p>
                 <button id="resetCenter" class="reset-center-button" type="button" style="display:none">중심 초기화</button>
             </div>
             <div id="jobMap"></div>

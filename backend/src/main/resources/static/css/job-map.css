@@ -248,20 +248,12 @@ body {
     border-radius: 50%;
 }
 
-.marker-legend-dot--closing {
-    background: #dc2626;
-}
-
 .marker-legend-dot--recommended {
     background: #FFC800FF;
 }
 
 .marker-legend-dot--default {
     background: #2563eb;
-}
-
-.marker-legend-dot--inferred {
-    background: #6b7280;
 }
 
 .map-radius-control {

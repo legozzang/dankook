@@ -856,10 +856,8 @@ function applyFilters() {
         legend.onAdd = () => {
             const container = L.DomUtil.create("div", "marker-legend");
             container.innerHTML = `
-                <div><span class="marker-legend-dot marker-legend-dot--closing"></span>마감 임박</div>
                 <div><span class="marker-legend-dot marker-legend-dot--recommended"></span>추천 공고</div>
                 <div><span class="marker-legend-dot marker-legend-dot--default"></span>일반 공고</div>
-                <div><span class="marker-legend-dot marker-legend-dot--inferred"></span>위치 정보 부족</div>
             `;
             return container;
         };
