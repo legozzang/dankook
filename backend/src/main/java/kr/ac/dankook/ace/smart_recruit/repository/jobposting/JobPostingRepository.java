@@ -64,51 +64,30 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
     @Query("""
             SELECT j FROM JobPosting j
             LEFT JOIN FETCH j.jobPostingAiSummary
-            WHERE ((:jobTypeMajor IS NOT NULL AND :jobTypeMajor <> '' AND j.jobTypeMajor = :jobTypeMajor)
-                OR (:jobTypeMid IS NOT NULL AND :jobTypeMid <> '' AND j.jobTypeMid = :jobTypeMid)
-                OR (:payType IS NOT NULL AND :payType <> '' AND j.payType = :payType)
-                OR (:regionSido1 IS NOT NULL AND :regionSido1 <> '' AND j.regionSido = :regionSido1)
-                OR (:regionSigungu1 IS NOT NULL AND :regionSigungu1 <> '' AND j.regionSigungu = :regionSigungu1)
-                OR (:regionSido2 IS NOT NULL AND :regionSido2 <> '' AND j.regionSido = :regionSido2)
-                OR (:regionSigungu2 IS NOT NULL AND :regionSigungu2 <> '' AND j.regionSigungu = :regionSigungu2)
-                OR (:regionSido3 IS NOT NULL AND :regionSido3 <> '' AND j.regionSido = :regionSido3)
-                OR (:regionSigungu3 IS NOT NULL AND :regionSigungu3 <> '' AND j.regionSigungu = :regionSigungu3))
-              AND j.payAmount IS NOT NULL AND j.payAmount > 0
+            WHERE j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN
               AND j.id NOT IN :excludeIds
-              AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN
-            ORDER BY j.payAmount DESC
-            """)
-    List<JobPosting> findRecommendationTargetsByPay(
-            @Param("jobTypeMajor") String jobTypeMajor,
-            @Param("jobTypeMid") String jobTypeMid,
-            @Param("payType") String payType,
-            @Param("regionSido1") String regionSido1,
-            @Param("regionSigungu1") String regionSigungu1,
-            @Param("regionSido2") String regionSido2,
-            @Param("regionSigungu2") String regionSigungu2,
-            @Param("regionSido3") String regionSido3,
-            @Param("regionSigungu3") String regionSigungu3,
-            @Param("excludeIds") List<Long> excludeIds,
-            Pageable pageable
-    );
-
-    @Query("""
-            SELECT j FROM JobPosting j
-            LEFT JOIN FETCH j.jobPostingAiSummary
-            WHERE ((:jobTypeMajor IS NOT NULL AND :jobTypeMajor <> '' AND j.jobTypeMajor = :jobTypeMajor)
+              AND (
+                ((:jobTypeMajor IS NULL OR :jobTypeMajor = '') AND (:jobTypeMid IS NULL OR :jobTypeMid = ''))
                 OR (:jobTypeMid IS NOT NULL AND :jobTypeMid <> '' AND j.jobTypeMid = :jobTypeMid)
-                OR (:payType IS NOT NULL AND :payType <> '' AND j.payType = :payType)
-                OR (:regionSido1 IS NOT NULL AND :regionSido1 <> '' AND j.regionSido = :regionSido1)
+                OR (:jobTypeMajor IS NOT NULL AND :jobTypeMajor <> '' AND j.jobTypeMajor = :jobTypeMajor)
+              )
+              AND (:payType IS NULL OR :payType = '' OR j.payType = :payType)
+              AND (
+                (
+                  (:regionSido1 IS NULL OR :regionSido1 = '') AND (:regionSigungu1 IS NULL OR :regionSigungu1 = '')
+                  AND (:regionSido2 IS NULL OR :regionSido2 = '') AND (:regionSigungu2 IS NULL OR :regionSigungu2 = '')
+                  AND (:regionSido3 IS NULL OR :regionSido3 = '') AND (:regionSigungu3 IS NULL OR :regionSigungu3 = '')
+                )
                 OR (:regionSigungu1 IS NOT NULL AND :regionSigungu1 <> '' AND j.regionSigungu = :regionSigungu1)
-                OR (:regionSido2 IS NOT NULL AND :regionSido2 <> '' AND j.regionSido = :regionSido2)
+                OR ((:regionSigungu1 IS NULL OR :regionSigungu1 = '') AND :regionSido1 IS NOT NULL AND :regionSido1 <> '' AND j.regionSido = :regionSido1)
                 OR (:regionSigungu2 IS NOT NULL AND :regionSigungu2 <> '' AND j.regionSigungu = :regionSigungu2)
-                OR (:regionSido3 IS NOT NULL AND :regionSido3 <> '' AND j.regionSido = :regionSido3)
-                OR (:regionSigungu3 IS NOT NULL AND :regionSigungu3 <> '' AND j.regionSigungu = :regionSigungu3))
-              AND j.id NOT IN :excludeIds
-              AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN
+                OR ((:regionSigungu2 IS NULL OR :regionSigungu2 = '') AND :regionSido2 IS NOT NULL AND :regionSido2 <> '' AND j.regionSido = :regionSido2)
+                OR (:regionSigungu3 IS NOT NULL AND :regionSigungu3 <> '' AND j.regionSigungu = :regionSigungu3)
+                OR ((:regionSigungu3 IS NULL OR :regionSigungu3 = '') AND :regionSido3 IS NOT NULL AND :regionSido3 <> '' AND j.regionSido = :regionSido3)
+              )
             ORDER BY j.createdAt DESC
             """)
-    List<JobPosting> findRecommendationTargetsByLatest(
+    List<JobPosting> findRecommendationTargets(
             @Param("jobTypeMajor") String jobTypeMajor,
             @Param("jobTypeMid") String jobTypeMid,
             @Param("payType") String payType,

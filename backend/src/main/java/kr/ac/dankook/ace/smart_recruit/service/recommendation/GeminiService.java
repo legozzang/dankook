@@ -1,7 +1,6 @@
 package kr.ac.dankook.ace.smart_recruit.service.recommendation;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,43 +16,35 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobPosting;
+import kr.ac.dankook.ace.smart_recruit.model.member.Member;
 
 @Service
 public class GeminiService {
 
     private static final String GEMINI_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent?key=";
-    private static final int BATCH_SIZE = 20;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public Map<Long, String> callGemini(String apiKey, List<JobPosting> postings) {
-        Map<Long, String> result = new LinkedHashMap<>();
+    public Map<Long, String> callGemini(String apiKey, Member member, List<JobPosting> postings) {
         if (isBlank(apiKey) || postings == null || postings.isEmpty()) {
-            return result;
+            return Map.of();
         }
 
-        for (int start = 0; start < postings.size(); start += BATCH_SIZE) {
-            List<JobPosting> batch = postings.subList(start, Math.min(start + BATCH_SIZE, postings.size()));
-            result.putAll(callBatch(apiKey, batch));
-        }
-        return result;
-    }
-
-    private Map<Long, String> callBatch(String apiKey, List<JobPosting> batch) {
         try {
-            String prompt = buildPrompt(batch);
+            String prompt = buildPrompt(member, postings);
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             Map<String, Object> body = Map.of(
                     "system_instruction", Map.of(
                             "parts", List.of(Map.of("text",
-                                    "너는 채용공고 추천 이유를 작성하는 도우미야. "
-                                            + "반드시 한국어로, 각 이유는 30자 이내로, "
-                                            + "마크다운/설명/주석 없이, 오직 JSON만 출력해라. "
-                                            + "형식: {\"1\":\"이유\",\"2\":\"이유\",...}"
+                                    "너는 구직자 맞춤 채용공고 추천 도우미야.\n"
+                                            + "주어진 공고 목록에서 구직자 선호 조건에 가장 잘 맞는 공고를 최대 10개 선택하고,\n"
+                                            + "각 선택 이유를 30자 이내 한국어로 작성해.\n"
+                                            + "마크다운·설명·주석 없이 JSON 배열만 출력해.\n"
+                                            + "형식: [{\"idx\":1,\"reason\":\"이유\"}, ...]"
                             ))
                     ),
                     "contents", List.of(Map.of(
@@ -66,17 +57,9 @@ public class GeminiService {
                     + " body 앞500=" + previewBody(response.getBody()));
 
             String text = extractText(response.getBody());
-            Map<String, String> parsed = parseReasonJson(cleanJsonText(text));
-            Map<Long, String> reasons = new LinkedHashMap<>();
-            for (int i = 0; i < batch.size(); i++) {
-                String reason = parsed.get(String.valueOf(i + 1));
-                if (!isBlank(reason)) {
-                    reasons.put(batch.get(i).getId(), reason.trim());
-                }
-            }
-            return reasons;
+            return parseReasonJson(cleanJsonText(text), postings);
         } catch (Exception e) {
-            System.err.println("[GeminiService] callBatch 실패: "
+            System.err.println("[GeminiService] callGemini 실패: "
                     + e.getClass().getSimpleName() + " - " + e.getMessage());
             return Map.of();
         }
@@ -86,18 +69,27 @@ public class GeminiService {
         return body != null ? body.substring(0, Math.min(500, body.length())) : "null";
     }
 
-    private String buildPrompt(List<JobPosting> postings) {
+    private String buildPrompt(Member member, List<JobPosting> postings) {
         List<String> lines = new ArrayList<>();
+        lines.add("[구직자 선호]");
+        lines.add("선호 직종: " + preferredJobType(member));
+        lines.add("희망 지역: " + preferredRegions(member));
+        lines.add("급여 형태: " + defaultIfBlank(member.getPreferredPayType(), "무관"));
+        lines.add("");
+        lines.add("[채용공고 목록]");
+
         for (int i = 0; i < postings.size(); i++) {
             JobPosting posting = postings.get(i);
             lines.add((i + 1) + ". 제목: " + value(posting.getTitle())
-                    + ", 직종: " + value(posting.getJobTypeDetail())
-                    + ", 급여: " + value(posting.getPayType()) + " " + value(posting.getPayAmount())
-                    + ", 복지: " + value(posting.getWelfare())
-                    + ", 지역: " + value(posting.getRegionSido()));
+                    + " | 회사: " + value(posting.getCompany())
+                    + " | 직종: " + postingJobType(posting)
+                    + " | 급여: " + salary(posting)
+                    + " | 지역: " + region(posting.getRegionSido(), posting.getRegionSigungu())
+                    + " | 마감: " + value(posting.getDeadline())
+                    + " | 복지: " + truncate(posting.getWelfare(), 100));
         }
 
-        return "채용공고 목록:\n" + String.join("\n", lines);
+        return String.join("\n", lines);
     }
 
     private String extractText(String responseBody) {
@@ -125,13 +117,20 @@ public class GeminiService {
         }
     }
 
-    private Map<String, String> parseReasonJson(String text) throws Exception {
-        Map<String, String> reasons = new LinkedHashMap<>();
+    private Map<Long, String> parseReasonJson(String text, List<JobPosting> postings) throws Exception {
+        Map<Long, String> reasons = new LinkedHashMap<>();
         JsonNode root = objectMapper.readTree(text);
-        Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> field = fields.next();
-            reasons.put(field.getKey(), field.getValue().asText(""));
+        if (!root.isArray()) {
+            return reasons;
+        }
+
+        for (JsonNode item : root) {
+            int idx = item.path("idx").asInt(0);
+            String reason = item.path("reason").asText("");
+            if (idx < 1 || idx > postings.size() || isBlank(reason)) {
+                continue;
+            }
+            reasons.put(postings.get(idx - 1).getId(), reason.trim());
         }
         return reasons;
     }
@@ -143,7 +142,81 @@ public class GeminiService {
                     .replaceFirst("^```\\s*", "")
                     .replaceFirst("\\s*```$", "");
         }
+        int start = cleaned.indexOf("[");
+        int end = cleaned.lastIndexOf("]");
+        if (start >= 0 && end >= start) {
+            cleaned = cleaned.substring(start, end + 1);
+        }
         return cleaned.trim();
+    }
+
+    private String preferredJobType(Member member) {
+        String major = value(member.getPreferredJobTypeMajor());
+        String mid = value(member.getPreferredJobTypeMid());
+        if (isBlank(major) && isBlank(mid)) {
+            return "무관";
+        }
+        if (isBlank(major)) {
+            return mid;
+        }
+        if (isBlank(mid)) {
+            return major;
+        }
+        return major + " > " + mid;
+    }
+
+    private String preferredRegions(Member member) {
+        List<String> regions = new ArrayList<>();
+        addRegion(regions, member.getDesiredRegionSido(), member.getDesiredRegionSigungu());
+        addRegion(regions, member.getDesiredRegion2Sido(), member.getDesiredRegion2Sigungu());
+        addRegion(regions, member.getDesiredRegion3Sido(), member.getDesiredRegion3Sigungu());
+        return regions.isEmpty() ? "무관" : String.join(", ", regions);
+    }
+
+    private void addRegion(List<String> regions, String sido, String sigungu) {
+        String region = !isBlank(sigungu) ? sigungu.trim() : value(sido);
+        if (!isBlank(region)) {
+            regions.add(region);
+        }
+    }
+
+    private String postingJobType(JobPosting posting) {
+        String major = value(posting.getJobTypeMajor());
+        String mid = value(posting.getJobTypeMid());
+        if (!isBlank(major) && !isBlank(mid)) {
+            return major + " > " + mid;
+        }
+        if (!isBlank(major)) {
+            return major;
+        }
+        if (!isBlank(mid)) {
+            return mid;
+        }
+        return value(posting.getJobTypeDetail());
+    }
+
+    private String salary(JobPosting posting) {
+        String payType = value(posting.getPayType());
+        String payAmount = posting.getPayAmount() == null ? "" : posting.getPayAmount() + "원";
+        String salary = (payType + " " + payAmount).trim();
+        return isBlank(salary) ? "미정" : salary;
+    }
+
+    private String region(String sido, String sigungu) {
+        String region = (value(sido) + " " + value(sigungu)).trim();
+        return isBlank(region) ? "미정" : region;
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (isBlank(value)) {
+            return "";
+        }
+        String trimmed = value.trim();
+        return trimmed.length() > maxLength ? trimmed.substring(0, maxLength) + "…" : trimmed;
+    }
+
+    private String defaultIfBlank(String value, String fallback) {
+        return isBlank(value) ? fallback : value.trim();
     }
 
     private String value(Object value) {

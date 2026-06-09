@@ -3,7 +3,6 @@ package kr.ac.dankook.ace.smart_recruit.service.recommendation;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -78,7 +77,7 @@ public class RecommendationScheduler {
             return 0;
         }
 
-        Map<Long, String> reasons = geminiService.callGemini(member.getGeminiApiKey(), postings);
+        Map<Long, String> reasons = geminiService.callGemini(member.getGeminiApiKey(), member, postings);
         if (reasons.isEmpty()) {
             return 0;
         }
@@ -116,9 +115,9 @@ public class RecommendationScheduler {
         if (excludeIds.isEmpty()) {
             excludeIds = List.of(0L);
         }
-        PageRequest limitTen = PageRequest.of(0, 10);
+        PageRequest limitFifty = PageRequest.of(0, 50);
 
-        List<JobPosting> byPay = jobPostingRepository.findRecommendationTargetsByPay(
+        return jobPostingRepository.findRecommendationTargets(
                 jobTypeMajor,
                 jobTypeMid,
                 payType,
@@ -129,26 +128,8 @@ public class RecommendationScheduler {
                 regionSido3,
                 regionSigungu3,
                 excludeIds,
-                limitTen
+                limitFifty
         );
-        List<JobPosting> byLatest = jobPostingRepository.findRecommendationTargetsByLatest(
-                jobTypeMajor,
-                jobTypeMid,
-                payType,
-                regionSido1,
-                regionSigungu1,
-                regionSido2,
-                regionSigungu2,
-                regionSido3,
-                regionSigungu3,
-                excludeIds,
-                limitTen
-        );
-
-        Map<Long, JobPosting> merged = new LinkedHashMap<>();
-        byPay.forEach(posting -> merged.put(posting.getId(), posting));
-        byLatest.forEach(posting -> merged.put(posting.getId(), posting));
-        return new ArrayList<>(merged.values());
     }
 
     private boolean shouldRun(Member member, LocalDateTime now) {
