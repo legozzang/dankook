@@ -6,6 +6,14 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class MemberInfoResponse {
+    public MemberInfoResponse(String email2, String nickname2, String desiredRegionSido2, String desiredRegionSigungu2,
+            String desiredRegionDong2, String desiredRegion2Sido2, String desiredRegion2Sigungu2,
+            String desiredRegion3Sido2, String desiredRegion3Sigungu2, String preferredJobTypeMajor2,
+            String preferredJobTypeMid2, String preferredJobTypeMinor2, String preferredJobTypeDetail2,
+            String preferredPayType2, Integer minPayAmount2, boolean emailNotification2, String geminiApiKey2,
+            Integer recommendationIntervalHours2, String recommendationCustomPrompt) {
+        //TODO Auto-generated constructor stub
+    }
     private String email;
     private String nickname;
     private String desiredRegionSido;

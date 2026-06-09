@@ -41,19 +41,6 @@
 </header>
 
 <main class="page">
-    <section class="page-header">
-        <div>
-            <p class="eyebrow">Smart Recruit Map</p>
-            <h1>채용 공고</h1>
-            <p class="page-description">지도에서 위치를 확인하고, 조건에 맞는 공고를 빠르게 찾아보세요.</p>
-        </div>
-        <div class="page-header__meta">
-            <span>지도형 탐색</span>
-            <span>거리순 정렬</span>
-            <span>추천 마커</span>
-        </div>
-    </section>
-
     <section class="layout" th:with="jobCount=${#lists.size(jobPostings)}">
         <div class="map-panel" aria-label="채용 공고 지도">
             <div class="map-help">
