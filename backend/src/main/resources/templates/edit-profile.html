@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Smart Recruit - 정보 수정</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -163,11 +165,18 @@
             <label>관심 지역</label>
             <p class="hint" style="margin-bottom:10px">관심 지역 1은 기본 지역이며, 관심 지역 2·3은 선택 입력입니다.</p>
             <div class="form-group">
-                <label>관심 지역 1</label>
+                <label>관심 지역 1 (내 거주지)</label>
                 <div class="grid-2">
                     <select id="region1Sido"><option value="">시/도</option></select>
                     <select id="region1Sigungu" disabled><option value="">시/군/구</option></select>
                 </div>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                    <input type="text" id="region1Detail" placeholder="상세 주소 (예: 죽전로 152 / OO아파트 101동)" style="flex:1;" />
+                    <button type="button" id="verifyAddressBtn" style="width:96px;flex-shrink:0;cursor:pointer;">주소 확인</button>
+                </div>
+                <p class="hint" style="margin-top:6px">상세 주소를 바꾸면 <strong>주소 확인</strong>을 눌러 위치를 다시 확정해주세요.</p>
+                <p id="addressStatus" style="margin:6px 0 0;font-size:13px;font-weight:700;"></p>
+                <div id="addressMap" style="display:none;height:200px;margin-top:8px;border:1px solid #d7dde4;border-radius:10px;overflow:hidden;"></div>
             </div>
             <div class="form-group">
                 <label>관심 지역 2</label>
@@ -223,7 +232,10 @@
         const KSCO_RAW = /*[[${kscoHierarchyJson}]]*/ '{}';
         const KSCO = typeof KSCO_RAW === 'string' ? JSON.parse(KSCO_RAW || '{}') : (KSCO_RAW || {});
         const SIGUNGU_BY_SIDO = JSON.parse(/*[[${sigunguBySidoJson}]]*/ '{}');
-        document.addEventListener('DOMContentLoaded', loadMemberInfo);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMemberInfo();
+            setupAddressVerification();
+        });
 
         // getToken() / authHeaders() → auth-utils.js 에서 전역 제공
 
@@ -293,6 +305,100 @@
             setRegionValue(1, data.desired_region_sido, data.desired_region_sigungu);
             setRegionValue(2, data.desired_region2_sido, data.desired_region2_sigungu);
             setRegionValue(3, data.desired_region3_sido, data.desired_region3_sigungu);
+            const detail = document.getElementById('region1Detail');
+            if (detail) {
+                const saved = data.home_address ?? data.homeAddress ?? '';
+                detail.value = saved;
+                // 이미 저장(지오코딩 완료)된 주소는 확인된 것으로 간주
+                if (saved) {
+                    addressVerified = true;
+                    verifiedAddress = saved;
+                }
+            }
+        }
+
+        // ── 주소 확인(지오코딩 미리보기) 상태 ─────────────────────────────
+        let addressVerified = false;
+        let verifiedAddress = '';
+        let previewMap = null;
+        let previewMarker = null;
+
+        function setAddressStatus(text, color) {
+            const el = document.getElementById('addressStatus');
+            el.textContent = text;
+            el.style.color = color;
+        }
+
+        function invalidateAddress() {
+            addressVerified = false;
+            verifiedAddress = '';
+            setAddressStatus('', '');
+            document.getElementById('addressMap').style.display = 'none';
+        }
+
+        function showPreviewMap(lat, lng) {
+            const mapEl = document.getElementById('addressMap');
+            mapEl.style.display = 'block';
+            if (!previewMap) {
+                previewMap = L.map(mapEl).setView([lat, lng], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+                }).addTo(previewMap);
+            } else {
+                previewMap.setView([lat, lng], 16);
+            }
+            if (previewMarker) previewMarker.remove();
+            previewMarker = L.marker([lat, lng]).addTo(previewMap);
+            setTimeout(() => previewMap.invalidateSize(), 100);
+        }
+
+        function setupAddressVerification() {
+            const detailInput = document.getElementById('region1Detail');
+            const verifyBtn = document.getElementById('verifyAddressBtn');
+
+            detailInput.addEventListener('input', invalidateAddress);
+            document.getElementById('region1Sido').addEventListener('change', invalidateAddress);
+            document.getElementById('region1Sigungu').addEventListener('change', invalidateAddress);
+
+            verifyBtn.addEventListener('click', async () => {
+                const sido = document.getElementById('region1Sido').value;
+                const sigungu = document.getElementById('region1Sigungu').value;
+                const detail = detailInput.value.trim();
+
+                if (!sido || !sigungu) {
+                    setAddressStatus('먼저 관심 지역 1의 시/도·시/군/구를 선택해주세요.', '#b42318');
+                    return;
+                }
+                if (detail.length < 5) {
+                    setAddressStatus('상세 주소를 더 구체적으로 입력해주세요. (예: 죽전로 152)', '#b42318');
+                    return;
+                }
+
+                setAddressStatus('위치 확인 중...', '#667085');
+                verifyBtn.disabled = true;
+                try {
+                    const res = await fetch('/auth/geocode/preview', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sido, sigungu, detail })
+                    });
+                    if (res.ok) {
+                        const coord = await res.json();
+                        addressVerified = true;
+                        verifiedAddress = detail;
+                        setAddressStatus('✓ 위치가 확인되었습니다. 지도를 확인해주세요.', '#1f6fb2');
+                        showPreviewMap(coord.latitude, coord.longitude);
+                    } else {
+                        invalidateAddress();
+                        setAddressStatus(await res.text() || '위치를 찾을 수 없습니다. 주소를 다시 확인해주세요.', '#b42318');
+                    }
+                } catch (e) {
+                    invalidateAddress();
+                    setAddressStatus('서버와 통신 중 오류가 발생했습니다.', '#b42318');
+                } finally {
+                    verifyBtn.disabled = false;
+                }
+            });
         }
 
         function readRegion(rank) {
@@ -390,6 +496,16 @@
                 updateData.desired_region_sido = regions[0].sido;
                 updateData.desired_region_sigungu = regions[0].sigungu;
                 updateData.desired_region_dong = '';
+                const region1Detail = document.getElementById('region1Detail');
+                if (region1Detail && region1Detail.value.trim()) {
+                    const detailValue = region1Detail.value.trim();
+                    // 주소가 확인되지 않았으면(또는 변경 후 미확인) 제출 차단
+                    if (!addressVerified || verifiedAddress !== detailValue) {
+                        alert('상세 주소 옆 [주소 확인] 버튼을 눌러 위치를 확정해주세요.');
+                        return;
+                    }
+                    updateData.home_address = detailValue;
+                }
                 updateData.desired_region2_sido = regions[1].sido;
                 updateData.desired_region2_sigungu = regions[1].sigungu;
                 updateData.desired_region3_sido = regions[2].sido;

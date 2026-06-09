@@ -19,6 +19,9 @@ public class MemberInfoResponse {
     private String desiredRegionSido;
     private String desiredRegionSigungu;
     private String desiredRegionDong;
+    private String homeAddress;
+    private Double homeLatitude;
+    private Double homeLongitude;
     private String desiredRegion2Sido;
     private String desiredRegion2Sigungu;
     private String desiredRegion3Sido;

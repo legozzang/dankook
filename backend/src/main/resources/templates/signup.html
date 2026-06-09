@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart Recruit - 회원가입</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root{
       --bg:#f3f5f7; --card:#fff; --line:#d7dde4; --text:#1f2937; --muted:#667085;
@@ -50,11 +52,18 @@
           <p class="hint">관심 지역 1은 필수이며, 관심 지역 2·3은 선택 입력입니다.</p>
 
           <div class="region-group">
-            <strong>관심 지역 1</strong>
+            <strong>관심 지역 1 (내 거주지)</strong>
             <div class="region-row">
               <select id="region1Sido" required><option value="">시/도</option></select>
               <select id="region1Sigungu" required disabled><option value="">시/군/구</option></select>
             </div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <input type="text" id="region1Detail" required placeholder="상세 주소 (예: 죽전로 152 / OO아파트 101동)" style="flex:1;" />
+              <button type="button" id="verifyAddressBtn" style="width:96px;height:44px;border:1px solid var(--primary);border-radius:10px;background:#eaf3fb;color:var(--primary);font-weight:800;cursor:pointer;flex-shrink:0;">주소 확인</button>
+            </div>
+            <p class="hint" style="margin-top:6px;">시/도·시/군/구 선택 후 상세 주소를 입력하고 <strong>주소 확인</strong>을 눌러 위치를 확정해주세요.</p>
+            <p id="addressStatus" style="margin:6px 0 0;font-size:13px;font-weight:700;"></p>
+            <div id="addressMap" style="display:none;height:200px;margin-top:8px;border:1px solid var(--line);border-radius:10px;overflow:hidden;"></div>
           </div>
 
           <div class="region-group">
@@ -83,9 +92,95 @@
   <script th:inline="javascript">
     const SIGUNGU_BY_SIDO = JSON.parse(/*[[${sigunguBySidoJson}]]*/ '{}');
 
+    // ── 주소 확인(지오코딩 미리보기) 상태 ─────────────────────────────
+    let addressVerified = false;   // 주소 확인 통과 여부
+    let verifiedAddress = '';      // 확인을 통과한 상세주소 문자열
+    let previewMap = null;
+    let previewMarker = null;
+
     document.addEventListener('DOMContentLoaded', () => {
       [1, 2, 3].forEach(setupRegionCascade);
+      setupAddressVerification();
     });
+
+    function setAddressStatus(text, color) {
+      const el = document.getElementById('addressStatus');
+      el.textContent = text;
+      el.style.color = color;
+    }
+
+    function invalidateAddress() {
+      addressVerified = false;
+      verifiedAddress = '';
+      setAddressStatus('', '');
+      document.getElementById('addressMap').style.display = 'none';
+    }
+
+    function showPreviewMap(lat, lng) {
+      const mapEl = document.getElementById('addressMap');
+      mapEl.style.display = 'block';
+      if (!previewMap) {
+        previewMap = L.map(mapEl).setView([lat, lng], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19, attribution: '&copy; OpenStreetMap'
+        }).addTo(previewMap);
+      } else {
+        previewMap.setView([lat, lng], 16);
+      }
+      if (previewMarker) previewMarker.remove();
+      previewMarker = L.marker([lat, lng]).addTo(previewMap);
+      setTimeout(() => previewMap.invalidateSize(), 100); // 숨김→표시 직후 렌더 보정
+    }
+
+    function setupAddressVerification() {
+      const detailInput = document.getElementById('region1Detail');
+      const verifyBtn = document.getElementById('verifyAddressBtn');
+
+      // 주소·지역이 바뀌면 재확인 필요
+      detailInput.addEventListener('input', invalidateAddress);
+      document.getElementById('region1Sido').addEventListener('change', invalidateAddress);
+      document.getElementById('region1Sigungu').addEventListener('change', invalidateAddress);
+
+      verifyBtn.addEventListener('click', async () => {
+        const sido = document.getElementById('region1Sido').value;
+        const sigungu = document.getElementById('region1Sigungu').value;
+        const detail = detailInput.value.trim();
+
+        if (!sido || !sigungu) {
+          setAddressStatus('먼저 관심 지역 1의 시/도·시/군/구를 선택해주세요.', '#b42318');
+          return;
+        }
+        if (detail.length < 5) {
+          setAddressStatus('상세 주소를 더 구체적으로 입력해주세요. (예: 죽전로 152)', '#b42318');
+          return;
+        }
+
+        setAddressStatus('위치 확인 중...', '#667085');
+        verifyBtn.disabled = true;
+        try {
+          const res = await fetch('/auth/geocode/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sido, sigungu, detail })
+          });
+          if (res.ok) {
+            const coord = await res.json();
+            addressVerified = true;
+            verifiedAddress = detail;
+            setAddressStatus('✓ 위치가 확인되었습니다. 지도를 확인해주세요.', '#1f6fb2');
+            showPreviewMap(coord.latitude, coord.longitude);
+          } else {
+            invalidateAddress();
+            setAddressStatus(await res.text() || '위치를 찾을 수 없습니다. 주소를 다시 확인해주세요.', '#b42318');
+          }
+        } catch (e) {
+          invalidateAddress();
+          setAddressStatus('서버와 통신 중 오류가 발생했습니다.', '#b42318');
+        } finally {
+          verifyBtn.disabled = false;
+        }
+      });
+    }
 
     function resetSelect(select, placeholder) {
       select.innerHTML = `<option value="">${placeholder}</option>`;
@@ -158,6 +253,18 @@
         return;
       }
 
+      const homeAddress = document.getElementById('region1Detail').value.trim();
+      if (!homeAddress) {
+        errorDiv.textContent = '관심 지역 1의 상세 주소를 입력해주세요.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      if (!addressVerified || verifiedAddress !== homeAddress) {
+        errorDiv.textContent = '상세 주소 옆 [주소 확인] 버튼을 눌러 위치를 확정해주세요.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
       const signupData = {
         email: document.getElementById('email').value,
         password: document.getElementById('password').value,
@@ -165,6 +272,7 @@
         role: 'SEEKER',
         desired_region_sido: regions[0].sido,
         desired_region_sigungu: regions[0].sigungu,
+        home_address: homeAddress,
         desired_region2_sido: regions[1].sido || null,
         desired_region2_sigungu: regions[1].sigungu || null,
         desired_region3_sido: regions[2].sido || null,

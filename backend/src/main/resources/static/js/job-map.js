@@ -49,6 +49,8 @@ function updateAuthNav() {
             const preferredMid = profile.preferredJobTypeMid ?? profile.preferred_job_type_mid;
             const preferredPayType = profile.preferredPayType ?? profile.preferred_pay_type;
             const minPayAmount    = profile.minPayAmount    ?? profile.min_pay_amount;
+            const homeLat = profile.homeLatitude  ?? profile.home_latitude;
+            const homeLng = profile.homeLongitude ?? profile.home_longitude;
 
             userPreferences = {
                 regions: [
@@ -59,7 +61,9 @@ function updateAuthNav() {
                 jobMajor:     preferredMajor    || "",
                 jobMid:       preferredMid      || "",
                 payType:      preferredPayType  || "",
-                minPayAmount: Number(minPayAmount) > 0 ? Number(minPayAmount) : 0
+                minPayAmount: Number(minPayAmount) > 0 ? Number(minPayAmount) : 0,
+                homeLat:      Number.isFinite(Number(homeLat)) ? Number(homeLat) : null,
+                homeLng:      Number.isFinite(Number(homeLng)) ? Number(homeLng) : null
             };
     }
 
@@ -91,10 +95,18 @@ function updateAuthNav() {
         try {
             await _fetchAndSetPreferences(token);
 
-            const hasRegionPref = Boolean(userPreferences.regions?.[0]?.sido);
-            const hasJobPref    = Boolean(userPreferences.jobMajor);
+            const hasHomeLocation = userPreferences.homeLat != null && userPreferences.homeLng != null;
+            const hasRegionPref   = Boolean(userPreferences.regions?.[0]?.sido);
+            const hasJobPref      = Boolean(userPreferences.jobMajor);
 
-            if (hasRegionPref || hasJobPref) {
+            if (hasHomeLocation) {
+                // [우선] 거주지 좌표 기준 반경 필터 — 내 위치 중심 3km
+                initialResultsLoaded = true;
+                setHomeCenter(userPreferences.homeLat, userPreferences.homeLng);
+                applyInitialPreferenceFilters(false); // 지역은 반경으로 대체, 직종·급여만 반영
+                await runSearch();
+            } else if (hasRegionPref || hasJobPref) {
+                // 거주지 좌표가 없으면 기존 시/군/구 이름 기반 필터
                 setRadius("all");
                 updateRadiusCircle();
                 applyInitialPreferenceFilters();
@@ -107,6 +119,24 @@ function updateAuthNav() {
             console.warn("[시나리오2] 선호 정보 조회 실패, 단국대 기본 필터 적용:", e);
             await initScenarioCampus();
         }
+    }
+
+    /**
+     * 거주지 좌표를 지도 검색 중심(customCenter)으로 설정하고 반경 3km로 맞춘다.
+     * 지도 클릭 핸들러와 동일하게 📍 마커·반경 원·중심 초기화 버튼을 표시한다.
+     */
+    function setHomeCenter(lat, lng) {
+        customCenter = {lat, lng};
+        if (map) {
+            if (customMarker) customMarker.remove();
+            customMarker = L.marker([lat, lng], {
+                icon: L.divIcon({className: "custom-center-icon", html: "📍", iconSize: [24, 24]})
+            }).addTo(map);
+            map.setView([lat, lng], 14);
+        }
+        if (resetCenterButton) resetCenterButton.style.display = "";
+        setRadius(DEFAULT_INITIAL_RADIUS); // "3"km
+        updateRadiusCircle();
     }
 
     /**
@@ -167,7 +197,9 @@ function updateAuthNav() {
         jobMajor:     "",
         jobMid:       "",
         payType:      "",
-        minPayAmount: 0
+        minPayAmount: 0,
+        homeLat:      null,
+        homeLng:      null
     };
     let customCenter = null;
     let customMarker = null;
@@ -252,11 +284,11 @@ function updateAuthNav() {
 
     /**
      * 회원 선호 정보를 필터 UI에 반영한다.
-     * initScenarioLoggedIn() 에서만 호출 — shouldApplyInitialPreferences() 분기 제거됨.
+     * @param {boolean} includeRegion 거주지 반경 모드에서는 false로 호출하여 시/도·시/군/구는 건드리지 않는다.
      */
-    function applyInitialPreferenceFilters() {
-        // [1] 선호 지역 → 시/도 + 시/군/구 드롭다운 세팅
-        if (userPreferences.regions?.length > 0) {
+    function applyInitialPreferenceFilters(includeRegion = true) {
+        // [1] 선호 지역 → 시/도 + 시/군/구 드롭다운 세팅 (반경 모드에서는 생략)
+        if (includeRegion && userPreferences.regions?.length > 0) {
             const primary = userPreferences.regions[0];
             if (primary.sido) {
                 selectedSido = primary.sido;
