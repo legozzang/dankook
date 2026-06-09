@@ -14,6 +14,8 @@ import kr.ac.dankook.ace.smart_recruit.model.member.Member;
 import kr.ac.dankook.ace.smart_recruit.model.member.Role;
 import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
 import kr.ac.dankook.ace.smart_recruit.security.jwt.JwtTokenProvider;
+import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService;
+import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.Coordinate;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -24,6 +26,45 @@ public class AuthService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final GeocodingService geocodingService;
+
+    /**
+     * 시/도 + 시/군/구 + 상세주소를 지오코딩한다. 검증 로직 공통 진입점.
+     * 빈 값·너무 짧은 값·변환 실패는 모두 IllegalArgumentException으로 거부한다.
+     */
+    public Coordinate geocodeHome(String sido, String sigungu, String detailAddress) {
+        if (detailAddress == null || detailAddress.isBlank()) {
+            throw new IllegalArgumentException("상세 주소를 입력해주세요.");
+        }
+        String trimmed = detailAddress.trim();
+        if (trimmed.length() < 5) {
+            throw new IllegalArgumentException("상세 주소를 더 구체적으로 입력해주세요. (예: 죽전로 152)");
+        }
+
+        String fullAddress = String.join(" ",
+                sido == null ? "" : sido.trim(),
+                sigungu == null ? "" : sigungu.trim(),
+                trimmed).trim();
+
+        return geocodingService.geocode(fullAddress)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "입력하신 상세 주소의 위치를 찾을 수 없습니다. 주소를 다시 확인해주세요."));
+    }
+
+    /**
+     * 회원가입·수정 전 주소 미리보기용. 좌표만 변환해 반환(저장하지 않음).
+     */
+    public Coordinate previewHomeLocation(String sido, String sigungu, String detailAddress) {
+        return geocodeHome(sido, sigungu, detailAddress);
+    }
+
+    /**
+     * 지오코딩 후 Member에 거주지 좌표를 반영한다. 변환 실패 시 가입·수정을 거부한다.
+     */
+    private void applyHomeLocation(Member member, String sido, String sigungu, String detailAddress) {
+        Coordinate coordinate = geocodeHome(sido, sigungu, detailAddress);
+        member.updateHomeLocation(detailAddress.trim(), coordinate.latitude(), coordinate.longitude());
+    }
 
     // 로그인
     public TokenResponse login(LoginRequest request) {
@@ -85,6 +126,12 @@ public class AuthService {
                 .desiredRegion3Sigungu(request.getDesiredRegion3Sigungu())
                 .build();
 
+        // 4. 관심 지역 1 상세 주소 → 거주지 좌표 지오코딩 후 반영
+        applyHomeLocation(member,
+                request.getDesiredRegionSido(),
+                request.getDesiredRegionSigungu(),
+                request.getHomeAddress());
+
         // 데이터베이스에 저장 후 해당 member의 id를 리턴
         Member savedMember = memberRepository.save(member);
         return savedMember.getId();
@@ -140,6 +187,14 @@ public class AuthService {
                 request.getMinPayAmount()
         );
         member.updateEmailNotification(request.getEmailNotification());
+
+        // 관심 지역 1 상세 주소가 전달되면 거주지 좌표 재지오코딩
+        if (request.getHomeAddress() != null && !request.getHomeAddress().isBlank()) {
+            applyHomeLocation(member,
+                    request.getDesiredRegionSido() != null ? request.getDesiredRegionSido() : member.getDesiredRegionSido(),
+                    request.getDesiredRegionSigungu() != null ? request.getDesiredRegionSigungu() : member.getDesiredRegionSigungu(),
+                    request.getHomeAddress());
+        }
     }
 
     @Transactional
@@ -170,6 +225,9 @@ public class AuthService {
                 member.getDesiredRegionSido(),
                 member.getDesiredRegionSigungu(),
                 member.getDesiredRegionDong(),
+                member.getHomeAddress(),
+                member.getHomeLatitude(),
+                member.getHomeLongitude(),
                 member.getDesiredRegion2Sido(),
                 member.getDesiredRegion2Sigungu(),
                 member.getDesiredRegion3Sido(),

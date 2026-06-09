@@ -21,6 +21,7 @@ import jakarta.validation.Valid;
 import kr.ac.dankook.ace.smart_recruit.dto.*;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.service.AuthService;
+import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.Coordinate;
 import lombok.RequiredArgsConstructor;
 
 
@@ -85,6 +86,19 @@ public class AuthController {
         // 회원가입 성공 시 201 상태코드와 함께 ID를 리턴
         Long memberId = authService.signUp(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(memberId);
+    }
+
+    /**
+     * 거주지 상세주소 지오코딩 미리보기.
+     * 변환 성공 시 좌표를 반환, 실패 시 GlobalExceptionHandler가 400 + 메시지로 응답.
+     * (회원가입 화면에서 호출하므로 SecurityConfig에서 permitAll 처리)
+     */
+    @PostMapping("/geocode/preview")
+    @ResponseBody
+    public ResponseEntity<Coordinate> previewGeocode(@RequestBody GeocodePreviewRequest request){
+        Coordinate coordinate = authService.previewHomeLocation(
+                request.getSido(), request.getSigungu(), request.getDetail());
+        return ResponseEntity.ok(coordinate);
     }
 
     @DeleteMapping("/delete/me")
