@@ -16,6 +16,7 @@ import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
 import kr.ac.dankook.ace.smart_recruit.security.jwt.JwtTokenProvider;
 import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService;
 import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.Coordinate;
+import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.ReverseGeocodeResult;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -56,6 +57,11 @@ public class AuthService {
      */
     public Coordinate previewHomeLocation(String sido, String sigungu, String detailAddress) {
         return geocodeHome(sido, sigungu, detailAddress);
+    }
+
+    public ReverseGeocodeResult previewReverseGeocode(double lat, double lng) {
+        return geocodingService.reverseGeocode(lat, lng)
+                .orElseThrow(() -> new IllegalArgumentException("해당 위치의 주소를 찾을 수 없습니다."));
     }
 
     /**

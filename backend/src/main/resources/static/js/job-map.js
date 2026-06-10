@@ -62,8 +62,8 @@ function updateAuthNav() {
                 jobMid:       preferredMid      || "",
                 payType:      preferredPayType  || "",
                 minPayAmount: Number(minPayAmount) > 0 ? Number(minPayAmount) : 0,
-                homeLat:      Number.isFinite(Number(homeLat)) ? Number(homeLat) : null,
-                homeLng:      Number.isFinite(Number(homeLng)) ? Number(homeLng) : null
+                homeLat:      (homeLat != null && Number.isFinite(Number(homeLat))) ? Number(homeLat) : null,
+                homeLng:      (homeLng != null && Number.isFinite(Number(homeLng))) ? Number(homeLng) : null
             };
     }
 
@@ -634,7 +634,7 @@ function updateAuthNav() {
         const lat = Number(card.dataset.lat);
         const lng = Number(card.dataset.lng);
 
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        if (Number.isNaN(lat) || Number.isNaN(lng) || (lat === 0 && lng === 0)) {
             return null;
         }
 
@@ -801,7 +801,7 @@ function applyFilters() {
         const isExactLocation = card.dataset.exactLocation === "true";
         const lat = Number(card.dataset.lat);
         const lng = Number(card.dataset.lng);
-        const hasValidPoint = isExactLocation && !Number.isNaN(lat) && !Number.isNaN(lng);
+        const hasValidPoint = isExactLocation && !Number.isNaN(lat) && !Number.isNaN(lng) && !(lat === 0 && lng === 0);
 
         const point = {lat, lng};
 
