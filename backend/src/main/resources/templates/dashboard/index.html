@@ -2,7 +2,7 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>관리자 대시보드 | Smart Recruit</title>
+    <title>대시보드 | Smart Recruit</title>
     <style>
         body { margin: 0; background: #f6f7f9; color: #1f2937; font-family: Arial, "Noto Sans KR", sans-serif; }
         .page { max-width: 1180px; margin: 0 auto; padding: 32px 20px; }
@@ -60,8 +60,8 @@
         <nav class="site-nav">
             <a class="site-nav__link" href="/jobpostings">채용 공고</a>
             <a class="site-nav__link" href="/communities">커뮤니티</a>
-            <a class="site-nav__link" href="/dashboard">대시보드</a>
-            <a class="site-nav__link active" href="/admin/dashboard">관리자</a>
+            <a class="site-nav__link active" href="/dashboard">대시보드</a>
+            <a class="site-nav__link" href="/admin/dashboard" id="adminLink" style="display:none">관리자</a>
         </nav>
         <div class="auth-actions">
             <div id="guestMenu"><a class="write-button" href="/auth/login">로그인</a></div>
@@ -73,14 +73,9 @@
     </div>
 </header>
 <main class="page">
-    <h1>관리자 대시보드</h1>
-    <nav>
-        <a class="active" href="/admin/dashboard">대시보드</a>
-        <a href="/admin/members">회원 관리</a>
-        <a href="/admin/job-postings">공고 관리</a>
-    </nav>
+    <h1>대시보드</h1>
 
-    <form class="filters" method="get" action="/admin/dashboard">
+    <form class="filters" method="get" action="/dashboard">
         <select name="regionSido" id="dSido" onchange="updateSigungu('dSido', 'dSigungu')">
             <option value="">전체 지역</option>
             <option th:each="sido : ${sidoList}" th:value="${sido}" th:text="${sido}" th:selected="${sido == selectedSido}">서울</option>
@@ -100,7 +95,7 @@
             <option th:each="pt : ${payTypeList}" th:value="${pt}" th:text="${pt}" th:selected="${pt == selectedPayType}">월급</option>
         </select>
         <button type="submit">적용</button>
-        <a href="/admin/dashboard">초기화</a>
+        <a href="/dashboard">초기화</a>
     </form>
 
     <section class="stats">
@@ -247,6 +242,9 @@
         const token = getToken();
         document.getElementById("guestMenu").style.display = token ? "none" : "";
         document.getElementById("userMenu").style.display = token ? "flex" : "none";
+        if (isAdmin && isAdmin()) {
+            document.getElementById("adminLink").style.display = "";
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
