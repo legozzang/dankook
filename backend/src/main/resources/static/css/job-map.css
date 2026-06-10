@@ -252,6 +252,10 @@ body {
     background: #FFC800FF;
 }
 
+.marker-legend-dot--closing-soon {
+    background: #dc2626;
+}
+
 .marker-legend-dot--default {
     background: #2563eb;
 }

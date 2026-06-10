@@ -62,8 +62,8 @@ function updateAuthNav() {
                 jobMid:       preferredMid      || "",
                 payType:      preferredPayType  || "",
                 minPayAmount: Number(minPayAmount) > 0 ? Number(minPayAmount) : 0,
-                homeLat:      Number.isFinite(Number(homeLat)) ? Number(homeLat) : null,
-                homeLng:      Number.isFinite(Number(homeLng)) ? Number(homeLng) : null
+                homeLat:      (homeLat != null && Number.isFinite(Number(homeLat))) ? Number(homeLat) : null,
+                homeLng:      (homeLng != null && Number.isFinite(Number(homeLng))) ? Number(homeLng) : null
             };
     }
 
@@ -573,12 +573,7 @@ function updateAuthNav() {
     }
 
     function isRecommendedJob(card) {
-        const matchesRegion = matchesPreferredRegion(card);
-        const matchesJobType = matchesPreference(card.dataset.jobMajor, userPreferences.jobMajor) &&
-            (!userPreferences.jobMid || card.dataset.jobMid === userPreferences.jobMid);
-
-        // TODO: 추천 여부 전용 필드(recommended, recommendationScore 등)가 API/DTO에 노출되면 이 조건보다 우선 사용한다.
-        return matchesRegion || matchesJobType;
+        return String(card.dataset.recommendationReason ?? "").trim() !== "";
     }
 
     function getMarkerStatus(card, lat, lng) {
@@ -634,7 +629,7 @@ function updateAuthNav() {
         const lat = Number(card.dataset.lat);
         const lng = Number(card.dataset.lng);
 
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        if (Number.isNaN(lat) || Number.isNaN(lng) || (lat === 0 && lng === 0)) {
             return null;
         }
 
@@ -801,7 +796,7 @@ function applyFilters() {
         const isExactLocation = card.dataset.exactLocation === "true";
         const lat = Number(card.dataset.lat);
         const lng = Number(card.dataset.lng);
-        const hasValidPoint = isExactLocation && !Number.isNaN(lat) && !Number.isNaN(lng);
+        const hasValidPoint = isExactLocation && !Number.isNaN(lat) && !Number.isNaN(lng) && !(lat === 0 && lng === 0);
 
         const point = {lat, lng};
 
@@ -889,6 +884,7 @@ function applyFilters() {
             const container = L.DomUtil.create("div", "marker-legend");
             container.innerHTML = `
                 <div><span class="marker-legend-dot marker-legend-dot--recommended"></span>추천 공고</div>
+                <div><span class="marker-legend-dot marker-legend-dot--closing-soon"></span>마감임박</div>
                 <div><span class="marker-legend-dot marker-legend-dot--default"></span>일반 공고</div>
             `;
             return container;

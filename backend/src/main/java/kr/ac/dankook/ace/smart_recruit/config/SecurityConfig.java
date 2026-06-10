@@ -46,6 +46,7 @@ public class SecurityConfig {
                                 "/auth/signup",
                                 "/auth/login",
                                 "/auth/geocode/preview",
+                                "/auth/geocode/reverse",
                                 "/auth/mypage",
                                 "/main", 
                                 "/jobs/list",
@@ -56,7 +57,8 @@ public class SecurityConfig {
                                 // [임시] 로컬 테스트용 — 채용공고 화면·AI 파이프라인 업로드 경로 인증 해제
                                 // TODO: 운영 전 팀원과 협의 후 적절한 권한 정책으로 교체 필요
                                 "/api/job-postings",
-                                "/api/job-postings/**"
+                                "/api/job-postings/**",
+                                "/error"
                                 ).permitAll()
                 
                 // 정적 리소스 (CSS, JS, 이미지 등)도 모두 허용
@@ -80,10 +82,19 @@ public class SecurityConfig {
             .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
                             UsernamePasswordAuthenticationFilter.class)
 
-            // 5. 비인증 REST 요청 → 302 리다이렉트 대신 401 Unauthorized 반환
+            // 5. 브라우저 페이지 요청은 로그인으로, API 요청은 상태 코드로 응답
             .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((request, response, authException) ->
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")));
+                .authenticationEntryPoint((request, response, authException) -> {
+                    String accept = request.getHeader("Accept");
+                    if (accept != null && accept.contains("text/html")) {
+                        String redirectUrl = request.getRequestURI();
+                        response.sendRedirect("/auth/login?redirect=" + redirectUrl);
+                    } else {
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                    }
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) ->
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden")));
 
         return http.build();
     }

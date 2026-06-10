@@ -32,7 +32,9 @@ public class CommunityService {
 
     public List<CommunityDto> list(Category category, String keyword) {
         String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
-        List<Community> communities = communityRepository.findAllWithMember(category, normalizedKeyword);
+        List<Community> communities = (category == null)
+                ? communityRepository.findAllWithMember(normalizedKeyword)
+                : communityRepository.findByCategoryWithMember(category, normalizedKeyword);
         Map<Long, Long> commentCounts = commentCounts(communities);
         return communities.stream()
                 .map(community -> toDto(community, commentCounts.getOrDefault(community.getId(), 0L)))
@@ -57,18 +59,16 @@ public class CommunityService {
         List<CommunityComment> topLevel = communityCommentRepository.findTopLevelByCommunityIdWithMember(id);
         List<CommunityComment> replyList = communityCommentRepository.findRepliesWithMemberByCommunityId(id);
         Map<Long, List<CommunityComment>> byParentId = replyList.stream()
-                .collect(Collectors.groupingBy(reply -> reply.getParent().getId()));
-        List<CommentDto> comments = topLevel.stream()
-                .map(comment -> {
-                    List<ReplyDto> directReplies = byParentId.getOrDefault(comment.getId(), List.of()).stream()
-                            .map(reply -> toReplyDto(reply, byParentId.getOrDefault(reply.getId(), List.of()).stream()
-                                    .map(subReply -> toReplyDto(subReply, List.of()))
-                                    .toList()))
-                            .toList();
-                    return toCommentDto(comment, directReplies);
-                })
+                .collect(Collectors.groupingBy(comment -> comment.getParent().getId()));
+        return topLevel.stream()
+                .map(comment -> toCommentDto(comment, buildReplyDtos(comment.getId(), byParentId)))
                 .toList();
-        return comments;
+    }
+
+    private List<ReplyDto> buildReplyDtos(Long parentId, Map<Long, List<CommunityComment>> byParentId) {
+        return byParentId.getOrDefault(parentId, List.of()).stream()
+                .map(reply -> toReplyDto(reply, buildReplyDtos(reply.getId(), byParentId)))
+                .toList();
     }
 
     @Transactional
@@ -303,6 +303,9 @@ public class CommunityService {
             LocalDateTime createdAt,
             List<ReplyDto> replies
     ) {
+        public int totalReplyCount() {
+            return replies.stream().mapToInt(ReplyDto::totalCount).sum();
+        }
     }
 
     public record ReplyDto(
@@ -313,5 +316,8 @@ public class CommunityService {
             LocalDateTime createdAt,
             List<ReplyDto> replies
     ) {
+        public int totalCount() {
+            return 1 + replies.stream().mapToInt(ReplyDto::totalCount).sum();
+        }
     }
 }

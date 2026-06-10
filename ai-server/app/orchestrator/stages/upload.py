@@ -53,6 +53,8 @@ def _post_job(row: dict) -> bool:
     payload = {**row, **{col: row.get(col, "") for col in DEFAULT_EMPTY_COLS}}
     try:
         res = requests.post(BACKEND_URL, json=payload, timeout=10)
+        if res.status_code == 409:
+            return True  # 이미 DB에 존재 — sent_ids에 기록해 재시도 방지
         res.raise_for_status()
         return True
     except requests.RequestException as e:

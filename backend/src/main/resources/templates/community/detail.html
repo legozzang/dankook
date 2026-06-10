@@ -20,7 +20,7 @@
         .write-button--ghost { border: 1px solid #cfd6df; background: #ffffff; color: #1769aa; }
         .write-button--danger { background: #d92d20; }
         .page { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
-        .post, .comments, .comment-form { background: #fff; border: 1px solid #dde3ea; border-radius: 6px; padding: 24px; }
+        .post, .comments { background: #fff; border: 1px solid #dde3ea; border-radius: 6px; padding: 24px; }
         .post__meta, .comment__meta { display: flex; flex-wrap: wrap; gap: 10px; color: #667085; font-size: 13px; }
         .badge { display: inline-flex; padding: 5px 9px; border-radius: 6px; background: #e8f1fa; color: #1769aa; font-weight: 800; }
         h1 { margin: 14px 0; font-size: 30px; letter-spacing: 0; }
@@ -40,6 +40,9 @@
         .comment p { margin: 8px 0 0; white-space: pre-wrap; line-height: 1.6; }
         .comment__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .replies { margin: 8px 0 0 32px; border-left: 2px solid #dde3ea; padding-left: 16px; }
+        .replies--nested { margin: 8px 0 0 32px; border-left: 2px solid #dde3ea; padding-left: 16px; }
+        .replies-show-btn { margin-top: 8px; background: none; border: none; color: #1769aa; font-size: 13px; font-weight: 700; cursor: pointer; padding: 0; }
+        .replies-show-btn:hover { text-decoration: underline; }
         .reply { padding: 10px 0; border-top: 1px solid #f0f2f5; }
         .reply:first-child { border-top: 0; }
         .reply p { margin: 6px 0 0; white-space: pre-wrap; line-height: 1.6; font-size: 14px; }
@@ -52,7 +55,7 @@
         .reply-form textarea { min-height: 72px; }
         .reply-form .reply-actions { display: flex; gap: 8px; margin-top: 8px; }
         .reply-cancel { padding: 0 14px; border: 1px solid #cfd6df; border-radius: 6px; background: #fff; color: #52606d; font-size: 14px; font-weight: 700; cursor: pointer; min-height: 40px; }
-        .comment-form { margin-top: 22px; }
+        .comment-form { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e7ebf0; }
         textarea { width: 100%; min-height: 110px; padding: 12px; border: 1px solid #cfd6df; border-radius: 6px; resize: vertical; box-sizing: border-box; font: inherit; }
         .guest-note { margin-top: 22px; color: #667085; }
         @media (max-width: 720px) {
@@ -137,47 +140,17 @@
                         th:data-comment-id="${comment.id}">삭제</button>
             </div>
             <p th:text="${comment.content}">댓글 내용</p>
-            <div class="replies" th:if="${not #lists.isEmpty(comment.replies)}">
-                <div class="reply" th:each="reply : ${comment.replies}">
-                    <div class="comment__head">
-                        <div class="comment__meta">
-                            <strong th:text="${reply.nickname}">작성자</strong>
-                            <span th:text="${#temporals.format(reply.createdAt, 'yyyy-MM-dd HH:mm')}">작성일</span>
-                        </div>
-                        <button class="write-button write-button--danger delete-comment"
-                                type="button"
-                                th:if="${isAdmin or reply.authorEmail == currentEmail}"
-                                th:data-post-id="${post.id}"
-                                th:data-comment-id="${reply.id}">삭제</button>
-                    </div>
-                    <p th:text="${reply.content}">답글 내용</p>
-                    <div class="sub-replies" th:if="${not #lists.isEmpty(reply.replies)}">
-                        <div class="reply reply--sub" th:each="subReply : ${reply.replies}">
-                            <div class="comment__head">
-                                <div class="comment__meta">
-                                    <strong th:text="${subReply.nickname}">작성자</strong>
-                                    <span th:text="${#temporals.format(subReply.createdAt, 'yyyy-MM-dd HH:mm')}">작성일</span>
-                                </div>
-                                <button class="write-button write-button--danger delete-comment"
-                                        type="button"
-                                        th:if="${isAdmin or subReply.authorEmail == currentEmail}"
-                                        th:data-post-id="${post.id}"
-                                        th:data-comment-id="${subReply.id}">삭제</button>
-                            </div>
-                            <p th:text="${subReply.content}">내용</p>
-                            <button class="reply-toggle--sub" type="button"
-                                    th:if="${currentEmail != ''}"
-                                    th:data-reply-id="${reply.id}"
-                                    th:data-form-id="${comment.id}"
-                                    th:data-mention="${subReply.nickname}">답글</button>
-                        </div>
-                    </div>
-                    <button class="reply-toggle--sub" type="button"
-                            th:if="${currentEmail != ''}"
-                            th:data-reply-id="${reply.id}"
-                            th:data-form-id="${comment.id}"
-                            th:data-mention="${reply.nickname}">답글</button>
-                </div>
+            <button class="replies-show-btn" type="button"
+                    th:if="${not #lists.isEmpty(comment.replies)}"
+                    th:data-target="|replies-${comment.id}|"
+                    th:data-count="${comment.totalReplyCount()}">
+                <span th:text="|답글 ${comment.totalReplyCount()}개 보기 ▼|">답글 보기</span>
+            </button>
+            <div th:if="${not #lists.isEmpty(comment.replies)}"
+                 class="replies replies-container"
+                 th:id="|replies-${comment.id}|"
+                 style="display:none">
+                <div th:replace="~{community/_reply :: replyList(${comment.replies}, ${post.id}, ${currentEmail}, ${isAdmin})}"></div>
             </div>
             <button class="reply-toggle" type="button"
                     th:if="${currentEmail != ''}"
@@ -190,13 +163,12 @@
                 </div>
             </div>
         </div>
+        <form class="comment-form" id="commentForm" th:if="${currentEmail != ''}" th:data-post-id="${post.id}">
+            <textarea id="commentContent" placeholder="댓글을 입력하세요" required></textarea>
+            <button class="write-button" type="submit" style="margin-top:10px;">댓글 작성</button>
+        </form>
+        <p class="guest-note" th:if="${currentEmail == ''}">댓글 작성은 로그인이 필요합니다.</p>
     </section>
-
-    <form class="comment-form" id="commentForm" th:if="${currentEmail != ''}" th:data-post-id="${post.id}">
-        <textarea id="commentContent" placeholder="댓글을 입력하세요" required></textarea>
-        <button class="write-button" type="submit" style="margin-top:10px;">댓글 작성</button>
-    </form>
-    <p class="guest-note" th:if="${currentEmail == ''}">댓글 작성은 로그인이 필요합니다.</p>
 </main>
 <script src="/js/auth-utils.js"></script>
 <script>
@@ -242,6 +214,19 @@
                 return;
             }
             location.reload();
+        });
+    });
+
+    document.querySelectorAll(".replies-show-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const target = document.getElementById(btn.dataset.target);
+            if (!target) return;
+            const count = btn.dataset.count;
+            const isHidden = target.style.display === "none";
+            target.style.display = isHidden ? "block" : "none";
+            btn.querySelector("span").textContent = isHidden
+                ? "답글 숨기기 ▲"
+                : `답글 ${count}개 보기 ▼`;
         });
     });
 
