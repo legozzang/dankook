@@ -413,7 +413,8 @@ function updateAuthNav() {
             lat: field(job, "latitude", "latitude", 0),
             lng: field(job, "longitude", "longitude", 0),
             exactLocation: field(job, "exactLocation", "exact_location", false),
-            scraped: field(job, "scraped", "scraped", false)
+            scraped: field(job, "scraped", "scraped", false),
+            personalized: field(job, "personalized", "personalized", false)
         };
     }
 
@@ -452,7 +453,8 @@ function updateAuthNav() {
                      data-lat="${escapeHtml(data.lat)}"
                      data-lng="${escapeHtml(data.lng)}"
                      data-exact-location="${exactLocation}"
-                     data-scraped="${data.scraped}">
+                     data-scraped="${data.scraped}"
+                     data-personalized="${data.personalized}">
                 <div>
                     <p class="company">${escapeHtml(data.company)}</p>
                     <h2 class="job-title">${escapeHtml(data.title)}</h2>
@@ -573,7 +575,7 @@ function updateAuthNav() {
     }
 
     function isRecommendedJob(card) {
-        return String(card.dataset.recommendationReason ?? "").trim() !== "";
+        return card.dataset.personalized === "true";
     }
 
     function getMarkerStatus(card, lat, lng) {
