@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="replyList(replies, postId, currentEmail, isAdmin)">
+    <div class="reply" th:each="reply : ${replies}">
+        <div class="comment__head">
+            <div class="comment__meta">
+                <strong th:text="${reply.nickname}">작성자</strong>
+                <span th:text="${#temporals.format(reply.createdAt, 'yyyy-MM-dd HH:mm')}">작성일</span>
+            </div>
+            <button class="write-button write-button--danger delete-comment" type="button"
+                    th:if="${isAdmin or reply.authorEmail == currentEmail}"
+                    th:data-post-id="${postId}"
+                    th:data-comment-id="${reply.id}">삭제</button>
+        </div>
+        <p th:text="${reply.content}">내용</p>
+        <button class="reply-toggle--sub" type="button"
+                th:if="${currentEmail != ''}"
+                th:data-reply-id="${reply.id}"
+                th:data-form-id="${reply.id}"
+                th:data-mention="${reply.nickname}">답글</button>
+        <div class="reply-form" th:if="${currentEmail != ''}"
+             th:data-comment-id="${reply.id}" th:data-post-id="${postId}">
+            <textarea placeholder="답글을 입력하세요"></textarea>
+            <div class="reply-actions">
+                <button class="write-button" type="button">등록</button>
+                <button class="reply-cancel" type="button">취소</button>
+            </div>
+        </div>
+        <button class="replies-show-btn" type="button"
+                th:if="${not #lists.isEmpty(reply.replies)}"
+                th:data-target="|replies-${reply.id}|"
+                th:data-count="${reply.totalCount() - 1}">
+            <span th:text="|답글 ${reply.totalCount() - 1}개 보기 ▼|">답글 보기</span>
+        </button>
+        <div th:if="${not #lists.isEmpty(reply.replies)}"
+             class="replies replies--nested"
+             th:id="|replies-${reply.id}|"
+             style="display:none">
+            <th:block th:replace="~{community/_reply :: replyList(${reply.replies}, ${postId}, ${currentEmail}, ${isAdmin})}"></th:block>
+        </div>
+    </div>
+</th:block>
+</body>
+</html>

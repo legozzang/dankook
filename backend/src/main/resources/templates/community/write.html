@@ -139,7 +139,7 @@
     }
 
     function selectScrap(item) {
-        jobPostingIdInput.value = item.jobPostingId;
+        jobPostingIdInput.value = item.job_posting_id;
         jobPreview.innerHTML = `
             <div class="job-preview__head">
                 <div>
@@ -203,7 +203,7 @@
             category: document.getElementById("category").value,
             title: document.getElementById("title").value.trim(),
             content: document.getElementById("content").value.trim(),
-            jobPostingId: jobPostingIdInput.value ? Number(jobPostingIdInput.value) : null
+            job_posting_id: jobPostingIdInput.value ? Number(jobPostingIdInput.value) : null
         };
         if (!payload.title || !payload.content) {
             alert("제목과 내용을 입력해주세요.");

@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -92,6 +94,7 @@ public class CommunityApiController {
             @NotBlank String category,
             @NotBlank @Size(max = 100) String title,
             @NotBlank @Size(max = 5000) String content,
+            @JsonAlias("jobPostingId")
             Long jobPostingId
     ) {
     }

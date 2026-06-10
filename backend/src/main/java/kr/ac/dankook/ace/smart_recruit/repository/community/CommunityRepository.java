@@ -15,12 +15,20 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
 
     @Query("""
             SELECT c FROM Community c JOIN FETCH c.member LEFT JOIN FETCH c.jobPosting
-            WHERE (:category IS NULL OR c.category = :category)
+            WHERE (:keyword IS NULL OR c.title LIKE CONCAT('%', :keyword, '%')
+                   OR c.content LIKE CONCAT('%', :keyword, '%'))
+            ORDER BY c.createdAt DESC
+            """)
+    List<Community> findAllWithMember(@Param("keyword") String keyword);
+
+    @Query("""
+            SELECT c FROM Community c JOIN FETCH c.member LEFT JOIN FETCH c.jobPosting
+            WHERE c.category = :category
               AND (:keyword IS NULL OR c.title LIKE CONCAT('%', :keyword, '%')
                    OR c.content LIKE CONCAT('%', :keyword, '%'))
             ORDER BY c.createdAt DESC
             """)
-    List<Community> findAllWithMember(@Param("category") Category category, @Param("keyword") String keyword);
+    List<Community> findByCategoryWithMember(@Param("category") Category category, @Param("keyword") String keyword);
 
     @Query("SELECT c FROM Community c JOIN FETCH c.member LEFT JOIN FETCH c.jobPosting WHERE c.id = :id")
     Optional<Community> findByIdWithMember(@Param("id") Long id);
