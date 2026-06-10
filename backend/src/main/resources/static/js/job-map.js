@@ -212,12 +212,14 @@ function updateAuthNav() {
     const MARKER_STATUS = {
         INFERRED_LOCATION: "inferred-location",
         CLOSING_SOON: "closing-soon",
+        AI_RECOMMENDED: "ai-recommended",
         RECOMMENDED: "recommended",
         DEFAULT: "default"
     };
     const MARKER_COLORS = {
         [MARKER_STATUS.INFERRED_LOCATION]: "#6b7280",
         [MARKER_STATUS.CLOSING_SOON]: "#dc2626",
+        [MARKER_STATUS.AI_RECOMMENDED]: "#16a34a",
         [MARKER_STATUS.RECOMMENDED]: "#FFC800FF",
         [MARKER_STATUS.DEFAULT]: "#2563eb"
     };
@@ -575,7 +577,10 @@ function updateAuthNav() {
     }
 
     function isRecommendedJob(card) {
-        return card.dataset.personalized === "true";
+        const matchesRegion = matchesPreferredRegion(card);
+        const matchesJobType = matchesPreference(card.dataset.jobMajor, userPreferences.jobMajor) &&
+            (!userPreferences.jobMid || card.dataset.jobMid === userPreferences.jobMid);
+        return matchesRegion || matchesJobType;
     }
 
     function getMarkerStatus(card, lat, lng) {
@@ -583,15 +588,15 @@ function updateAuthNav() {
         if (!isExactLocation || !Number.isFinite(lat) || !Number.isFinite(lng)) {
             return MARKER_STATUS.INFERRED_LOCATION;
         }
-
-        if (isClosingSoon(card)) {
-            return MARKER_STATUS.CLOSING_SOON;
+        if (card.dataset.personalized === "true") {
+            return MARKER_STATUS.AI_RECOMMENDED;
         }
-
         if (isRecommendedJob(card)) {
             return MARKER_STATUS.RECOMMENDED;
         }
-
+        if (isClosingSoon(card)) {
+            return MARKER_STATUS.CLOSING_SOON;
+        }
         return MARKER_STATUS.DEFAULT;
     }
 
@@ -885,6 +890,7 @@ function applyFilters() {
         legend.onAdd = () => {
             const container = L.DomUtil.create("div", "marker-legend");
             container.innerHTML = `
+                <div><span class="marker-legend-dot marker-legend-dot--ai-recommended"></span>AI 추천</div>
                 <div><span class="marker-legend-dot marker-legend-dot--recommended"></span>추천 공고</div>
                 <div><span class="marker-legend-dot marker-legend-dot--closing-soon"></span>마감임박</div>
                 <div><span class="marker-legend-dot marker-legend-dot--default"></span>일반 공고</div>

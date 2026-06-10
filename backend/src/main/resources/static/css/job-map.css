@@ -248,6 +248,10 @@ body {
     border-radius: 50%;
 }
 
+.marker-legend-dot--ai-recommended {
+    background: #16a34a;
+}
+
 .marker-legend-dot--recommended {
     background: #FFC800FF;
 }
