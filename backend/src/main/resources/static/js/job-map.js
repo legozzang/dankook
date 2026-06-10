@@ -24,7 +24,7 @@ function updateAuthNav() {
             localStorage.removeItem("accessToken");
             localStorage.removeItem("memberId");
             await fetch("/auth/logout", { method: "POST" });
-            location.href = "/auth/login";
+            location.reload();
         }
     }
 
