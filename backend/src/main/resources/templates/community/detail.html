@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${post.title} + ' | Smart Recruit'">커뮤니티 | Smart Recruit</title>
+    <style>
+        body { margin: 0; background: #f5f6f8; color: #222831; font-family: Arial, "Noto Sans KR", sans-serif; }
+        .site-header { background: #fff; border-bottom: 1px solid #dde3ea; }
+        .site-header__inner { max-width: 1120px; margin: 0 auto; min-height: 64px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+        .brand, .site-nav__link, .write-button, .back-link { text-decoration: none; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; color: #172033; font-weight: 800; }
+        .brand-mark { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 6px; background: #1769aa; color: #fff; }
+        .site-nav { display: flex; align-items: center; gap: 6px; }
+        .site-nav__link { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: 6px; color: #52606d; font-size: 14px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+        .site-nav__link:hover { background: #f1f5f9; color: #1769aa; }
+        .site-nav__link.active { background: #e8f1fa; color: #1769aa; }
+        .auth-actions { display: flex; align-items: center; gap: 8px; }
+        .write-button { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 16px; border: 0; border-radius: 6px; background: #1769aa; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .write-button--ghost { border: 1px solid #cfd6df; background: #ffffff; color: #1769aa; }
+        .write-button--danger { background: #d92d20; }
+        .page { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+        .post, .comments { background: #fff; border: 1px solid #dde3ea; border-radius: 6px; padding: 24px; }
+        .post__meta, .comment__meta { display: flex; flex-wrap: wrap; gap: 10px; color: #667085; font-size: 13px; }
+        .badge { display: inline-flex; padding: 5px 9px; border-radius: 6px; background: #e8f1fa; color: #1769aa; font-weight: 800; }
+        h1 { margin: 14px 0; font-size: 30px; letter-spacing: 0; }
+        .content { margin-top: 24px; white-space: pre-wrap; line-height: 1.7; }
+        .job-card { border: 1px solid #c8ddf5; border-radius: 6px; background: #f0f7ff; padding: 14px 18px; margin-top: 16px; }
+        .job-card__meta { display: flex; flex-wrap: wrap; gap: 12px; color: #52606d; font-size: 13px; margin-bottom: 6px; }
+        .job-card__title { font-weight: 700; font-size: 15px; color: #172033; }
+        .job-card__link { display: inline-block; margin-top: 8px; color: #1769aa; font-size: 13px; font-weight: 700; text-decoration: none; }
+        .job-card__link:hover { text-decoration: underline; }
+        .post-actions { margin-top: 22px; display: flex; justify-content: space-between; gap: 12px; }
+        .post-action-buttons { display: flex; gap: 8px; }
+        .back-link { color: #1769aa; font-weight: 800; }
+        .edited-badge { color: #888; font-size: 12px; margin-left: 6px; }
+        .comments { margin-top: 22px; }
+        .comment { padding: 16px 0; border-top: 1px solid #e7ebf0; }
+        .comment:first-child { border-top: 0; }
+        .comment p { margin: 8px 0 0; white-space: pre-wrap; line-height: 1.6; }
+        .comment__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .replies { margin: 8px 0 0 32px; border-left: 2px solid #dde3ea; padding-left: 16px; }
+        .replies--nested { margin: 8px 0 0 32px; border-left: 2px solid #dde3ea; padding-left: 16px; }
+        .replies-show-btn { margin-top: 8px; background: none; border: none; color: #1769aa; font-size: 13px; font-weight: 700; cursor: pointer; padding: 0; }
+        .replies-show-btn:hover { text-decoration: underline; }
+        .reply { padding: 10px 0; border-top: 1px solid #f0f2f5; }
+        .reply:first-child { border-top: 0; }
+        .reply p { margin: 6px 0 0; white-space: pre-wrap; line-height: 1.6; font-size: 14px; }
+        .sub-replies { margin: 6px 0 0 20px; border-left: 2px solid #eaecf0; padding-left: 12px; }
+        .reply--sub { padding: 8px 0; border-top: 1px solid #f0f2f5; }
+        .reply--sub:first-child { border-top: 0; }
+        .reply-toggle, .reply-toggle--sub { margin-top: 8px; padding: 4px 10px; border: 1px solid #cfd6df; border-radius: 4px; background: #fff; color: #52606d; font-size: 13px; font-weight: 700; cursor: pointer; }
+        .reply-toggle:hover, .reply-toggle--sub:hover { background: #f1f5f9; }
+        .reply-form { display: none; padding: 12px 0 0 24px; }
+        .reply-form textarea { min-height: 72px; }
+        .reply-form .reply-actions { display: flex; gap: 8px; margin-top: 8px; }
+        .reply-cancel { padding: 0 14px; border: 1px solid #cfd6df; border-radius: 6px; background: #fff; color: #52606d; font-size: 14px; font-weight: 700; cursor: pointer; min-height: 40px; }
+        .comment-form { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e7ebf0; }
+        textarea { width: 100%; min-height: 110px; padding: 12px; border: 1px solid #cfd6df; border-radius: 6px; resize: vertical; box-sizing: border-box; font: inherit; }
+        .guest-note { margin-top: 22px; color: #667085; }
+        @media (max-width: 720px) {
+            .site-header__inner { align-items: flex-start; flex-direction: column; }
+            .page { padding: 28px 14px; }
+            .post-actions, .comment__head { align-items: flex-start; flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+<header class="site-header">
+    <div class="site-header__inner">
+        <a class="brand" href="/jobpostings" aria-label="Smart Recruit 홈">
+            <span class="brand-mark">SR</span>
+            <span class="brand-text">Smart Recruit</span>
+        </a>
+        <nav class="site-nav" aria-label="주요 메뉴">
+            <a class="site-nav__link" href="/jobpostings">채용 공고</a>
+            <a class="site-nav__link active" href="/communities">커뮤니티</a>
+            <a class="site-nav__link" href="/admin/dashboard" th:if="${isAdmin}">관리자</a>
+        </nav>
+        <div class="auth-actions">
+            <div id="guestMenu"><a class="write-button" href="/auth/login">로그인</a></div>
+            <div id="userMenu" style="display:none;gap:8px;">
+                <a class="write-button write-button--ghost" href="/auth/mypage">내 정보</a>
+                <button class="write-button" type="button" onclick="handleLogout()">로그아웃</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="page">
+    <article class="post">
+        <span class="badge" th:text="${post.categoryLabel}">정보</span>
+        <h1 th:text="${post.title}">제목</h1>
+        <div class="post__meta">
+            <span th:text="${post.nickname}">작성자</span>
+            <span>
+                <span th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">작성일</span>
+                <span th:if="${post.isEdited}" class="edited-badge">(수정됨)</span>
+            </span>
+            <span th:text="|조회 ${post.viewCount}|">조회 0</span>
+        </div>
+        <div class="job-card" th:if="${post.attachedJob != null}">
+            <div class="job-card__meta">
+                <span th:text="${post.attachedJob.company}">회사명</span>
+                <span th:text="${post.attachedJob.jobTypeMajor}">직종</span>
+                <span th:text="${post.attachedJob.regionSido}">지역</span>
+                <span th:if="${post.attachedJob.deadline != null}" th:text="|마감 ${post.attachedJob.deadline}|">마감</span>
+            </div>
+            <div class="job-card__title" th:text="${post.attachedJob.title}">공고 제목</div>
+            <a class="job-card__link"
+               th:if="${post.attachedJob.externalUrl != null}"
+               th:href="${post.attachedJob.externalUrl}"
+               target="_blank"
+               rel="noopener">공고 보기 →</a>
+        </div>
+        <div class="content" th:text="${post.content}">본문</div>
+        <div class="post-actions">
+            <a class="back-link" href="/communities">목록으로 돌아가기</a>
+            <div class="post-action-buttons" th:if="${isOwnerOrAdmin}">
+                <a class="write-button write-button--ghost" th:href="@{/communities/{id}/edit(id=${post.id})}">수정</a>
+                <button class="write-button write-button--danger" id="deletePost"
+                        type="button" th:data-post-id="${post.id}">삭제</button>
+            </div>
+        </div>
+    </article>
+
+    <section class="comments">
+        <h2>댓글</h2>
+        <p class="guest-note" th:if="${#lists.isEmpty(post.comments)}">아직 댓글이 없습니다.</p>
+        <div class="comment" th:each="comment : ${post.comments}">
+            <div class="comment__head">
+                <div class="comment__meta">
+                    <strong th:text="${comment.nickname}">작성자</strong>
+                    <span th:text="${#temporals.format(comment.createdAt, 'yyyy-MM-dd HH:mm')}">작성일</span>
+                </div>
+                <button class="write-button write-button--danger delete-comment"
+                        type="button"
+                        th:if="${isAdmin or comment.authorEmail == currentEmail}"
+                        th:data-post-id="${post.id}"
+                        th:data-comment-id="${comment.id}">삭제</button>
+            </div>
+            <p th:text="${comment.content}">댓글 내용</p>
+            <button class="replies-show-btn" type="button"
+                    th:if="${not #lists.isEmpty(comment.replies)}"
+                    th:data-target="|replies-${comment.id}|"
+                    th:data-count="${comment.totalReplyCount()}">
+                <span th:text="|답글 ${comment.totalReplyCount()}개 보기 ▼|">답글 보기</span>
+            </button>
+            <div th:if="${not #lists.isEmpty(comment.replies)}"
+                 class="replies replies-container"
+                 th:id="|replies-${comment.id}|"
+                 style="display:none">
+                <div th:replace="~{community/_reply :: replyList(${comment.replies}, ${post.id}, ${currentEmail}, ${isAdmin})}"></div>
+            </div>
+            <button class="reply-toggle" type="button"
+                    th:if="${currentEmail != ''}"
+                    th:data-comment-id="${comment.id}">답글</button>
+            <div class="reply-form" th:if="${currentEmail != ''}" th:data-comment-id="${comment.id}" th:data-post-id="${post.id}">
+                <textarea placeholder="답글을 입력하세요"></textarea>
+                <div class="reply-actions">
+                    <button class="write-button" type="button">등록</button>
+                    <button class="reply-cancel" type="button">취소</button>
+                </div>
+            </div>
+        </div>
+        <form class="comment-form" id="commentForm" th:if="${currentEmail != ''}" th:data-post-id="${post.id}">
+            <textarea id="commentContent" placeholder="댓글을 입력하세요" required></textarea>
+            <button class="write-button" type="submit" style="margin-top:10px;">댓글 작성</button>
+        </form>
+        <p class="guest-note" th:if="${currentEmail == ''}">댓글 작성은 로그인이 필요합니다.</p>
+    </section>
+</main>
+<script src="/js/auth-utils.js"></script>
+<script>
+    function updateAuthNav() {
+        const token = getToken();
+        document.getElementById("guestMenu").style.display = token ? "none" : "";
+        document.getElementById("userMenu").style.display = token ? "flex" : "none";
+    }
+
+    function handleLogout() {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("memberId");
+        document.cookie = "accessToken=; path=/; max-age=0";
+        location.href = "/auth/login";
+    }
+
+    const deletePostButton = document.getElementById("deletePost");
+    if (deletePostButton) {
+        deletePostButton.addEventListener("click", async () => {
+            if (!confirm("게시글을 삭제하시겠습니까?")) return;
+            const response = await fetch(`/api/communities/${deletePostButton.dataset.postId}`, {
+                method: "DELETE",
+                headers: authHeaders()
+            });
+            if (!response.ok) {
+                alert("게시글 삭제에 실패했습니다.");
+                return;
+            }
+            location.href = "/communities";
+        });
+    }
+
+    document.querySelectorAll(".delete-comment").forEach((button) => {
+        button.addEventListener("click", async () => {
+            if (!confirm("댓글을 삭제하시겠습니까?")) return;
+            const response = await fetch(`/api/communities/${button.dataset.postId}/comments/${button.dataset.commentId}`, {
+                method: "DELETE",
+                headers: authHeaders()
+            });
+            if (!response.ok) {
+                const msg = await response.text().catch(() => "");
+                alert(msg || "댓글 삭제에 실패했습니다.");
+                return;
+            }
+            location.reload();
+        });
+    });
+
+    document.querySelectorAll(".replies-show-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const target = document.getElementById(btn.dataset.target);
+            if (!target) return;
+            const count = btn.dataset.count;
+            const isHidden = target.style.display === "none";
+            target.style.display = isHidden ? "block" : "none";
+            btn.querySelector("span").textContent = isHidden
+                ? "답글 숨기기 ▲"
+                : `답글 ${count}개 보기 ▼`;
+        });
+    });
+
+    const commentForm = document.getElementById("commentForm");
+    if (commentForm) {
+        commentForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const content = document.getElementById("commentContent").value.trim();
+            if (!content) return;
+            const response = await fetch(`/api/communities/${commentForm.dataset.postId}/comments`, {
+                method: "POST",
+                headers: authHeaders(),
+                body: JSON.stringify({ content })
+            });
+            if (!response.ok) {
+                alert("댓글 작성에 실패했습니다.");
+                return;
+            }
+            location.reload();
+        });
+    }
+
+    document.querySelectorAll(".reply-toggle").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const cid = btn.dataset.commentId;
+            const form = document.querySelector(`.reply-form[data-comment-id="${cid}"]`);
+            if (!form) return;
+            btn.insertAdjacentElement("afterend", form);
+            form.dataset.activeCommentId = "";
+            form.style.display = form.style.display === "block" ? "none" : "block";
+        });
+    });
+
+    document.querySelectorAll(".reply-toggle--sub").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const replyId = btn.dataset.replyId;
+            const formId = btn.dataset.formId;
+            const mention = btn.dataset.mention;
+            const form = document.querySelector(`.reply-form[data-comment-id="${formId}"]`);
+            if (!form) return;
+            const replyEl = btn.closest(".reply");
+            if (replyEl) replyEl.insertAdjacentElement("afterend", form);
+            form.dataset.activeCommentId = replyId;
+            const textarea = form.querySelector("textarea");
+            textarea.value = `@${mention} `;
+            form.style.display = "block";
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        });
+    });
+
+    document.querySelectorAll(".reply-form").forEach((form) => {
+        const postId = form.dataset.postId;
+        const commentId = form.dataset.commentId;
+        const textarea = form.querySelector("textarea");
+
+        form.querySelector(".reply-actions .write-button").addEventListener("click", async () => {
+            const content = textarea.value.trim();
+            if (!content) return;
+            const targetId = form.dataset.activeCommentId || commentId;
+            const response = await fetch(`/api/communities/${postId}/comments/${targetId}/replies`, {
+                method: "POST",
+                headers: authHeaders(),
+                body: JSON.stringify({ content })
+            });
+            if (!response.ok) {
+                alert("답글 작성에 실패했습니다.");
+                return;
+            }
+            location.reload();
+        });
+
+        form.querySelector(".reply-cancel").addEventListener("click", () => {
+            form.style.display = "none";
+            textarea.value = "";
+            form.dataset.activeCommentId = "";
+        });
+    });
+
+    updateAuthNav();
+</script>
+</body>
+</html>

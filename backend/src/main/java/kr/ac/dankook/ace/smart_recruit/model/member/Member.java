@@ -68,6 +68,29 @@ public class Member{
     @Column(name = "desired_region_dong", length = 50)
     private String desiredRegionDong;
 
+    // 관심 지역 1의 상세 주소(도로명/지번) — 지오코딩 입력 및 수정화면 표시용
+    @Column(name = "home_address", length = 255)
+    private String homeAddress;
+
+    // 관심 지역 1 상세 주소를 지오코딩한 위경도 — 로그인 시 반경 필터 중심점
+    @Column(name = "home_latitude")
+    private Double homeLatitude;
+
+    @Column(name = "home_longitude")
+    private Double homeLongitude;
+
+    @Column(name = "desired_region2_sido", length = 50)
+    private String desiredRegion2Sido;
+
+    @Column(name = "desired_region2_sigungu", length = 50)
+    private String desiredRegion2Sigungu;
+
+    @Column(name = "desired_region3_sido", length = 50)
+    private String desiredRegion3Sido;
+
+    @Column(name = "desired_region3_sigungu", length = 50)
+    private String desiredRegion3Sigungu;
+
     @Column(name = "preferred_job_type_major", length = 100)
     private String preferredJobTypeMajor;
 
@@ -88,6 +111,15 @@ public class Member{
 
     @Column(name = "email_notification", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     private boolean emailNotification = false;
+
+    @Column(name = "gemini_api_key", length = 200)
+    private String geminiApiKey;
+
+    @Column(name = "recommendation_interval_hours")
+    private Integer recommendationIntervalHours;
+
+    @Column(name = "recommendation_custom_prompt", columnDefinition = "TEXT")
+    private String recommendationCustomPrompt;
 
     // 아래 두 어노테이션으로 시간 자동 입력
     @PrePersist
@@ -132,10 +164,27 @@ public class Member{
         }
     }
 
+    /** 거주지 상세 주소와 지오코딩 좌표를 갱신한다. 좌표는 null 허용(지오코딩 실패 시). */
+    public void updateHomeLocation(String address, Double latitude, Double longitude) {
+        this.homeAddress = normalizeBlank(address);
+        this.homeLatitude = latitude;
+        this.homeLongitude = longitude;
+    }
+
+    public void updateGeminiSettings(String apiKey, Integer intervalHours, String customPrompt) {
+        this.geminiApiKey = normalizeBlank(apiKey);
+        this.recommendationIntervalHours = intervalHours;
+        this.recommendationCustomPrompt = normalizeBlank(customPrompt);
+    }
+
     public void updatePreferences(
             String desiredRegionSido,
             String desiredRegionSigungu,
             String desiredRegionDong,
+            String desiredRegion2Sido,
+            String desiredRegion2Sigungu,
+            String desiredRegion3Sido,
+            String desiredRegion3Sigungu,
             String preferredJobTypeMajor,
             String preferredJobTypeMid,
             String preferredJobTypeMinor,
@@ -146,11 +195,19 @@ public class Member{
         if (desiredRegionSido != null) this.desiredRegionSido = desiredRegionSido;
         if (desiredRegionSigungu != null) this.desiredRegionSigungu = desiredRegionSigungu;
         if (desiredRegionDong != null) this.desiredRegionDong = desiredRegionDong;
+        if (desiredRegion2Sido != null) this.desiredRegion2Sido = desiredRegion2Sido;
+        if (desiredRegion2Sigungu != null) this.desiredRegion2Sigungu = desiredRegion2Sigungu;
+        if (desiredRegion3Sido != null) this.desiredRegion3Sido = desiredRegion3Sido;
+        if (desiredRegion3Sigungu != null) this.desiredRegion3Sigungu = desiredRegion3Sigungu;
         if (preferredJobTypeMajor != null) this.preferredJobTypeMajor = preferredJobTypeMajor;
         if (preferredJobTypeMid != null) this.preferredJobTypeMid = preferredJobTypeMid;
         if (preferredJobTypeMinor != null) this.preferredJobTypeMinor = preferredJobTypeMinor;
         if (preferredJobTypeDetail != null) this.preferredJobTypeDetail = preferredJobTypeDetail;
         if (preferredPayType != null) this.preferredPayType = preferredPayType;
         if (minPayAmount != null) this.minPayAmount = minPayAmount;
+    }
+
+    private String normalizeBlank(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

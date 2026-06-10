@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -27,6 +26,8 @@ import kr.ac.dankook.ace.smart_recruit.model.member.Member;
 import kr.ac.dankook.ace.smart_recruit.model.member.Role;
 import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
+import kr.ac.dankook.ace.smart_recruit.util.JsonViewUtils;
+import kr.ac.dankook.ace.smart_recruit.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 
 @Controller
@@ -118,15 +119,13 @@ public class AdminViewController {
             @RequestParam(required = false) String keyword,
             Model model
     ) {
-        String normalizedKeyword = normalize(keyword);
+        String normalizedKeyword = StringUtils.isBlank(keyword) ? "" : keyword.trim();
         Role roleFilter = parseRole(role);
 
-        List<Member> members = memberRepository.findAll().stream()
-                .filter(member -> roleFilter == null || member.getRole() == roleFilter)
-                .filter(member -> normalizedKeyword.isBlank()
-                        || contains(member.getEmail(), normalizedKeyword)
-                        || contains(member.getNickname(), normalizedKeyword))
-                .toList();
+        // role이 없을 때는 null enum JPQL 파라미터를 피하기 위해 별도 쿼리를 사용한다.
+        List<Member> members = (roleFilter == null)
+                ? memberRepository.findByKeyword(normalizedKeyword)
+                : memberRepository.findByRoleAndKeyword(roleFilter, normalizedKeyword);
 
         Map<String, String> currentFilters = new HashMap<>();
         currentFilters.put("role", role == null ? "" : role);
@@ -155,8 +154,8 @@ public class AdminViewController {
         String sigunguFilter = nvl(regionSigungu);
         String majorFilter = nvl(jobTypeMajor);
         String midFilter = nvl(jobTypeMid);
-        String companyFilter = normalize(company);
-        String keywordFilter = normalize(keyword);
+        String companyFilter = StringUtils.normalizeFilter(company);
+        String keywordFilter = StringUtils.normalizeFilter(keyword);
 
         Specification<JobPosting> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -175,11 +174,11 @@ public class AdminViewController {
             if (!midFilter.isBlank()) {
                 predicates.add(cb.equal(root.get("jobTypeMid"), midFilter));
             }
-            if (!companyFilter.isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("company")), "%" + companyFilter + "%"));
+            if (companyFilter != null) {
+                predicates.add(cb.like(cb.lower(root.get("company")), "%" + companyFilter.toLowerCase() + "%"));
             }
-            if (!keywordFilter.isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("title")), "%" + keywordFilter + "%"));
+            if (keywordFilter != null) {
+                predicates.add(cb.like(cb.lower(root.get("title")), "%" + keywordFilter.toLowerCase() + "%"));
             }
             return cb.and(predicates.toArray(Predicate[]::new));
         };
@@ -217,8 +216,8 @@ public class AdminViewController {
     private void addCascadeModel(Model model, List<Object[]> regionRaw, List<Object[]> jobTypeRaw) {
         model.addAttribute("sidoList", SIDO_LIST);
         model.addAttribute("majorList", majorList(jobTypeRaw));
-        model.addAttribute("sigunguBySidoJson", toJson(sigunguBySido(regionRaw)));
-        model.addAttribute("midByMajorJson", toJson(midByMajor(jobTypeRaw)));
+        model.addAttribute("sigunguBySidoJson", JsonViewUtils.toJson(sigunguBySido(regionRaw)));
+        model.addAttribute("midByMajorJson", JsonViewUtils.toJson(midByMajor(jobTypeRaw)));
     }
 
     private Map<String, Long> regionStats(List<Object[]> rows, int limit) {
@@ -319,34 +318,6 @@ public class AdminViewController {
                 .toList();
     }
 
-    private String toJson(Object value) {
-        if (!(value instanceof Map<?, ?> map)) {
-            return "{}";
-        }
-
-        return map.entrySet().stream()
-                .map(entry -> "\"" + escapeJson(entry.getKey()) + "\":" + toJsonArray(entry.getValue()))
-                .collect(Collectors.joining(",", "{", "}"));
-    }
-
-    private String toJsonArray(Object value) {
-        if (!(value instanceof List<?> list)) {
-            return "[]";
-        }
-
-        return list.stream()
-                .map(item -> "\"" + escapeJson(item) + "\"")
-                .collect(Collectors.joining(",", "[", "]"));
-    }
-
-    private String escapeJson(Object value) {
-        return nvl(value)
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\r", "\\r")
-                .replace("\n", "\\n");
-    }
-
     private String filterLabel(String... values) {
         return List.of(values).stream()
                 .map(this::nvl)
@@ -384,15 +355,7 @@ public class AdminViewController {
         }
     }
 
-    private String normalize(String value) {
-        return nvl(value).toLowerCase();
-    }
-
     private String nvl(Object value) {
         return value == null ? "" : value.toString().trim();
-    }
-
-    private boolean contains(String value, String keyword) {
-        return value != null && value.toLowerCase().contains(Objects.requireNonNullElse(keyword, ""));
     }
 }

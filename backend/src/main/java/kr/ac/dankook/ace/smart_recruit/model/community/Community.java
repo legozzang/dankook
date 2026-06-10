@@ -5,6 +5,7 @@ import java.util.*;
 
 import jakarta.persistence.*;
 import kr.ac.dankook.ace.smart_recruit.model.communitycomment.CommunityComment;
+import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobPosting;
 import kr.ac.dankook.ace.smart_recruit.model.member.Member;
 import lombok.*;
 
@@ -24,6 +25,10 @@ public class Community {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "job_posting_id")
+    private JobPosting jobPosting;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false)
@@ -56,11 +61,17 @@ public class Community {
     }
 
     // 사용자 정의 생성자
-    public Community(Member member, Category category, String title, String content) {
+    public Community(Member member, Category category, String title, String content, JobPosting jobPosting) {
         this.member = member;
         this.category = category;
         this.title = title;
         this.content = content;
+        this.jobPosting = jobPosting;
         this.viewCount = 0; // 초기값 보장
+    }
+
+    public void update(String title, String content) {
+        this.title = title;
+        this.content = content;
     }
 }

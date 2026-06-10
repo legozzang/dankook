@@ -1,20 +1,21 @@
 package kr.ac.dankook.ace.smart_recruit.controller;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobPosting;
-import kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus;
-import kr.ac.dankook.ace.smart_recruit.model.member.Member;
-import kr.ac.dankook.ace.smart_recruit.model.member.Role;
+import java.util.List;
+
+import kr.ac.dankook.ace.smart_recruit.model.recommendation.UserJobRecommendation;
 import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
-import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
+import kr.ac.dankook.ace.smart_recruit.repository.recommendation.UserJobRecommendationRepository;
+import kr.ac.dankook.ace.smart_recruit.service.AdminService;
+import kr.ac.dankook.ace.smart_recruit.service.EmailService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -22,42 +23,50 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AdminApiController {
 
+    private final AdminService adminService;
+    private final EmailService emailService;
     private final MemberRepository memberRepository;
-    private final JobPostingRepository jobPostingRepository;
+    private final UserJobRecommendationRepository userJobRecommendationRepository;
 
     @DeleteMapping("/members/{id}")
     public ResponseEntity<Void> deleteMember(@PathVariable Long id) {
-        if (!memberRepository.existsById(id)) {
+        if (!adminService.deleteMember(id)) {
             return ResponseEntity.notFound().build();
         }
-        memberRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/members/{id}/role")
-    @Transactional
     public ResponseEntity<Void> updateMemberRole(@PathVariable Long id, @RequestBody RoleUpdateRequest request) {
-        Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        member.updateRole(Role.valueOf(request.role()));
+        adminService.updateMemberRole(id, request.role());
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/members/{id}/send-recommendations")
+    public ResponseEntity<String> sendRecommendationEmail(@PathVariable Long id) {
+        return memberRepository.findById(id)
+                .map(member -> {
+                    List<UserJobRecommendation> recommendations = userJobRecommendationRepository.findByMemberId(id);
+                    if (recommendations.isEmpty()) {
+                        return ResponseEntity.ok("추천 공고가 없습니다.");
+                    }
+                    emailService.sendRecommendationEmail(member, recommendations);
+                    return ResponseEntity.ok("발송 완료: " + member.getEmail());
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/job-postings/{id}")
     public ResponseEntity<Void> deleteJobPosting(@PathVariable Long id) {
-        if (!jobPostingRepository.existsById(id)) {
+        if (!adminService.deleteJobPosting(id)) {
             return ResponseEntity.notFound().build();
         }
-        jobPostingRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/job-postings/{id}/status")
-    @Transactional
     public ResponseEntity<Void> updateJobPostingStatus(@PathVariable Long id, @RequestBody StatusUpdateRequest request) {
-        JobPosting jobPosting = jobPostingRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("공고를 찾을 수 없습니다."));
-        jobPosting.updateStatus(JobStatus.valueOf(request.status()));
+        adminService.updateJobPostingStatus(id, request.status());
         return ResponseEntity.ok().build();
     }
 

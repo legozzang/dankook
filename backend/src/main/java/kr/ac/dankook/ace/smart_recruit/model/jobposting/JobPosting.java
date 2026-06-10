@@ -26,7 +26,7 @@ public class JobPosting {
     private Long id;
 
     // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
-    @OneToOne(mappedBy = "jobPosting")
+    @OneToOne(mappedBy = "jobPosting", fetch = FetchType.LAZY)
     private JobPostingAiSummary jobPostingAiSummary;
 
     // DB column으로 생성되지 않는 자바 객체 내부에서 존재하는 가상의 관계
@@ -105,6 +105,9 @@ public class JobPosting {
     @Column(name = "welfare", columnDefinition = "TEXT")
     private String welfare;
 
+    @Column(name = "ai_summary_reason", length = 100)
+    private String aiSummaryReason;
+
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
@@ -132,7 +135,8 @@ public class JobPosting {
             String jobTypeMid,
             String jobTypeMinor,
             String jobTypeDetail,
-            String welfare
+            String welfare,
+            String aiSummaryReason
     ) {
         this.title = title;
         this.content = content;
@@ -154,6 +158,7 @@ public class JobPosting {
         this.jobTypeMinor = jobTypeMinor;
         this.jobTypeDetail = jobTypeDetail;
         this.welfare = welfare;
+        this.aiSummaryReason = aiSummaryReason;
     }
 
     @PrePersist

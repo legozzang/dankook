@@ -1,8 +1,3 @@
-<!-- 
-    최초 작성자 : 유지훈
-    최초 작성일 : 2026.04.18
-    목적 : /communites 를 위한 프론트 
--->
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -10,131 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>커뮤니티 | Smart Recruit</title>
     <style>
-        body {
-            margin: 0;
-            background: #f5f6f8;
-            color: #222831;
-            font-family: Arial, "Noto Sans KR", sans-serif;
-        }
-
-        .page {
-            max-width: 1040px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 30px;
-            letter-spacing: 0;
-        }
-
-        .write-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 40px;
-            padding: 0 16px;
-            border-radius: 6px;
-            background: #1769aa;
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: 700;
-            text-decoration: none;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .tab {
-            padding: 9px 13px;
-            border: 1px solid #d7dde4;
-            border-radius: 6px;
-            background: #ffffff;
-            color: #344054;
-            font-size: 14px;
-            font-weight: 700;
-            text-decoration: none;
-        }
-
-        .tab.active {
-            border-color: #1769aa;
-            background: #e8f1fa;
-            color: #1769aa;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #ffffff;
-            border: 1px solid #dde3ea;
-        }
-
-        th,
-        td {
-            padding: 14px 16px;
-            border-bottom: 1px solid #e7ebf0;
-            text-align: left;
-            font-size: 14px;
-        }
-
-        th {
-            background: #eef2f6;
-            color: #4b5563;
-            font-size: 13px;
-        }
-
-        .empty {
-            padding: 52px 16px;
-            color: #667085;
-            text-align: center;
-        }
-
+        body { margin: 0; background: #f5f6f8; color: #222831; font-family: Arial, "Noto Sans KR", sans-serif; }
+        .site-header { background: #fff; border-bottom: 1px solid #dde3ea; }
+        .site-header__inner { max-width: 1120px; margin: 0 auto; min-height: 64px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+        .brand, .site-nav__link, .write-button { text-decoration: none; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; color: #172033; font-weight: 800; }
+        .brand-mark { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 6px; background: #1769aa; color: #fff; }
+        .site-nav { display: flex; align-items: center; gap: 6px; }
+        .site-nav__link { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: 6px; color: #52606d; font-size: 14px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+        .site-nav__link:hover { background: #f1f5f9; color: #1769aa; }
+        .site-nav__link.active { background: #e8f1fa; color: #1769aa; }
+        .auth-actions { display: flex; align-items: center; gap: 8px; }
+        .write-button { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 16px; border: 0; border-radius: 6px; background: #1769aa; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .write-button--ghost { border: 1px solid #cfd6df; background: #ffffff; color: #1769aa; }
+        .page { max-width: 1040px; margin: 0 auto; padding: 40px 20px; }
+        .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+        h1 { margin: 0; font-size: 30px; letter-spacing: 0; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+        .tab { padding: 9px 13px; border: 1px solid #d7dde4; border-radius: 6px; background: #fff; color: #344054; font-size: 14px; font-weight: 700; text-decoration: none; }
+        .tab.active { border-color: #1769aa; background: #e8f1fa; color: #1769aa; }
+        .search-form { display: flex; gap: 8px; margin-bottom: 16px; }
+        .search-input { flex: 1; padding: 9px 13px; border: 1px solid #d7dde4; border-radius: 6px; font: inherit; font-size: 14px; }
+        .search-input:focus { outline: none; border-color: #1769aa; }
+        .keyword-badge { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px; padding: 4px 10px; border-radius: 4px; background: #e8f1fa; color: #1769aa; font-size: 13px; font-weight: 700; }
+        .keyword-badge a { color: #1769aa; text-decoration: none; font-weight: 800; }
+        table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #dde3ea; }
+        th, td { padding: 14px 16px; border-bottom: 1px solid #e7ebf0; text-align: left; font-size: 14px; }
+        th { background: #eef2f6; color: #4b5563; font-size: 13px; }
+        tr[data-href] { cursor: pointer; }
+        tr[data-href]:hover td { background: #f5f9ff; }
+        .post-title { color: #172033; font-weight: 700; text-decoration: none; }
+        .job-badge { display: inline-flex; margin-left: 8px; padding: 2px 7px; border-radius: 4px; background: #e8f1fa; color: #1769aa; font-size: 12px; font-weight: 700; vertical-align: middle; }
+        .comment-count { color: #1769aa; font-weight: 800; }
+        .empty { padding: 52px 16px; color: #667085; text-align: center; }
         @media (max-width: 720px) {
-            .page {
-                padding: 28px 14px;
-            }
-
-            .header {
-                align-items: flex-start;
-                flex-direction: column;
-            }
-
-            .hide-mobile {
-                display: none;
-            }
-
-            th,
-            td {
-                padding: 12px 10px;
-            }
+            .site-header__inner, .header { align-items: flex-start; flex-direction: column; }
+            .page { padding: 28px 14px; }
+            .hide-mobile { display: none; }
+            th, td { padding: 12px 10px; }
         }
     </style>
 </head>
 <body>
+<header class="site-header">
+    <div class="site-header__inner">
+        <a class="brand" href="/jobpostings" aria-label="Smart Recruit 홈">
+            <span class="brand-mark">SR</span>
+            <span class="brand-text">Smart Recruit</span>
+        </a>
+        <nav class="site-nav" aria-label="주요 메뉴">
+            <a class="site-nav__link" href="/jobpostings">채용 공고</a>
+            <a class="site-nav__link active" href="/communities">커뮤니티</a>
+            <a class="site-nav__link" href="/admin/dashboard" th:if="${isAdmin}">관리자</a>
+        </nav>
+        <div class="auth-actions">
+            <div id="guestMenu"><a class="write-button" href="/auth/login">로그인</a></div>
+            <div id="userMenu" style="display:none;gap:8px;">
+                <a class="write-button write-button--ghost" href="/auth/mypage">내 정보</a>
+                <button class="write-button" type="button" onclick="handleLogout()">로그아웃</button>
+            </div>
+        </div>
+    </div>
+</header>
+
 <main class="page">
     <div class="header">
         <h1>커뮤니티</h1>
-        <a class="write-button" href="#">글쓰기</a>
+        <a class="write-button" href="/communities/write" id="writeLink">글쓰기</a>
     </div>
 
     <nav class="tabs" aria-label="게시판 카테고리">
-        <a class="tab active" href="#">전체</a>
-        <a class="tab" href="#">정보</a>
-        <a class="tab" href="#">질문</a>
-        <a class="tab" href="#">자유</a>
+        <a class="tab" th:classappend="${currentCategory == ''} ? ' active'" href="/communities">전체</a>
+        <a class="tab" th:classappend="${currentCategory == 'INFO'} ? ' active'" href="/communities?category=INFO">정보</a>
+        <a class="tab" th:classappend="${currentCategory == 'QNA'} ? ' active'" href="/communities?category=QNA">질문</a>
+        <a class="tab" th:classappend="${currentCategory == 'FREE'} ? ' active'" href="/communities?category=FREE">자유</a>
     </nav>
+
+    <form class="search-form" action="/communities" method="get">
+        <input type="hidden" name="category" th:if="${currentCategory != ''}" th:value="${currentCategory}">
+        <input class="search-input" type="text" name="keyword"
+               placeholder="제목 또는 내용 검색"
+               th:value="${currentKeyword}">
+        <button class="write-button write-button--ghost" type="submit">검색</button>
+    </form>
+    <div class="keyword-badge" th:if="${currentKeyword != ''}">
+        <span th:text="|'${currentKeyword}' 검색 결과|"></span>
+        <a th:href="@{/communities(category=${currentCategory != '' ? currentCategory : null})}">✕</a>
+    </div>
 
     <table>
         <thead>
@@ -148,11 +105,55 @@
         </tr>
         </thead>
         <tbody>
-        <tr>
-            <td class="empty" colspan="6">아직 등록된 게시글이 없습니다.</td>
+        <tr th:if="${#lists.isEmpty(posts)}">
+            <td class="empty" colspan="6"
+                th:text="${currentKeyword != '' ? '검색 결과가 없습니다.' : '아직 등록된 게시글이 없습니다.'}">
+            </td>
+        </tr>
+        <tr th:each="post, stat : ${posts}" th:data-href="@{/communities/{id}(id=${post.id})}">
+            <td th:text="${#lists.size(posts) - stat.index}">1</td>
+            <td th:text="${post.categoryLabel}">정보</td>
+            <td>
+                <a class="post-title" th:href="@{/communities/{id}(id=${post.id})}" th:text="${post.title}">제목</a>
+                <span class="job-badge" th:if="${post.attachedJob != null}" th:text="${post.attachedJob.company}">회사명</span>
+                <span class="comment-count" th:if="${post.commentCount > 0}" th:text="|[${post.commentCount}]|">[1]</span>
+            </td>
+            <td class="hide-mobile" th:text="${post.nickname}">작성자</td>
+            <td class="hide-mobile" th:text="${post.viewCount}">0</td>
+            <td class="hide-mobile" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">2026-06-08</td>
         </tr>
         </tbody>
     </table>
 </main>
+<script src="/js/auth-utils.js"></script>
+<script>
+    function updateAuthNav() {
+        const token = getToken();
+        document.getElementById("guestMenu").style.display = token ? "none" : "";
+        document.getElementById("userMenu").style.display = token ? "flex" : "none";
+        document.getElementById("writeLink").style.display = token ? "" : "none";
+    }
+
+    function handleLogout() {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("memberId");
+        document.cookie = "accessToken=; path=/; max-age=0";
+        location.href = "/auth/login";
+    }
+
+    document.getElementById("writeLink").addEventListener("click", (event) => {
+        if (!getToken()) {
+            event.preventDefault();
+            location.href = "/auth/login?redirect=/communities/write";
+        }
+    });
+    document.querySelectorAll("tr[data-href]").forEach(row => {
+        row.addEventListener("click", e => {
+            if (e.target.closest("a, button")) return;
+            location.href = row.dataset.href;
+        });
+    });
+    updateAuthNav();
+</script>
 </body>
 </html>

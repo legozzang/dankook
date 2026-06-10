@@ -21,6 +21,9 @@ import jakarta.validation.Valid;
 import kr.ac.dankook.ace.smart_recruit.dto.*;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.service.AuthService;
+import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.Coordinate;
+import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.ReverseGeocodeResult;
+import kr.ac.dankook.ace.smart_recruit.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 
 
@@ -39,7 +42,8 @@ public class AuthController {
     }
 
     @GetMapping("/signup")
-    public String signUpPage() {
+    public String signUpPage(Model model) {
+        model.addAttribute("sigunguBySidoJson", buildSigunguBySidoJson());
         return "signup"; // templates/signup.html
     }
 
@@ -67,9 +71,9 @@ public class AuthController {
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         TokenResponse response = authService.login(request);
         ResponseCookie cookie = ResponseCookie.from("accessToken", response.getAccessToken())
-                .httpOnly(false)
+                .httpOnly(true)
                 .path("/")
-                .maxAge(60 * 60)
+                .maxAge(60 * 60 * 24)
                 .sameSite("Lax")
                 .build();
 
@@ -86,6 +90,28 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(memberId);
     }
 
+    /**
+     * 거주지 상세주소 지오코딩 미리보기.
+     * 변환 성공 시 좌표를 반환, 실패 시 GlobalExceptionHandler가 400 + 메시지로 응답.
+     * (회원가입 화면에서 호출하므로 SecurityConfig에서 permitAll 처리)
+     */
+    @PostMapping("/geocode/preview")
+    @ResponseBody
+    public ResponseEntity<Coordinate> previewGeocode(@RequestBody GeocodePreviewRequest request){
+        Coordinate coordinate = authService.previewHomeLocation(
+                request.getSido(), request.getSigungu(), request.getDetail());
+        return ResponseEntity.ok(coordinate);
+    }
+
+    @GetMapping("/geocode/reverse")
+    @ResponseBody
+    public ResponseEntity<ReverseGeocodeResult> reverseGeocode(
+            @RequestParam double lat,
+            @RequestParam double lng
+    ) {
+        return ResponseEntity.ok(authService.previewReverseGeocode(lat, lng));
+    }
+
     @DeleteMapping("/delete/me")
     @ResponseBody
     public ResponseEntity<Void> deleteMember(@AuthenticationPrincipal User user){
@@ -97,6 +123,16 @@ public class AuthController {
     @ResponseBody
     public ResponseEntity<Void> updateMember(@AuthenticationPrincipal User user, @Valid @RequestBody UpdateRequest request){
         authService.updateMember(user.getUsername(), request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/me/gemini")
+    @ResponseBody
+    public ResponseEntity<Void> updateGeminiSettings(
+            @AuthenticationPrincipal User user,
+            @RequestBody GeminiSettingsRequest request
+    ) {
+        authService.updateGeminiSettings(user.getUsername(), request);
         return ResponseEntity.ok().build();
     }
 
@@ -120,7 +156,7 @@ public class AuthController {
                 String mid = matcher.group(3);
                 String major = matcher.group(4);
 
-                if (isBlank(major) || isBlank(mid) || isBlank(minor) || isBlank(detail)) {
+                if (StringUtils.isBlank(major) || StringUtils.isBlank(mid) || StringUtils.isBlank(minor) || StringUtils.isBlank(detail)) {
                     continue;
                 }
 
@@ -185,10 +221,6 @@ public class AuthController {
             }
         }
         return null;
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 
     private String toJson(Map<String, Map<String, Map<String, Map<String, Boolean>>>> hierarchy) {

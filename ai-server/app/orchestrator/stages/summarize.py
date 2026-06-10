@@ -52,7 +52,26 @@ def _call_gemini(client, model_name: str, prompt: str) -> str:
     return retry.call_with_retry(_do, attempts=5, base_wait=60)
 
 
-def _summarize_batch(client, batch: list[dict], model_name: str, batch_idx: int) -> tuple[int, list[str]]:
+def _call_gemini_with_fallback(clients: list, base_idx: int, model_name: str, prompt: str) -> str:
+    last_exc = None
+    for i in range(len(clients)):
+        client_idx = (base_idx + i) % len(clients)
+        client = clients[client_idx]
+        try:
+            return _call_gemini(client, model_name, prompt)
+        except Exception as e:
+            last_exc = e
+            print(f"  [키 {client_idx} 실패, 다음 키 시도] {e}")
+    raise last_exc
+
+
+def _summarize_batch(
+    clients: list,
+    base_client_idx: int,
+    batch: list[dict],
+    model_name: str,
+    batch_idx: int,
+) -> tuple[int, list[str]]:
     items = "\n".join(
         f"{i + 1}. 제목: {row.get('title', '')}, 직종: {row.get('job_type_detail', '')}, "
         f"급여: {row.get('pay_type', '')} {row.get('pay_amount', '')}, "
@@ -72,7 +91,7 @@ def _summarize_batch(client, batch: list[dict], model_name: str, batch_idx: int)
     empty_results = ["" for _ in batch]
 
     try:
-        text = _call_gemini(client, model_name, prompt)
+        text = _call_gemini_with_fallback(clients, base_client_idx, model_name, prompt)
         if "```" in text:
             text = text.split("```")[1]
             if text.startswith("json"):
@@ -89,15 +108,15 @@ def _summarize_batch(client, batch: list[dict], model_name: str, batch_idx: int)
 
 
 def main() -> str | None:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("[ERROR] GEMINI_API_KEY 환경변수 없음", file=sys.stderr)
+    _raw = os.getenv("GEMINI_API_KEYS_SUMMARIZE") or os.getenv("GEMINI_API_KEY")
+    if not _raw:
+        print("[ERROR] GEMINI_API_KEYS_SUMMARIZE 또는 GEMINI_API_KEY 환경변수 없음", file=sys.stderr)
         sys.exit(1)
+    api_keys = [k.strip() for k in _raw.split(",") if k.strip()]
+    clients = [genai.Client(api_key=k) for k in api_keys]
     if not os.path.exists(INPUT_CSV):
         print(f"[INFO] 입력 파일 없음: {INPUT_CSV}", file=sys.stderr)
         return "no_work"
-
-    client = genai.Client(api_key=api_key)
 
     print("분류된 CSV 로딩 중...")
     fieldnames, rows = csv_io.load_rows_deduped(INPUT_CSV)
@@ -123,7 +142,8 @@ def main() -> str | None:
         futures = {
             executor.submit(
                 _summarize_batch,
-                client,
+                clients,
+                batch_idx % len(clients),
                 [rows[idx] for idx in batch_indices],
                 MODEL_CYCLE[batch_idx % len(MODEL_CYCLE)],
                 batch_idx,
