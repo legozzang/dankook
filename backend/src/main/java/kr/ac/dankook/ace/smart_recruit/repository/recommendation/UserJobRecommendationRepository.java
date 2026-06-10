@@ -18,6 +18,10 @@ public interface UserJobRecommendationRepository extends JpaRepository<UserJobRe
     @EntityGraph(attributePaths = {"jobPosting", "jobPosting.jobPostingAiSummary"})
     List<UserJobRecommendation> findByMemberId(Long memberId);
 
+    @EntityGraph(attributePaths = {"jobPosting", "member"})
+    @Query("SELECT r FROM UserJobRecommendation r WHERE r.member.id IN :memberIds")
+    List<UserJobRecommendation> findByMemberIdIn(@Param("memberIds") List<Long> memberIds);
+
     Optional<UserJobRecommendation> findByMemberIdAndJobPostingId(Long memberId, Long jobPostingId);
 
     void deleteByMemberIdAndJobPostingId(Long memberId, Long jobPostingId);

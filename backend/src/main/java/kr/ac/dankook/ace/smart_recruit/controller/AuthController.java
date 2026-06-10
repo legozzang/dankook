@@ -22,6 +22,8 @@ import kr.ac.dankook.ace.smart_recruit.dto.*;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.service.AuthService;
 import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.Coordinate;
+import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.ReverseGeocodeResult;
+import kr.ac.dankook.ace.smart_recruit.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 
 
@@ -69,7 +71,7 @@ public class AuthController {
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         TokenResponse response = authService.login(request);
         ResponseCookie cookie = ResponseCookie.from("accessToken", response.getAccessToken())
-                .httpOnly(false)
+                .httpOnly(true)
                 .path("/")
                 .maxAge(60 * 60 * 24)
                 .sameSite("Lax")
@@ -99,6 +101,15 @@ public class AuthController {
         Coordinate coordinate = authService.previewHomeLocation(
                 request.getSido(), request.getSigungu(), request.getDetail());
         return ResponseEntity.ok(coordinate);
+    }
+
+    @GetMapping("/geocode/reverse")
+    @ResponseBody
+    public ResponseEntity<ReverseGeocodeResult> reverseGeocode(
+            @RequestParam double lat,
+            @RequestParam double lng
+    ) {
+        return ResponseEntity.ok(authService.previewReverseGeocode(lat, lng));
     }
 
     @DeleteMapping("/delete/me")
@@ -145,7 +156,7 @@ public class AuthController {
                 String mid = matcher.group(3);
                 String major = matcher.group(4);
 
-                if (isBlank(major) || isBlank(mid) || isBlank(minor) || isBlank(detail)) {
+                if (StringUtils.isBlank(major) || StringUtils.isBlank(mid) || StringUtils.isBlank(minor) || StringUtils.isBlank(detail)) {
                     continue;
                 }
 
@@ -210,10 +221,6 @@ public class AuthController {
             }
         }
         return null;
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 
     private String toJson(Map<String, Map<String, Map<String, Map<String, Boolean>>>> hierarchy) {

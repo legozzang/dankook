@@ -21,6 +21,8 @@ import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.recommendation.RecommendationStatRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.recommendation.UserJobRecommendationRepository;
+import kr.ac.dankook.ace.smart_recruit.service.EmailService;
+import kr.ac.dankook.ace.smart_recruit.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -34,6 +36,7 @@ public class RecommendationScheduler {
     private final UserJobRecommendationRepository recommendationRepository;
     private final RecommendationStatRepository recommendationStatRepository;
     private final GeminiService geminiService;
+    private final EmailService emailService;
 
     @Scheduled(fixedDelay = 60_000)
     @Transactional
@@ -56,6 +59,24 @@ public class RecommendationScheduler {
         }
     }
 
+    @Scheduled(cron = "0 0 7 * * *", zone = "Asia/Seoul")
+    @Transactional(readOnly = true)
+    public void sendDailyRecommendationEmails() {
+        List<Member> members = memberRepository.findByEmailNotificationTrue();
+        if (members.isEmpty()) return;
+        List<Long> memberIds = members.stream().map(Member::getId).toList();
+        Map<Long, List<UserJobRecommendation>> recsByMember = recommendationRepository
+                .findByMemberIdIn(memberIds)
+                .stream()
+                .collect(Collectors.groupingBy(r -> r.getMember().getId()));
+        for (Member member : members) {
+            List<UserJobRecommendation> recs = recsByMember.getOrDefault(member.getId(), List.of());
+            if (!recs.isEmpty()) {
+                emailService.sendRecommendationEmail(member, recs);
+            }
+        }
+    }
+
     @Transactional
     public int refreshForMember(Long memberId) {
         LocalDateTime startedAt = LocalDateTime.now();
@@ -68,7 +89,7 @@ public class RecommendationScheduler {
     }
 
     private int refreshMember(Member member) {
-        if (isBlank(member.getGeminiApiKey())) {
+        if (StringUtils.isBlank(member.getGeminiApiKey())) {
             return 0;
         }
 
@@ -86,25 +107,25 @@ public class RecommendationScheduler {
     }
 
     private List<JobPosting> findRecommendationTargets(Member member) {
-        String jobTypeMajor = normalize(member.getPreferredJobTypeMajor());
-        String jobTypeMid = normalize(member.getPreferredJobTypeMid());
-        String payType = normalize(member.getPreferredPayType());
+        String jobTypeMajor = StringUtils.normalizeFilter(member.getPreferredJobTypeMajor());
+        String jobTypeMid = StringUtils.normalizeFilter(member.getPreferredJobTypeMid());
+        String payType = StringUtils.normalizeFilter(member.getPreferredPayType());
 
-        String regionSido1 = normalize(member.getDesiredRegionSido());
-        String regionSigungu1 = normalize(member.getDesiredRegionSigungu());
-        if (!isBlank(regionSigungu1)) {
+        String regionSido1 = StringUtils.normalizeFilter(member.getDesiredRegionSido());
+        String regionSigungu1 = StringUtils.normalizeFilter(member.getDesiredRegionSigungu());
+        if (!StringUtils.isBlank(regionSigungu1)) {
             regionSido1 = null;
         }
 
-        String regionSido2 = normalize(member.getDesiredRegion2Sido());
-        String regionSigungu2 = normalize(member.getDesiredRegion2Sigungu());
-        if (!isBlank(regionSigungu2)) {
+        String regionSido2 = StringUtils.normalizeFilter(member.getDesiredRegion2Sido());
+        String regionSigungu2 = StringUtils.normalizeFilter(member.getDesiredRegion2Sigungu());
+        if (!StringUtils.isBlank(regionSigungu2)) {
             regionSido2 = null;
         }
 
-        String regionSido3 = normalize(member.getDesiredRegion3Sido());
-        String regionSigungu3 = normalize(member.getDesiredRegion3Sigungu());
-        if (!isBlank(regionSigungu3)) {
+        String regionSido3 = StringUtils.normalizeFilter(member.getDesiredRegion3Sido());
+        String regionSigungu3 = StringUtils.normalizeFilter(member.getDesiredRegion3Sigungu());
+        if (!StringUtils.isBlank(regionSigungu3)) {
             regionSido3 = null;
         }
 
@@ -134,7 +155,7 @@ public class RecommendationScheduler {
 
     private boolean shouldRun(Member member, LocalDateTime now) {
         Integer intervalHours = member.getRecommendationIntervalHours();
-        if (isBlank(member.getGeminiApiKey()) || intervalHours == null || !ALLOWED_INTERVALS.contains(intervalHours)) {
+        if (StringUtils.isBlank(member.getGeminiApiKey()) || intervalHours == null || !ALLOWED_INTERVALS.contains(intervalHours)) {
             return false;
         }
 
@@ -158,7 +179,7 @@ public class RecommendationScheduler {
         for (Map.Entry<Long, String> entry : reasons.entrySet()) {
             Long postingId = entry.getKey();
             String reason = entry.getValue();
-            if (isBlank(reason) || !postingById.containsKey(postingId)) {
+            if (StringUtils.isBlank(reason) || !postingById.containsKey(postingId)) {
                 continue;
             }
 
@@ -182,11 +203,4 @@ public class RecommendationScheduler {
         recommendationStatRepository.save(new RecommendationStat(durationSeconds, postingCount));
     }
 
-    private String normalize(String value) {
-        return isBlank(value) ? null : value.trim();
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
-    }
 }
