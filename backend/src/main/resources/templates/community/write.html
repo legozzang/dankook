@@ -60,6 +60,7 @@
         <nav class="site-nav" aria-label="주요 메뉴">
             <a class="site-nav__link" href="/jobpostings">채용 공고</a>
             <a class="site-nav__link active" href="/communities">커뮤니티</a>
+            <a class="site-nav__link" href="/dashboard">대시보드</a>
             <a class="site-nav__link" href="/admin/dashboard" th:if="${isAdmin}">관리자</a>
         </nav>
         <div class="auth-actions">
@@ -108,11 +109,11 @@
         document.getElementById("userMenu").style.display = token ? "flex" : "none";
     }
 
-    function handleLogout() {
+    async function handleLogout() {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("memberId");
-        document.cookie = "accessToken=; path=/; max-age=0";
-        location.href = "/auth/login";
+        await fetch("/auth/logout", { method: "POST" });
+        location.reload();
     }
 
     if (!getToken()) {

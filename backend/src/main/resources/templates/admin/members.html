@@ -41,6 +41,7 @@
         <nav class="site-nav">
             <a class="site-nav__link" href="/jobpostings">채용 공고</a>
             <a class="site-nav__link" href="/communities">커뮤니티</a>
+            <a class="site-nav__link" href="/dashboard">대시보드</a>
             <a class="site-nav__link active" href="/admin/dashboard">관리자</a>
         </nav>
         <div class="auth-actions">
@@ -54,6 +55,20 @@
 </header>
 <main class="page">
     <h1>유저 관리</h1>
+    <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:24px;">
+        <div style="border:1px solid #dbe2ea;border-radius:6px;background:#fff;padding:16px;">
+            <div style="color:#667085;font-size:13px;">전체회원</div>
+            <div style="margin-top:8px;font-size:28px;font-weight:800;" th:text="${totalMembers}">0</div>
+        </div>
+        <div style="border:1px solid #dbe2ea;border-radius:6px;background:#fff;padding:16px;">
+            <div style="color:#667085;font-size:13px;">SEEKER</div>
+            <div style="margin-top:8px;font-size:28px;font-weight:800;" th:text="${seekerCount}">0</div>
+        </div>
+        <div style="border:1px solid #dbe2ea;border-radius:6px;background:#fff;padding:16px;">
+            <div style="color:#667085;font-size:13px;">ADMIN</div>
+            <div style="margin-top:8px;font-size:28px;font-weight:800;" th:text="${adminCount}">0</div>
+        </div>
+    </section>
     <nav>
         <a href="/admin">대시보드</a>
         <a class="active" href="/admin/members">유저 관리</a>
@@ -109,11 +124,11 @@
 <script>
     // authHeaders() → auth-utils.js 에서 전역 제공
 
-    function handleLogout() {
+    async function handleLogout() {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("memberId");
-        document.cookie = "accessToken=; path=/; max-age=0";
-        location.href = "/auth/login";
+        await fetch("/auth/logout", { method: "POST" });
+        location.reload();
     }
 
     function updateAuthNav() {

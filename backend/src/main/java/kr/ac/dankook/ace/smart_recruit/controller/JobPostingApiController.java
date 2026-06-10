@@ -102,7 +102,7 @@ public class JobPostingApiController {
                     List<CardResponse> result = recs.stream()
                             .map(r -> {
                                 JobPostingCard card = cardMap.get(r.getJobPosting().getId());
-                                return card == null ? null : toCardResponse(card, r.getRecommendationReason());
+                                return card == null ? null : toCardResponse(card, r.getRecommendationReason(), true);
                             })
                             .filter(c -> c != null)
                             .toList();
@@ -180,11 +180,14 @@ public class JobPostingApiController {
     }
 
     private CardResponse toCardResponse(JobPostingCard card, Map<Long, String> personalizedReasons) {
-        String recommendationReason = personalizedReasons.getOrDefault(card.id(), card.recommendationReason());
-        return toCardResponse(card, recommendationReason);
+        boolean personalized = personalizedReasons.containsKey(card.id());
+        String recommendationReason = personalized
+                ? personalizedReasons.get(card.id())
+                : card.recommendationReason();
+        return toCardResponse(card, recommendationReason, personalized);
     }
 
-    private CardResponse toCardResponse(JobPostingCard card, String recommendationReason) {
+    private CardResponse toCardResponse(JobPostingCard card, String recommendationReason, boolean personalized) {
         return new CardResponse(
                 card.id(),
                 card.title(),
@@ -206,7 +209,8 @@ public class JobPostingApiController {
                 card.latitude(),
                 card.longitude(),
                 card.exactLocation(),
-                card.scraped()
+                card.scraped(),
+                personalized
         );
     }
 
@@ -259,7 +263,8 @@ public class JobPostingApiController {
             double latitude,
             double longitude,
             boolean exactLocation,
-            boolean scraped
+            boolean scraped,
+            boolean personalized
     ) {
     }
 
