@@ -169,10 +169,10 @@
 
     // authHeaders() → auth-utils.js 에서 전역 제공
 
-    function handleLogout() {
+    async function handleLogout() {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("memberId");
-        document.cookie = "accessToken=; path=/; max-age=0";
+        await fetch("/auth/logout", { method: "POST" });
         location.href = "/auth/login";
     }
 

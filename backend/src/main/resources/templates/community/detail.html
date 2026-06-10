@@ -179,10 +179,10 @@
         document.getElementById("userMenu").style.display = token ? "flex" : "none";
     }
 
-    function handleLogout() {
+    async function handleLogout() {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("memberId");
-        document.cookie = "accessToken=; path=/; max-age=0";
+        await fetch("/auth/logout", { method: "POST" });
         location.href = "/auth/login";
     }
 

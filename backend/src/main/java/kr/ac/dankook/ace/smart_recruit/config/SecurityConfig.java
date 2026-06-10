@@ -46,6 +46,7 @@ public class SecurityConfig {
                                 "/dashboard",
                                 "/auth/signup",
                                 "/auth/login",
+                                "/auth/logout",
                                 "/auth/geocode/preview",
                                 "/auth/geocode/reverse",
                                 "/auth/mypage",

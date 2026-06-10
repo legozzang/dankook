@@ -19,11 +19,11 @@ function updateAuthNav() {
         updateAuthNav();
     }
 
-    function handleLogout() {
+    async function handleLogout() {
         if (confirm("로그아웃 하시겠습니까?")) {
             localStorage.removeItem("accessToken");
             localStorage.removeItem("memberId");
-            document.cookie = "accessToken=; path=/; max-age=0";
+            await fetch("/auth/logout", { method: "POST" });
             location.href = "/auth/login";
         }
     }

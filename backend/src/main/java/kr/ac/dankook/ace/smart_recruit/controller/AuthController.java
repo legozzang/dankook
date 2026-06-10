@@ -82,6 +82,20 @@ public class AuthController {
                 .body(response);
     }
 
+    @PostMapping("/logout")
+    @ResponseBody
+    public ResponseEntity<Void> logout() {
+        ResponseCookie expiredCookie = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.SET_COOKIE, expiredCookie.toString())
+                .build();
+    }
+
     @PostMapping("/signup")
     @ResponseBody
     public ResponseEntity<Long> signUp(@Valid @RequestBody SignUpRequest request){
