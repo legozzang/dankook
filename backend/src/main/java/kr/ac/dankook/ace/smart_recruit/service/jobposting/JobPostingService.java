@@ -30,6 +30,7 @@ import kr.ac.dankook.ace.smart_recruit.config.AppConstants;
 import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.scrap.ScrapRepository;
+import kr.ac.dankook.ace.smart_recruit.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -138,7 +139,8 @@ public class JobPostingService {
                 command.jobTypeMid() != null ? command.jobTypeMid() : "",
                 command.jobTypeMinor() != null ? command.jobTypeMinor() : "",
                 command.jobTypeDetail() != null ? command.jobTypeDetail() : "",
-                command.welfare()
+                command.welfare(),
+                command.recommendationReason()
         ));
     }
 
@@ -216,7 +218,7 @@ public class JobPostingService {
                 deadlineLabel(jobPosting.getDeadline()),
                 salaryLabel(jobPosting),
                 extractWorkTime(jobPosting.getContent()),
-                "",                          // recommendationReason (추천 경로가 아닌 경우 빈 값)
+                jobPosting.getAiSummaryReason() != null ? jobPosting.getAiSummaryReason() : "",
                 summaryLines(jobPosting),
                 jobPosting.getExternalUrl(),
                 coordinate.latitude(),
@@ -315,7 +317,7 @@ public class JobPostingService {
     }
 
     private String companyName(String company) {
-        return isBlank(company) ? "회사명 미등록" : company;
+        return StringUtils.isBlank(company) ? "회사명 미등록" : company;
     }
 
     private String locationLabel(JobPosting jobPosting) {
@@ -323,15 +325,15 @@ public class JobPostingService {
         addIfPresent(parts, jobPosting.getRegionSido());
         addIfPresent(parts, jobPosting.getRegionSigungu());
         if (!parts.isEmpty()) return String.join(" ", parts);
-        if (!isBlank(jobPosting.getRegion())) return jobPosting.getRegion();
+        if (!StringUtils.isBlank(jobPosting.getRegion())) return jobPosting.getRegion();
         return "위치 미등록";
     }
 
     private String dongLabel(JobPosting jobPosting, String location) {
-        String source = !isBlank(jobPosting.getRegionSigungu())
+        String source = !StringUtils.isBlank(jobPosting.getRegionSigungu())
                 ? jobPosting.getRegionSigungu()
-                : (!isBlank(jobPosting.getRegion()) ? jobPosting.getRegion() : location);
-        if (isBlank(source)) return "기타";
+                : (!StringUtils.isBlank(jobPosting.getRegion()) ? jobPosting.getRegion() : location);
+        if (StringUtils.isBlank(source)) return "기타";
         for (String token : source.split("\\s+")) {
             if (token.endsWith("동") || token.endsWith("읍") || token.endsWith("면") || token.endsWith("구")) {
                 return token;
@@ -341,14 +343,14 @@ public class JobPostingService {
     }
 
     private String deadlineLabel(String deadline) {
-        return isBlank(deadline) ? "마감일 미정" : deadline;
+        return StringUtils.isBlank(deadline) ? "마감일 미정" : deadline;
     }
 
     private String salaryLabel(JobPosting jobPosting) {
-        if (!isBlank(jobPosting.getPayType()) && jobPosting.getPayAmount() != null && jobPosting.getPayAmount() > 0) {
+        if (!StringUtils.isBlank(jobPosting.getPayType()) && jobPosting.getPayAmount() != null && jobPosting.getPayAmount() > 0) {
             return jobPosting.getPayType() + " " + String.format("%,d", jobPosting.getPayAmount()) + "원";
         }
-        if (!isBlank(jobPosting.getPayType())) return jobPosting.getPayType();
+        if (!StringUtils.isBlank(jobPosting.getPayType())) return jobPosting.getPayType();
         return extractSalary(jobPosting.getContent());
     }
 
@@ -361,7 +363,7 @@ public class JobPostingService {
     }
 
     private String extract(String content, Pattern pattern, int group, String fallback) {
-        if (isBlank(content)) return fallback;
+        if (StringUtils.isBlank(content)) return fallback;
         Matcher matcher = pattern.matcher(content.replaceAll("\\s+", " "));
         if (matcher.find()) return matcher.group(group).trim();
         return fallback;
@@ -375,21 +377,16 @@ public class JobPostingService {
             addSummaryLine(lines, "주요 업무", aiSummary.getMainTasks());
             addSummaryLine(lines, "혜택", aiSummary.getCoreBenefits());
         }
-        if (lines.size() < 3) {
-            addIfPresent(lines, "급여: " + salaryLabel(jobPosting));
-            addIfPresent(lines, "시간: " + extractWorkTime(jobPosting.getContent()));
-            addIfPresent(lines, "지역: " + locationLabel(jobPosting));
-        }
         return lines.stream().limit(3).toList();
     }
 
     private void addSummaryLine(List<String> lines, String label, String value) {
         String cleaned = cleanJsonText(value);
-        if (!isBlank(cleaned)) lines.add(label + ": " + cleaned);
+        if (!StringUtils.isBlank(cleaned)) lines.add(label + ": " + cleaned);
     }
 
     private String cleanJsonText(String value) {
-        if (isBlank(value)) return "";
+        if (StringUtils.isBlank(value)) return "";
         return value.replace("[", "").replace("]", "").replace("\"", "")
                 .replace("{", "").replace("}", "").trim();
     }
@@ -408,11 +405,7 @@ public class JobPostingService {
     }
 
     private void addIfPresent(List<String> values, String value) {
-        if (!isBlank(value)) values.add(value.trim());
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
+        if (!StringUtils.isBlank(value)) values.add(value.trim());
     }
 
     // ── 공개 레코드 ──────────────────────────────────────────────────────
@@ -453,7 +446,8 @@ public class JobPostingService {
             String jobTypeMid,
             String jobTypeMinor,
             String jobTypeDetail,
-            String welfare
+            String welfare,
+            String recommendationReason
     ) {
     }
 

@@ -10,6 +10,7 @@ import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.JobP
 import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.JobPostingCreateCommand;
 import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.JobPostingResponse;
 import kr.ac.dankook.ace.smart_recruit.service.recommendation.RecommendationScheduler;
+import kr.ac.dankook.ace.smart_recruit.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -61,12 +62,12 @@ public class JobPostingApiController {
             @RequestParam(required = false, defaultValue = "default") String sort,
             @AuthenticationPrincipal User user
     ) {
-        String s = normalizeFilter(sido);
-        String sg = normalizeFilter(sigungu);
-        String jm = normalizeFilter(jobTypeMajor);
-        String jmd = normalizeFilter(jobTypeMid);
+        String s = StringUtils.normalizeFilter(sido);
+        String sg = StringUtils.normalizeFilter(sigungu);
+        String jm = StringUtils.normalizeFilter(jobTypeMajor);
+        String jmd = StringUtils.normalizeFilter(jobTypeMid);
         String kw = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
-        String pt = normalizeFilter(payType);
+        String pt = StringUtils.normalizeFilter(payType);
         Map<Long, String> personalizedReasons = findPersonalizedReasons(user);
         int limitCount = "all".equals(limit) ? Integer.MAX_VALUE : parseLimit(limit);
 
@@ -165,14 +166,6 @@ public class JobPostingApiController {
         }
     }
 
-    private String normalizeFilter(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() || "전체".equals(trimmed) || "all".equals(trimmed) ? null : trimmed;
-    }
-
     private double elapsedSeconds(Instant startedAt) {
         return Duration.between(startedAt, Instant.now()).toMillis() / 1000.0;
     }
@@ -239,7 +232,8 @@ public class JobPostingApiController {
                 request.jobTypeMid(),
                 request.jobTypeMinor(),
                 request.jobTypeDetail(),
-                request.welfare()
+                request.welfare(),
+                request.recommendationReason()
         ));
         return ResponseEntity.status(201).build();
     }
@@ -302,7 +296,8 @@ public class JobPostingApiController {
             @JsonProperty("job_type_mid") String jobTypeMid,
             @JsonProperty("job_type_minor") String jobTypeMinor,
             @JsonProperty("job_type_detail") String jobTypeDetail,
-            String welfare
+            String welfare,
+            @JsonProperty("recommendation_reason") String recommendationReason
     ) {
     }
 }
