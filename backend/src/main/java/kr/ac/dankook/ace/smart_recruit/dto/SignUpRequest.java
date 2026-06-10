@@ -55,4 +55,12 @@ public class SignUpRequest {
     private String desiredRegion3Sido;
 
     private String desiredRegion3Sigungu;
+
+    private String preferredJobTypeMajor;
+
+    private String preferredJobTypeMid;
+
+    private String preferredPayType;
+
+    private Integer minPayAmount;
 }
