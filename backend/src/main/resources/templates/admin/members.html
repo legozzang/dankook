@@ -97,7 +97,9 @@
                 <button type="button" th:onclick="|changeRole(${member.id})|">변경</button>
             </td>
             <td>
-                <button type="button" th:onclick="|sendRecommendationMail(${member.id}, '${member.email}')|">추천 메일</button>
+                <button type="button"
+                        th:attr="data-id=${member.id},data-email=${member.email}"
+                        onclick="sendRecommendationMail(this.dataset.id, this.dataset.email)">추천 메일</button>
             </td>
             <td><button class="danger" type="button" th:onclick="|deleteMember(${member.id})|">삭제</button></td>
         </tr>
