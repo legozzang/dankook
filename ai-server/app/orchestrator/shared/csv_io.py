@@ -12,10 +12,18 @@ def load_seen_urls(csv_path: str, url_col: str = "external_url") -> set[str]:
 
 def append_row(csv_path: str, row: dict) -> None:
     os.makedirs(os.path.dirname(csv_path) or ".", exist_ok=True)
-    write_header = not os.path.exists(csv_path)
+    file_exists = os.path.exists(csv_path)
+
+    if file_exists:
+        with open(csv_path, "r", newline="", encoding="utf-8") as f:
+            existing_fieldnames = list(csv.DictReader(f).fieldnames or [])
+        fieldnames = existing_fieldnames + [k for k in row.keys() if k not in existing_fieldnames]
+    else:
+        fieldnames = list(row.keys())
+
     with open(csv_path, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(row.keys()), extrasaction="ignore")
-        if write_header:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        if not file_exists:
             writer.writeheader()
         writer.writerow(row)
 

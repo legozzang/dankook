@@ -13,6 +13,7 @@ dist/
 check_pay_type.py
 check_skip_reason.py
 migrate_region_depth.py
+migrate_ai_summary_reason.py
 
 # 로컬 모니터링
 logs/
