@@ -8,8 +8,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
+import org.springframework.core.io.ClassPathResource;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -138,12 +137,12 @@ public class AuthController {
 
     private String buildKscoHierarchyJson() {
         try {
-            Path path = resolveKscoPath();
-            if (path == null) {
+            ClassPathResource resource = new ClassPathResource("ksco_2025_reverse.json");
+            if (!resource.exists()) {
                 return "{}";
             }
 
-            String json = Files.readString(path);
+            String json = new String(resource.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
             Map<String, Map<String, Map<String, Map<String, Boolean>>>> hierarchy = new TreeMap<>();
 
             Pattern pattern = Pattern.compile(
@@ -208,20 +207,6 @@ public class AuthController {
         }
     }
 
-    private Path resolveKscoPath() {
-        Path[] candidates = {
-                Path.of("ai-server", "resources", "ksco_2025_reverse.json"),
-                Path.of("..", "ai-server", "resources", "ksco_2025_reverse.json"),
-                Path.of("src", "main", "resources", "ksco_2025_reverse.json")
-        };
-
-        for (Path candidate : candidates) {
-            if (Files.exists(candidate)) {
-                return candidate;
-            }
-        }
-        return null;
-    }
 
     private String toJson(Map<String, Map<String, Map<String, Map<String, Boolean>>>> hierarchy) {
         StringBuilder sb = new StringBuilder("{");
