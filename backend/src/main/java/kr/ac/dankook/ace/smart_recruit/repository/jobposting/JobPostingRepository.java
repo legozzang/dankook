@@ -28,7 +28,6 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
             SELECT j FROM JobPosting j
             LEFT JOIN FETCH j.jobPostingAiSummary
             WHERE j.id = :id
-              AND j.status = kr.ac.dankook.ace.smart_recruit.model.jobposting.JobStatus.OPEN
             """)
     Optional<JobPosting> findByIdWithAiSummary(@Param("id") Long id);
 
