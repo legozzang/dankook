@@ -20,6 +20,7 @@ import jakarta.validation.Valid;
 import kr.ac.dankook.ace.smart_recruit.dto.*;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.service.AuthService;
+import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService;
 import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.Coordinate;
 import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.ReverseGeocodeResult;
 import kr.ac.dankook.ace.smart_recruit.util.StringUtils;
@@ -33,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
+    private final GeocodingService geocodingService;
     private final JobPostingRepository jobPostingRepository;
 
     @GetMapping("/login")
@@ -115,6 +117,17 @@ public class AuthController {
         Coordinate coordinate = authService.previewHomeLocation(
                 request.getSido(), request.getSigungu(), request.getDetail());
         return ResponseEntity.ok(coordinate);
+    }
+
+    @GetMapping("/geocode/region")
+    @ResponseBody
+    public ResponseEntity<?> geocodeRegion(
+            @RequestParam String sido,
+            @RequestParam(required = false, defaultValue = "") String sigungu) {
+        String query = (sigungu.isBlank() ? sido : sido + " " + sigungu).trim();
+        return geocodingService.geocode(query)
+                .map(coord -> ResponseEntity.ok(coord))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/geocode/reverse")
