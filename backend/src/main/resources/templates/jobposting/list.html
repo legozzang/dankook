@@ -65,6 +65,19 @@
                 <span id="filterToggleIcon">▼</span>
             </button>
             <div class="filters collapsed" id="filtersBody">
+                <!-- 관심 지역 바로가기: 로그인 유저 + 지역 설정 시만 노출 -->
+                <div class="filter-group" th:if="${desiredRegions != null and !#lists.isEmpty(desiredRegions)}">
+                    <p class="filter-title">관심 지역 바로가기</p>
+                    <div class="filter-row">
+                        <button class="filter-button" type="button"
+                                th:each="r : ${desiredRegions}"
+                                th:data-sido="${r.sido}"
+                                th:data-sigungu="${r.sigungu}"
+                                th:text="${r.label} + ' (' + ${r.sido} + ' ' + ${r.sigungu} + ')'"
+                                onclick="applyDesiredRegion(this)">
+                        </button>
+                    </div>
+                </div>
                 <div class="filter-group">
                     <p class="filter-title">지역 필터</p>
                     <div class="filter-row">
@@ -227,5 +240,39 @@
 </script>
 <script src="/js/auth-utils.js"></script>
 <script src="/js/job-map.js"></script>
+<script>
+    async function applyDesiredRegion(btn) {
+        const sido = btn.dataset.sido;
+        const sigungu = btn.dataset.sigungu;
+        const filterSidoEl = document.getElementById('filterSido');
+        const filterSigunguEl = document.getElementById('filterSigungu');
+
+        // 1. 지오코딩 → 지도 중심 이동
+        try {
+            const params = new URLSearchParams({sido: sido});
+            if (sigungu) params.append('sigungu', sigungu);
+            const res = await fetch('/auth/geocode/region?' + params.toString());
+            if (res.ok) {
+                const coord = await res.json();
+                if (coord && coord.latitude && coord.longitude && window.moveMapToCoords) {
+                    window.moveMapToCoords(coord.latitude, coord.longitude);
+                }
+            }
+        } catch (e) {
+            // 지오코딩 실패해도 필터는 계속 적용
+        }
+
+        // 2. 필터 드롭다운 설정
+        filterSidoEl.value = sido;
+        filterSidoEl.dispatchEvent(new Event('change')); // selectedSido 업데이트 + sigungu 옵션 채움 + selectedSigungu="all" 리셋
+        if (sigungu) {
+            filterSigunguEl.value = sigungu;
+            filterSigunguEl.dispatchEvent(new Event('change')); // selectedSigungu 업데이트
+        }
+
+        // 3. 검색 실행
+        document.getElementById('searchBtn').click();
+    }
+</script>
 </body>
 </html>

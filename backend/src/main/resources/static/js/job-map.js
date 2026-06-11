@@ -975,6 +975,11 @@ function applyFilters() {
             if (selectedRadius === "all") {
                 setRadius("1");
             }
+            selectedSido = "all";
+            selectedSigungu = "all";
+            filterSido.value = "all";
+            fillSelect(filterSigungu, "시/군/구 전체", []);
+            filterSigungu.disabled = true;
             updateRadiusCircle();
             await runSearch();
         });
@@ -1235,6 +1240,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (window.L) {
         initMap();
     }
+
+    // 관심 지역 바로가기 버튼에서 호출 — 지도 중심을 지정 좌표로 이동
+    window.moveMapToCoords = function(lat, lng) {
+        customCenter = {lat, lng};
+        if (customMarker) customMarker.remove();
+        customMarker = L.marker([lat, lng], {
+            icon: L.divIcon({className: "custom-center-icon", html: "📍", iconSize: [24, 24]})
+        }).addTo(map);
+        map.setView([lat, lng], 13);
+        if (resetCenterButton) resetCenterButton.style.display = "";
+        setRadius("all");
+        updateRadiusCircle();
+    };
 
     // ── 3. 스크랩 상태 로드 (독립적 — 필터링 로직과 무관, fire-and-forget) ─
     loadScrappedIds(); // await 없음: 스크랩 표시 지연이 초기 필터에 영향 없음

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import kr.ac.dankook.ace.smart_recruit.config.AppConstants;
+import kr.ac.dankook.ace.smart_recruit.repository.MemberRepository;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService;
 import kr.ac.dankook.ace.smart_recruit.service.jobposting.JobPostingService.JobPostingCard;
@@ -34,6 +35,7 @@ public class JobPostingViewController {
 
     private final JobPostingService jobPostingService;
     private final JobPostingRepository jobPostingRepository;
+    private final MemberRepository memberRepository;
 
     @GetMapping("/")
     public String root() {
@@ -99,6 +101,35 @@ public class JobPostingViewController {
         model.addAttribute("sigunguBySidoJson", JsonViewUtils.toJson(sigunguBySido));
         model.addAttribute("jobMajors", new ArrayList<>(jobTypeMidByMajor.keySet()));
         model.addAttribute("jobTypeMidByMajorJson", JsonViewUtils.toJson(jobTypeMidByMajor));
+        if (user != null) {
+            memberRepository.findByEmail(user.getUsername()).ifPresent(member -> {
+                List<Map<String, String>> desiredRegions = new ArrayList<>();
+                if (member.getDesiredRegionSido() != null && !member.getDesiredRegionSido().isBlank()) {
+                    desiredRegions.add(Map.of(
+                        "label", "관심 지역 1",
+                        "sido", member.getDesiredRegionSido(),
+                        "sigungu", member.getDesiredRegionSigungu() != null ? member.getDesiredRegionSigungu() : ""
+                    ));
+                }
+                if (member.getDesiredRegion2Sido() != null && !member.getDesiredRegion2Sido().isBlank()) {
+                    desiredRegions.add(Map.of(
+                        "label", "관심 지역 2",
+                        "sido", member.getDesiredRegion2Sido(),
+                        "sigungu", member.getDesiredRegion2Sigungu() != null ? member.getDesiredRegion2Sigungu() : ""
+                    ));
+                }
+                if (member.getDesiredRegion3Sido() != null && !member.getDesiredRegion3Sido().isBlank()) {
+                    desiredRegions.add(Map.of(
+                        "label", "관심 지역 3",
+                        "sido", member.getDesiredRegion3Sido(),
+                        "sigungu", member.getDesiredRegion3Sigungu() != null ? member.getDesiredRegion3Sigungu() : ""
+                    ));
+                }
+                if (!desiredRegions.isEmpty()) {
+                    model.addAttribute("desiredRegions", desiredRegions);
+                }
+            });
+        }
         model.addAttribute("isAdmin", isAdmin(user));
 
         return "jobposting/list";

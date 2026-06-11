@@ -49,6 +49,7 @@ public class SecurityConfig {
                                 "/auth/logout",
                                 "/auth/geocode/preview",
                                 "/auth/geocode/reverse",
+                                "/auth/geocode/region",
                                 "/auth/mypage",
                                 "/main", 
                                 "/jobs/list",
