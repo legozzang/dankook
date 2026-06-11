@@ -19,12 +19,12 @@ function updateAuthNav() {
         updateAuthNav();
     }
 
-    function handleLogout() {
+    async function handleLogout() {
         if (confirm("로그아웃 하시겠습니까?")) {
             localStorage.removeItem("accessToken");
             localStorage.removeItem("memberId");
-            document.cookie = "accessToken=; path=/; max-age=0";
-            location.href = "/auth/login";
+            await fetch("/auth/logout", { method: "POST" });
+            location.reload();
         }
     }
 
@@ -212,12 +212,14 @@ function updateAuthNav() {
     const MARKER_STATUS = {
         INFERRED_LOCATION: "inferred-location",
         CLOSING_SOON: "closing-soon",
+        AI_RECOMMENDED: "ai-recommended",
         RECOMMENDED: "recommended",
         DEFAULT: "default"
     };
     const MARKER_COLORS = {
         [MARKER_STATUS.INFERRED_LOCATION]: "#6b7280",
         [MARKER_STATUS.CLOSING_SOON]: "#dc2626",
+        [MARKER_STATUS.AI_RECOMMENDED]: "#16a34a",
         [MARKER_STATUS.RECOMMENDED]: "#FFC800FF",
         [MARKER_STATUS.DEFAULT]: "#2563eb"
     };
@@ -413,7 +415,8 @@ function updateAuthNav() {
             lat: field(job, "latitude", "latitude", 0),
             lng: field(job, "longitude", "longitude", 0),
             exactLocation: field(job, "exactLocation", "exact_location", false),
-            scraped: field(job, "scraped", "scraped", false)
+            scraped: field(job, "scraped", "scraped", false),
+            personalized: field(job, "personalized", "personalized", false)
         };
     }
 
@@ -452,7 +455,8 @@ function updateAuthNav() {
                      data-lat="${escapeHtml(data.lat)}"
                      data-lng="${escapeHtml(data.lng)}"
                      data-exact-location="${exactLocation}"
-                     data-scraped="${data.scraped}">
+                     data-scraped="${data.scraped}"
+                     data-personalized="${data.personalized}">
                 <div>
                     <p class="company">${escapeHtml(data.company)}</p>
                     <h2 class="job-title">${escapeHtml(data.title)}</h2>
@@ -573,7 +577,10 @@ function updateAuthNav() {
     }
 
     function isRecommendedJob(card) {
-        return String(card.dataset.recommendationReason ?? "").trim() !== "";
+        const matchesRegion = matchesPreferredRegion(card);
+        const matchesJobType = matchesPreference(card.dataset.jobMajor, userPreferences.jobMajor) &&
+            (!userPreferences.jobMid || card.dataset.jobMid === userPreferences.jobMid);
+        return matchesRegion || matchesJobType;
     }
 
     function getMarkerStatus(card, lat, lng) {
@@ -581,15 +588,15 @@ function updateAuthNav() {
         if (!isExactLocation || !Number.isFinite(lat) || !Number.isFinite(lng)) {
             return MARKER_STATUS.INFERRED_LOCATION;
         }
-
-        if (isClosingSoon(card)) {
-            return MARKER_STATUS.CLOSING_SOON;
+        if (card.dataset.personalized === "true") {
+            return MARKER_STATUS.AI_RECOMMENDED;
         }
-
         if (isRecommendedJob(card)) {
             return MARKER_STATUS.RECOMMENDED;
         }
-
+        if (isClosingSoon(card)) {
+            return MARKER_STATUS.CLOSING_SOON;
+        }
         return MARKER_STATUS.DEFAULT;
     }
 
@@ -883,6 +890,7 @@ function applyFilters() {
         legend.onAdd = () => {
             const container = L.DomUtil.create("div", "marker-legend");
             container.innerHTML = `
+                <div><span class="marker-legend-dot marker-legend-dot--ai-recommended"></span>AI 추천</div>
                 <div><span class="marker-legend-dot marker-legend-dot--recommended"></span>추천 공고</div>
                 <div><span class="marker-legend-dot marker-legend-dot--closing-soon"></span>마감임박</div>
                 <div><span class="marker-legend-dot marker-legend-dot--default"></span>일반 공고</div>
@@ -967,6 +975,11 @@ function applyFilters() {
             if (selectedRadius === "all") {
                 setRadius("1");
             }
+            selectedSido = "all";
+            selectedSigungu = "all";
+            filterSido.value = "all";
+            fillSelect(filterSigungu, "시/군/구 전체", []);
+            filterSigungu.disabled = true;
             updateRadiusCircle();
             await runSearch();
         });
@@ -1227,6 +1240,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (window.L) {
         initMap();
     }
+
+    // 관심 지역 바로가기 버튼에서 호출 — 지도 중심을 지정 좌표로 이동
+    window.moveMapToCoords = function(lat, lng) {
+        customCenter = {lat, lng};
+        if (customMarker) customMarker.remove();
+        customMarker = L.marker([lat, lng], {
+            icon: L.divIcon({className: "custom-center-icon", html: "📍", iconSize: [24, 24]})
+        }).addTo(map);
+        map.setView([lat, lng], 13);
+        if (resetCenterButton) resetCenterButton.style.display = "";
+        setRadius("all");
+        updateRadiusCircle();
+    };
 
     // ── 3. 스크랩 상태 로드 (독립적 — 필터링 로직과 무관, fire-and-forget) ─
     loadScrappedIds(); // await 없음: 스크랩 표시 지연이 초기 필터에 영향 없음

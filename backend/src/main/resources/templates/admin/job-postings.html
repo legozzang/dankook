@@ -42,6 +42,7 @@
         <nav class="site-nav">
             <a class="site-nav__link" href="/jobpostings">채용 공고</a>
             <a class="site-nav__link" href="/communities">커뮤니티</a>
+            <a class="site-nav__link" href="/dashboard">대시보드</a>
             <a class="site-nav__link active" href="/admin/dashboard">관리자</a>
         </nav>
         <div class="auth-actions">
@@ -168,11 +169,11 @@
 
     // authHeaders() → auth-utils.js 에서 전역 제공
 
-    function handleLogout() {
+    async function handleLogout() {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("memberId");
-        document.cookie = "accessToken=; path=/; max-age=0";
-        location.href = "/auth/login";
+        await fetch("/auth/logout", { method: "POST" });
+        location.reload();
     }
 
     function updateAuthNav() {

@@ -25,6 +25,7 @@
         <nav class="site-nav" aria-label="주요 메뉴">
             <a class="site-nav__link active" href="/jobpostings">채용 공고</a>
             <a class="site-nav__link" href="/communities">커뮤니티</a>
+            <a class="site-nav__link" href="/dashboard">대시보드</a>
             <a class="site-nav__link" href="/admin/dashboard" th:if="${isAdmin}">관리자</a>
         </nav>
 
@@ -64,6 +65,19 @@
                 <span id="filterToggleIcon">▼</span>
             </button>
             <div class="filters collapsed" id="filtersBody">
+                <!-- 관심 지역 바로가기: 로그인 유저 + 지역 설정 시만 노출 -->
+                <div class="filter-group" th:if="${desiredRegions != null and !#lists.isEmpty(desiredRegions)}">
+                    <p class="filter-title">관심 지역 바로가기</p>
+                    <div class="filter-row">
+                        <button class="filter-button" type="button"
+                                th:each="r : ${desiredRegions}"
+                                th:data-sido="${r.sido}"
+                                th:data-sigungu="${r.sigungu}"
+                                th:text="${r.label} + ' (' + ${r.sido} + ' ' + ${r.sigungu} + ')'"
+                                onclick="applyDesiredRegion(this)">
+                        </button>
+                    </div>
+                </div>
                 <div class="filter-group">
                     <p class="filter-title">지역 필터</p>
                     <div class="filter-row">
@@ -197,7 +211,11 @@
 
                     <!-- 카드 하단 액션 행 -->
                     <div class="card-actions">
-                        <a class="detail-link" th:href="@{/jobpostings/{id}(id=${jobPosting.id})}">상세 보기</a>
+                        <a class="detail-link"
+                           th:with="hasExternal=${jobPosting.externalUrl != null and !jobPosting.externalUrl.isBlank()}"
+                           th:href="${hasExternal} ? ${jobPosting.externalUrl} : @{/jobpostings/{id}(id=${jobPosting.id})}"
+                           th:target="${hasExternal} ? '_blank' : '_self'"
+                           th:rel="${hasExternal} ? 'noopener' : null">상세 보기</a>
                         <button class="scrap-btn"
                                 th:classappend="${jobPosting.scraped} ? ' scrapped' : ''"
                                 type="button"
@@ -222,5 +240,39 @@
 </script>
 <script src="/js/auth-utils.js"></script>
 <script src="/js/job-map.js"></script>
+<script>
+    async function applyDesiredRegion(btn) {
+        const sido = btn.dataset.sido;
+        const sigungu = btn.dataset.sigungu;
+        const filterSidoEl = document.getElementById('filterSido');
+        const filterSigunguEl = document.getElementById('filterSigungu');
+
+        // 1. 지오코딩 → 지도 중심 이동
+        try {
+            const params = new URLSearchParams({sido: sido});
+            if (sigungu) params.append('sigungu', sigungu);
+            const res = await fetch('/auth/geocode/region?' + params.toString());
+            if (res.ok) {
+                const coord = await res.json();
+                if (coord && coord.latitude && coord.longitude && window.moveMapToCoords) {
+                    window.moveMapToCoords(coord.latitude, coord.longitude);
+                }
+            }
+        } catch (e) {
+            // 지오코딩 실패해도 필터는 계속 적용
+        }
+
+        // 2. 필터 드롭다운 설정
+        filterSidoEl.value = sido;
+        filterSidoEl.dispatchEvent(new Event('change')); // selectedSido 업데이트 + sigungu 옵션 채움 + selectedSigungu="all" 리셋
+        if (sigungu) {
+            filterSigunguEl.value = sigungu;
+            filterSigunguEl.dispatchEvent(new Event('change')); // selectedSigungu 업데이트
+        }
+
+        // 3. 검색 실행
+        document.getElementById('searchBtn').click();
+    }
+</script>
 </body>
 </html>

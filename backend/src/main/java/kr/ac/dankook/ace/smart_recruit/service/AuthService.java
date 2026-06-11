@@ -130,6 +130,10 @@ public class AuthService {
                 .desiredRegion2Sigungu(request.getDesiredRegion2Sigungu())
                 .desiredRegion3Sido(request.getDesiredRegion3Sido())
                 .desiredRegion3Sigungu(request.getDesiredRegion3Sigungu())
+                .preferredJobTypeMajor(request.getPreferredJobTypeMajor())
+                .preferredJobTypeMid(request.getPreferredJobTypeMid())
+                .preferredPayType(request.getPreferredPayType())
+                .minPayAmount(request.getMinPayAmount())
                 .build();
 
         // 4. 관심 지역 1 상세 주소 → 거주지 좌표 지오코딩 후 반영

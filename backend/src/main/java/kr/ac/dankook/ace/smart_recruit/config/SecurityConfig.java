@@ -43,10 +43,13 @@ public class SecurityConfig {
 
                 // 누구나 접근 가능한 경로 (화이트리스트)
                 .requestMatchers("/",
+                                "/dashboard",
                                 "/auth/signup",
                                 "/auth/login",
+                                "/auth/logout",
                                 "/auth/geocode/preview",
                                 "/auth/geocode/reverse",
+                                "/auth/geocode/region",
                                 "/auth/mypage",
                                 "/main", 
                                 "/jobs/list",

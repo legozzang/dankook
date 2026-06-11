@@ -8,8 +8,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
+import org.springframework.core.io.ClassPathResource;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -21,6 +20,7 @@ import jakarta.validation.Valid;
 import kr.ac.dankook.ace.smart_recruit.dto.*;
 import kr.ac.dankook.ace.smart_recruit.repository.jobposting.JobPostingRepository;
 import kr.ac.dankook.ace.smart_recruit.service.AuthService;
+import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService;
 import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.Coordinate;
 import kr.ac.dankook.ace.smart_recruit.service.location.GeocodingService.ReverseGeocodeResult;
 import kr.ac.dankook.ace.smart_recruit.util.StringUtils;
@@ -34,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
+    private final GeocodingService geocodingService;
     private final JobPostingRepository jobPostingRepository;
 
     @GetMapping("/login")
@@ -44,6 +45,7 @@ public class AuthController {
     @GetMapping("/signup")
     public String signUpPage(Model model) {
         model.addAttribute("sigunguBySidoJson", buildSigunguBySidoJson());
+        model.addAttribute("kscoHierarchyJson", buildKscoHierarchyJson());
         return "signup"; // templates/signup.html
     }
 
@@ -82,6 +84,20 @@ public class AuthController {
                 .body(response);
     }
 
+    @PostMapping("/logout")
+    @ResponseBody
+    public ResponseEntity<Void> logout() {
+        ResponseCookie expiredCookie = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.SET_COOKIE, expiredCookie.toString())
+                .build();
+    }
+
     @PostMapping("/signup")
     @ResponseBody
     public ResponseEntity<Long> signUp(@Valid @RequestBody SignUpRequest request){
@@ -101,6 +117,17 @@ public class AuthController {
         Coordinate coordinate = authService.previewHomeLocation(
                 request.getSido(), request.getSigungu(), request.getDetail());
         return ResponseEntity.ok(coordinate);
+    }
+
+    @GetMapping("/geocode/region")
+    @ResponseBody
+    public ResponseEntity<?> geocodeRegion(
+            @RequestParam String sido,
+            @RequestParam(required = false, defaultValue = "") String sigungu) {
+        String query = (sigungu.isBlank() ? sido : sido + " " + sigungu).trim();
+        return geocodingService.geocode(query)
+                .map(coord -> ResponseEntity.ok(coord))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/geocode/reverse")
@@ -138,12 +165,12 @@ public class AuthController {
 
     private String buildKscoHierarchyJson() {
         try {
-            Path path = resolveKscoPath();
-            if (path == null) {
+            ClassPathResource resource = new ClassPathResource("ksco_2025_reverse.json");
+            if (!resource.exists()) {
                 return "{}";
             }
 
-            String json = Files.readString(path);
+            String json = new String(resource.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
             Map<String, Map<String, Map<String, Map<String, Boolean>>>> hierarchy = new TreeMap<>();
 
             Pattern pattern = Pattern.compile(
@@ -208,20 +235,6 @@ public class AuthController {
         }
     }
 
-    private Path resolveKscoPath() {
-        Path[] candidates = {
-                Path.of("ai-server", "resources", "ksco_2025_reverse.json"),
-                Path.of("..", "ai-server", "resources", "ksco_2025_reverse.json"),
-                Path.of("src", "main", "resources", "ksco_2025_reverse.json")
-        };
-
-        for (Path candidate : candidates) {
-            if (Files.exists(candidate)) {
-                return candidate;
-            }
-        }
-        return null;
-    }
 
     private String toJson(Map<String, Map<String, Map<String, Map<String, Boolean>>>> hierarchy) {
         StringBuilder sb = new StringBuilder("{");
