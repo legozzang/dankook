@@ -198,7 +198,11 @@
 
                     <!-- 카드 하단 액션 행 -->
                     <div class="card-actions">
-                        <a class="detail-link" th:href="@{/jobpostings/{id}(id=${jobPosting.id})}">상세 보기</a>
+                        <a class="detail-link"
+                           th:with="hasExternal=${jobPosting.externalUrl != null and !jobPosting.externalUrl.isBlank()}"
+                           th:href="${hasExternal} ? ${jobPosting.externalUrl} : @{/jobpostings/{id}(id=${jobPosting.id})}"
+                           th:target="${hasExternal} ? '_blank' : '_self'"
+                           th:rel="${hasExternal} ? 'noopener' : null">상세 보기</a>
                         <button class="scrap-btn"
                                 th:classappend="${jobPosting.scraped} ? ' scrapped' : ''"
                                 type="button"
